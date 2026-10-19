@@ -1,0 +1,36 @@
+{
+  "name": "luxe-realty-kl",
+  "version": "1.0.0",
+  "description": "m.boutiquehomes – luxury property website with Express + MySQL backend",
+  "private": true,
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node --watch server/server.js",
+    "db:init": "node scripts/init-db.js",
+    "set-admin": "node scripts/set-admin.js",
+    "dev:setup": "node scripts/dev-db.js setup",
+    "dev:db": "node scripts/dev-db.js start",
+    "dev:db:stop": "node scripts/dev-db.js stop",
+    "dev:db:status": "node scripts/dev-db.js status",
+    "use:vps": "node scripts/use-db.js vps",
+    "use:local": "node scripts/use-db.js local",
+    "tunnel": "node scripts/use-db.js tunnel",
+    "db:mode": "node scripts/use-db.js status",
+    "deploy": "bash scripts/deploy.sh"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.0",
+    "mysql2": "^3.11.0"
+  }
+}

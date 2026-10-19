@@ -1,0 +1,271 @@
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.gold-gradient-bg {
+    background: linear-gradient(135deg, #C5A059 0%, #D4AF37 50%, #9B7A38 100%);
+}
+
+/* Tabs */
+.tab-btn {
+    padding: 0.6rem 1rem;
+    color: rgba(255, 255, 255, 0.6);
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    font-weight: 600;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.tab-btn:hover {
+    color: #ffffff;
+}
+
+.tab-btn.active {
+    color: #DECB93;
+    border-bottom-color: #C5A059;
+}
+
+/* Cards & buttons */
+.card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 1rem;
+    padding: 1.25rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.card-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+.card-sub {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+.btn-primary,
+.btn-ghost,
+.btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.55rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: filter 0.2s, background-color 0.2s, transform 0.1s;
+}
+
+.btn-primary:active,
+.btn-ghost:active,
+.btn-danger:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    color: #ffffff;
+    background: linear-gradient(135deg, #C5A059 0%, #D4AF37 50%, #9B7A38 100%);
+}
+
+.btn-primary:hover {
+    filter: brightness(1.06);
+}
+
+.btn-ghost {
+    color: #374151;
+    background: #f3f4f6;
+}
+
+.btn-ghost:hover {
+    background: #e5e7eb;
+}
+
+.btn-danger {
+    color: #b91c1c;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
+.btn-danger:hover {
+    background: #fee2e2;
+}
+
+.icon-btn {
+    width: 2rem;
+    height: 2rem;
+    display: grid;
+    place-items: center;
+    border-radius: 9999px;
+    color: #6b7280;
+    background: #f3f4f6;
+    cursor: pointer;
+}
+
+.icon-btn:hover {
+    background: #e5e7eb;
+}
+
+/* Form fields */
+.field {
+    display: block;
+}
+
+.field > span {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 0.25rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+    width: 100%;
+    font-size: 0.8rem;
+    padding: 0.6rem 0.75rem;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+    outline: none;
+    border-color: #C5A059;
+    box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.18);
+}
+
+/* Image field */
+.img-preview {
+    background: #f3f4f6;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 1px dashed #d1d5db;
+}
+
+.img-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* List rows */
+.item-card {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 1rem;
+}
+
+.item-card img {
+    width: 5rem;
+    height: 5rem;
+    border-radius: 0.75rem;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #e5e7eb;
+}
+
+.item-card.round img {
+    border-radius: 9999px;
+}
+
+/* Toast */
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 1.5rem;
+    transform: translate(-50%, 1rem);
+    padding: 0.7rem 1.1rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: #171A1F;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.3);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+    z-index: 60;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.toast.error {
+    background: #b91c1c;
+}
+
+/* 6-digit passcode boxes */
+.passcode-box {
+    width: 2.75rem;
+    height: 3.4rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #171A1F;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    caret-color: #C5A059;
+    transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+
+.passcode-box:focus {
+    outline: none;
+    border-color: #C5A059;
+    box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.22);
+}
+
+.passcode-box:disabled {
+    opacity: 0.6;
+}
+
+@keyframes passcode-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-6px); }
+    80% { transform: translateX(6px); }
+}
+
+.shake {
+    animation: passcode-shake 0.4s ease-in-out;
+}
+
+@media (max-width: 380px) {
+    .passcode-box {
+        width: 2.4rem;
+        height: 3rem;
+        font-size: 1.3rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .shake { animation: none; }
+}
+
+/* Dashboard: stay hidden until the first data load has finished, so empty counts never flash */
+.is-booting main {
+    visibility: hidden;
+}

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="/admin/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/admin/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/admin/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/admin/apple-touch-icon.png">
+    <title>后台管理 | m.boutiquehomes</title>
+    <meta name="robots" content="noindex, nofollow">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gold: {
+                            50: '#FAF7EE',
+                            100: '#F3EDD7',
+                            300: '#DECB93',
+                            400: '#D4B574',
+                            500: '#C5A059',
+                            600: '#B08B43',
+                            700: '#8A6A2E',
+                        },
+                        charcoal: {
+                            800: '#23272F',
+                            900: '#171A1F',
+                        },
+                        cream: '#FAF8F5'
+                    },
+                    fontFamily: {
+                        serif: ['Playfair Display', 'Georgia', 'serif'],
+                        sans: ['Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body class="antialiased bg-slate-100 text-charcoal-900 min-h-screen is-booting">
+
+    <!-- TOP BAR -->
+    <header class="sticky top-0 z-30 bg-charcoal-900 text-white shadow-md">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <div class="flex items-center space-x-3 min-w-0">
+                <img src="/img/logo-black-192.png" alt="m.boutiquehomes" class="w-9 h-9 rounded-full ring-1 ring-white/50 shadow-md flex-shrink-0">
+                <div class="min-w-0">
+                    <h1 class="font-serif font-bold text-sm tracking-wide leading-none truncate">m.boutiquehomes</h1>
+                    <span class="block mt-1 leading-none text-[10px] uppercase tracking-widest text-gold-300 font-semibold">后台管理 Admin</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 text-xs flex-shrink-0">
+                <span id="adminName" class="hidden md:inline text-[11px] text-gold-300 mr-1"></span>
+                <a href="/" target="_blank" aria-label="首页" class="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"><i class="fa-solid fa-house sm:mr-1"></i><span class="hidden sm:inline">首页</span></a>
+                <a href="/listings/" target="_blank" aria-label="房源页" class="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"><i class="fa-solid fa-building sm:mr-1"></i><span class="hidden sm:inline">房源页</span></a>
+                <button id="logoutBtn" aria-label="退出" class="px-3 py-1.5 rounded-full bg-white/10 hover:bg-red-500/80 transition"><i class="fa-solid fa-right-from-bracket sm:mr-1"></i><span class="hidden sm:inline">退出</span></button>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <nav class="max-w-5xl mx-auto px-4 flex space-x-1 overflow-x-auto no-scrollbar text-sm" role="tablist">
+            <button class="tab-btn active" data-tab="hero" role="tab"><i class="fa-regular fa-image mr-1.5"></i>首页横幅</button>
+            <button class="tab-btn" data-tab="listings" role="tab"><i class="fa-solid fa-building mr-1.5"></i>房源管理</button>
+            <button class="tab-btn" data-tab="team" role="tab"><i class="fa-solid fa-users mr-1.5"></i>团队管理</button>
+            <button class="tab-btn" data-tab="admins" role="tab"><i class="fa-solid fa-user-shield mr-1.5"></i>管理员</button>
+            <button class="tab-btn" data-tab="settings" role="tab"><i class="fa-solid fa-chart-simple mr-1.5"></i>概览</button>
+        </nav>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
+
+        <div id="remoteBanner" class="hidden text-xs text-red-800 bg-red-50 border-2 border-red-300 rounded-xl px-4 py-3 leading-relaxed font-semibold">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+            你现在连接的是【线上数据库】：这里的任何修改、删除都会直接影响真实网站，无法撤销。本地模式下不能上传图片，请粘贴图片链接，或到线上后台上传。
+        </div>
+
+        <div class="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 leading-relaxed">
+            <i class="fa-solid fa-database mr-1"></i>
+            修改会直接保存到服务器的 MySQL 数据库，首页和房源页对所有访客立即生效。
+        </div>
+
+        <!-- ================= HERO ================= -->
+        <section id="tab-hero" class="tab-panel space-y-4">
+            <div class="card">
+                <h2 class="card-title">首页横幅照片</h2>
+                <p class="card-sub">建议使用横向、高清的照片（会自动压缩到宽度 1400px）。</p>
+                <div id="heroField" class="mt-4"></div>
+                <div class="flex flex-wrap gap-2 mt-5">
+                    <button id="heroSave" class="btn-primary"><i class="fa-solid fa-floppy-disk mr-1.5"></i>保存横幅</button>
+                    <button id="heroReset" class="btn-ghost"><i class="fa-solid fa-rotate-left mr-1.5"></i>恢复默认横幅</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= LISTINGS ================= -->
+        <section id="tab-listings" class="tab-panel hidden space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="font-serif text-lg font-bold">房源管理</h2>
+                    <p class="text-xs text-gray-500"><span id="listingCount">0</span> 套房源</p>
+                </div>
+                <button id="listingAdd" class="btn-primary"><i class="fa-solid fa-plus mr-1.5"></i>新增房源</button>
+            </div>
+
+            <!-- Add / edit form -->
+            <form id="listingForm" class="card hidden space-y-4" autocomplete="off">
+                <div class="flex items-center justify-between">
+                    <h3 id="listingFormTitle" class="card-title">新增房源</h3>
+                    <button type="button" id="listingCancel" class="icon-btn" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="grid sm:grid-cols-2 gap-3">
+                    <label class="field"><span>标题（中文）*</span><input id="lf-title-zh" required placeholder="例如：Pavilion Suites KLCC 奢华公馆"></label>
+                    <label class="field"><span>标题（英文）</span><input id="lf-title-en" placeholder="e.g. Pavilion Suites KLCC Luxury Residence"></label>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <label class="field"><span>类型 *</span>
+                        <select id="lf-type" required>
+                            <option value="rent">出租 For Rent</option>
+                            <option value="sale">出售 For Sale</option>
+                        </select>
+                    </label>
+                    <label class="field"><span>价格 (RM) *</span><input id="lf-price" type="number" min="0" required placeholder="出租填月租"></label>
+                    <label class="field"><span>面积 (sqft) *</span><input id="lf-sqft" type="number" min="0" required placeholder="1250"></label>
+                    <label class="field"><span>地段 *</span>
+                        <select id="lf-area" required>
+                            <option value="KLCC">KLCC</option>
+                            <option value="Mont Kiara">Mont Kiara</option>
+                            <option value="TRX">TRX</option>
+                            <option value="Bangsar">Bangsar</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="grid sm:grid-cols-2 gap-3">
+                    <label class="field"><span>房型（中文）*</span><input id="lf-bed-zh" required placeholder="3 房 2 卫"></label>
+                    <label class="field"><span>房型（英文）</span><input id="lf-bed-en" placeholder="3 Bed 2 Bath"></label>
+                    <label class="field"><span>地段显示名（中文）</span><input id="lf-loc-zh" placeholder="KLCC 核心区"></label>
+                    <label class="field"><span>地段显示名（英文）</span><input id="lf-loc-en" placeholder="KLCC Core"></label>
+                    <label class="field sm:col-span-2"><span>详细地址</span><input id="lf-address" placeholder="Jalan Bukit Bintang, KLCC"></label>
+                    <label class="field"><span>亮点标签（中文）</span><input id="lf-status-zh" placeholder="95% 新 · 拎包入住"></label>
+                    <label class="field"><span>亮点标签（英文）</span><input id="lf-status-en" placeholder="95% New · Move-in Ready"></label>
+                    <label class="field"><span>描述（中文）</span><textarea id="lf-desc-zh" rows="3"></textarea></label>
+                    <label class="field"><span>描述（英文）</span><textarea id="lf-desc-en" rows="3"></textarea></label>
+                </div>
+
+                <div id="lf-img-wrap"></div>
+
+                <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk mr-1.5"></i>保存房源</button>
+                    <button type="button" id="listingCancel2" class="btn-ghost">取消</button>
+                </div>
+            </form>
+
+            <div id="listingList" class="grid sm:grid-cols-2 gap-3"></div>
+        </section>
+
+        <!-- ================= TEAM ================= -->
+        <section id="tab-team" class="tab-panel hidden space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="font-serif text-lg font-bold">团队管理</h2>
+                    <p class="text-xs text-gray-500"><span id="teamCount">0</span> 位顾问 · 显示在首页「资深高级顾问」</p>
+                </div>
+                <button id="teamAdd" class="btn-primary"><i class="fa-solid fa-plus mr-1.5"></i>新增顾问</button>
+            </div>
+
+            <form id="teamForm" class="card hidden space-y-4" autocomplete="off">
+                <div class="flex items-center justify-between">
+                    <h3 id="teamFormTitle" class="card-title">新增顾问</h3>
+                    <button type="button" id="teamCancel" class="icon-btn" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <label class="field"><span>姓名 *</span><input id="tf-name" required placeholder="Marcus Chen"></label>
+                <div class="grid sm:grid-cols-2 gap-3">
+                    <label class="field"><span>职称（中文）*</span><input id="tf-role-zh" required placeholder="KLCC 豪宅交易总监"></label>
+                    <label class="field"><span>职称（英文）</span><input id="tf-role-en" placeholder="Director, KLCC Luxury Sales"></label>
+                    <label class="field"><span>简介（中文）</span><input id="tf-meta-zh" placeholder="从业 12 年 | 精通中英粤"></label>
+                    <label class="field"><span>简介（英文）</span><input id="tf-meta-en" placeholder="12 yrs experience | Mandarin, English, Cantonese"></label>
+                </div>
+                <div id="tf-img-wrap"></div>
+                <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk mr-1.5"></i>保存顾问</button>
+                    <button type="button" id="teamCancel2" class="btn-ghost">取消</button>
+                </div>
+            </form>
+
+            <div id="teamList" class="grid sm:grid-cols-2 gap-3"></div>
+        </section>
+
+        <!-- ================= SETTINGS ================= -->
+        <!-- ================= ADMINS ================= -->
+        <section id="tab-admins" class="tab-panel hidden space-y-4">
+            <div class="card">
+                <h2 class="card-title">我的账号</h2>
+                <p class="card-sub">当前登录：<strong id="meName">-</strong> <span id="meRole" class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-gold-100 text-gold-700 font-bold"></span></p>
+                <form id="myPasscodeForm" class="mt-4 grid sm:grid-cols-3 gap-3" autocomplete="off">
+                    <label class="field"><span>当前密码</span><input id="pc-current" type="password" inputmode="numeric" pattern="\d{6}" maxlength="6" required placeholder="6 位数字"></label>
+                    <label class="field"><span>新的 6 位密码</span><input id="pc-new" type="password" inputmode="numeric" pattern="\d{6}" maxlength="6" required placeholder="6 位数字"></label>
+                    <label class="field"><span>再输入一次新密码</span><input id="pc-new2" type="password" inputmode="numeric" pattern="\d{6}" maxlength="6" required placeholder="6 位数字"></label>
+                    <div class="sm:col-span-3"><button type="submit" class="btn-primary"><i class="fa-solid fa-key mr-1.5"></i>修改我的密码</button></div>
+                </form>
+            </div>
+
+            <!-- Only the owner sees this part -->
+            <div id="ownerAdmins" class="hidden space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="font-serif text-lg font-bold">管理员</h2>
+                        <p class="text-xs text-gray-500"><span id="adminCount">0</span> 位 · 每个人用自己的 6 位密码登录</p>
+                    </div>
+                    <button id="adminAdd" class="btn-primary"><i class="fa-solid fa-plus mr-1.5"></i>新增管理员</button>
+                </div>
+
+                <form id="adminForm" class="card hidden space-y-4" autocomplete="off">
+                    <div class="flex items-center justify-between">
+                        <h3 id="adminFormTitle" class="card-title">新增管理员</h3>
+                        <button type="button" id="adminCancel" class="icon-btn" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="grid sm:grid-cols-2 gap-3">
+                        <label id="af-name-wrap" class="field"><span>名字 *</span><input id="af-name" maxlength="60" placeholder="例如：Sarah"></label>
+                        <label id="af-pass-wrap" class="field"><span>6 位数字密码 *</span><input id="af-pass" type="password" inputmode="numeric" pattern="\d{6}" maxlength="6" placeholder="6 位数字"></label>
+                    </div>
+                    <p id="af-hint" class="text-[11px] text-gray-400">请把密码单独告诉对方。系统只保存加密后的结果，之后没人能再看到这个密码。</p>
+                    <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                        <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk mr-1.5"></i>保存</button>
+                        <button type="button" id="adminCancel2" class="btn-ghost">取消</button>
+                    </div>
+                </form>
+
+                <div id="adminList" class="grid sm:grid-cols-2 gap-3"></div>
+            </div>
+        </section>
+
+        <section id="tab-settings" class="tab-panel hidden space-y-4">
+            <div class="card">
+                <h2 class="card-title">数据概览</h2>
+                <p class="card-sub">当前共有 <strong id="statListings">0</strong> 套房源、<strong id="statTeam">0</strong> 位顾问。</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Shown when the admin API cannot be reached (server not running, or the page was opened without the backend) -->
+    <div id="apiDownOverlay" class="fixed inset-0 z-50 bg-charcoal-900 flex items-center justify-center px-4 hidden">
+        <div class="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl space-y-3 text-sm">
+            <div class="text-red-600 text-2xl"><i class="fa-solid fa-plug-circle-xmark"></i></div>
+            <h1 class="font-serif font-bold text-lg">连接不上后台服务</h1>
+            <p class="text-gray-600 text-xs leading-relaxed">这个页面需要后端程序才能读写数据库。请确认：</p>
+            <ol class="text-xs text-gray-700 list-decimal pl-5 space-y-1 leading-relaxed">
+                <li>在项目文件夹运行了 <code class="bg-gray-100 px-1 rounded">npm start</code>（本地数据库要先 <code class="bg-gray-100 px-1 rounded">npm run dev:db</code>）。</li>
+                <li>用 <strong>http://localhost:3000/admin</strong> 打开，不要用 VS Code 的 Live Server（5500 端口）或直接打开 HTML 文件。</li>
+                <li>如果连的是线上数据库，SSH 隧道（<code class="bg-gray-100 px-1 rounded">npm run tunnel</code>）要保持开着。</li>
+            </ol>
+            <p id="apiDownDetail" class="text-[11px] text-gray-400 break-all"></p>
+            <button id="apiDownRetry" class="btn-primary w-full">重试</button>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script src="/store.js"></script>
+    <script src="/admin/app/admin.js"></script>
+</body>
+</html>

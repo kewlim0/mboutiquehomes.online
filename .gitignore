@@ -1,0 +1,10 @@
+node_modules/
+.env
+uploads/*
+!uploads/.gitkeep
+.DS_Store
+.mysql/
+.db-vps.json
+.db-local.json
+.env.*
+!.env.example

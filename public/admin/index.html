@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/x-icon" href="/admin/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/admin/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/admin/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/admin/apple-touch-icon.png">
+    <title>后台登录 | m.boutiquehomes</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gold: { 50: '#FAF7EE', 100: '#F3EDD7', 300: '#DECB93', 400: '#D4B574', 500: '#C5A059', 600: '#B08B43', 700: '#8A6A2E' },
+                        charcoal: { 800: '#23272F', 900: '#171A1F' }
+                    },
+                    fontFamily: {
+                        serif: ['Playfair Display', 'Georgia', 'serif'],
+                        sans: ['Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body class="antialiased bg-charcoal-900 min-h-screen flex items-center justify-center px-4">
+
+    <form id="loginForm" class="w-full max-w-sm bg-white rounded-2xl p-6 shadow-2xl space-y-5" autocomplete="off">
+        <div class="text-center">
+            <img src="/img/logo-black-192.png" alt="m.boutiquehomes" class="w-12 h-12 mx-auto rounded-full shadow-md">
+            <h1 class="font-serif font-bold text-lg mt-3">后台登录</h1>
+            <p class="text-xs text-gray-500">m.boutiquehomes · 请输入 6 位数字密码</p>
+        </div>
+        <div id="passcodeBoxes" class="flex justify-center gap-2" role="group" aria-label="6 位数字密码">
+                <input class="passcode-box" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="第 1 位数字">
+                <input class="passcode-box" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="第 2 位数字">
+                <input class="passcode-box" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="第 3 位数字">
+                <input class="passcode-box" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="第 4 位数字">
+                <input class="passcode-box" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="第 5 位数字">
+                <input class="passcode-box" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="第 6 位数字">
+        </div>
+        <p id="loginError" class="text-xs text-red-600 text-center min-h-[1rem]" role="alert"></p>
+        <button type="submit" id="loginBtn" class="btn-primary w-full">登录</button>
+    </form>
+
+    <script src="/admin/login.js"></script>
+</body>
+</html>

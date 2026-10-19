@@ -1,0 +1,94 @@
+// Small input validation helpers. Anything invalid throws an HttpError that the API turns into a 400 response.
+
+class HttpError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
+const AREAS = ['KLCC', 'Mont Kiara', 'TRX', 'Bangsar'];
+
+function str(value, label, max, { required = false } = {}) {
+  const v = typeof value === 'string' ? value.trim() : '';
+  if (required && !v) throw new HttpError(400, `${label}不能为空`);
+  if (v.length > max) throw new HttpError(400, `${label}太长（最多 ${max} 个字符）`);
+  return v;
+}
+
+function int(value, label, { min = 0, max = 2147483647 } = {}) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < min || n > max) throw new HttpError(400, `${label}必须是 ${min} 到 ${max} 之间的整数`);
+  return n;
+}
+
+// Images: a file shipped with the site (img/...), an admin upload (uploads/...) or an https/http link.
+function image(value, label = '图片') {
+  const v = str(value, label, 600, { required: true });
+  if (!/^(https?:\/\/[^\s"'<>]+|(img|uploads)\/[\w./-]+)$/.test(v) || v.includes('..')) {
+    throw new HttpError(400, `${label}地址无效`);
+  }
+  return v;
+}
+
+function bilingual(obj, label, max, { required = false } = {}) {
+  const o = obj && typeof obj === 'object' ? obj : {};
+  const zh = str(o.zh, `${label}（中文）`, max, { required });
+  const en = str(o.en, `${label}（英文）`, max);
+  return { zh, en };
+}
+
+function property(body) {
+  const b = body && typeof body === 'object' ? body : {};
+  if (!['rent', 'sale'].includes(b.type)) throw new HttpError(400, '类型必须是出租或出售');
+  if (!AREAS.includes(b.area)) throw new HttpError(400, '地段无效');
+  return {
+    title: bilingual(b.title, '标题', 255, { required: true }),
+    type: b.type,
+    priceRM: int(b.priceRM, '价格', { max: 9999999999 }),
+    areaSqft: int(b.areaSqft, '面积', { max: 1000000 }),
+    beds: bilingual(b.beds, '房型', 100, { required: true }),
+    area: b.area,
+    location: bilingual(b.location, '地段显示名', 100),
+    address: str(b.address, '地址', 255),
+    img: image(b.img, '房源照片'),
+    status: bilingual(b.status, '亮点标签', 255),
+    desc: bilingual(b.desc, '描述', 5000),
+  };
+}
+
+function teamMember(body) {
+  const b = body && typeof body === 'object' ? body : {};
+  return {
+    name: str(b.name, '姓名', 120, { required: true }),
+    role: bilingual(b.role, '职称', 160, { required: true }),
+    meta: bilingual(b.meta, '简介', 255),
+    img: image(b.img, '头像'),
+  };
+}
+
+// A 6-digit passcode only has 1,000,000 possibilities, so at least refuse the ones everybody tries first.
+function weakPasscodeReason(code) {
+  const d = [...code].map(Number);
+  if (d.every((x) => x === d[0])) return '6 个数字不能都一样（例如 000000、888888）';
+  const run = (n) => d.slice(1).every((x, i) => x - d[i] === n);
+  if (run(1) || run(-1)) return '不能是连续的数字（例如 123456、654321）';
+  if (code.slice(0, 2).repeat(3) === code || code.slice(0, 3).repeat(2) === code) return '不能是重复的图案（例如 121212、123123）';
+  if (['112233', '123321', '520520', '201314', '520131', '131420'].includes(code)) return '这个密码太常见了，请换一个';
+  return null;
+}
+
+function passcode(value, label = '密码') {
+  const code = typeof value === 'string' ? value.trim() : '';
+  if (!/^\d{6}$/.test(code)) throw new HttpError(400, `${label}必须是 6 位数字`);
+  const weak = weakPasscodeReason(code);
+  if (weak) throw new HttpError(400, `${label}太容易被猜到：${weak}`);
+  return code;
+}
+
+function adminName(value) {
+  return str(value, '名字', 60, { required: true });
+}
+
+module.exports = {
+  weakPasscodeReason, passcode, adminName, HttpError, AREAS, image, property, teamMember };
