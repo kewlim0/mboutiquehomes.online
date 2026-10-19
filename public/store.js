@@ -68,5 +68,29 @@ const Store = (() => {
         return next - sinceMidnight + 500; // a little after the boundary
     }
 
-    return { ROOT, load, resolve, gmt8, phaseOf, pickHero, msUntilNextChange };
+    // ---------- listing photo gallery (the same markup is used by the site and by the admin preview) ----------
+    // 1 photo: one big picture. 2 photos: two side by side.
+    // 3 or more: a big picture on the left, the 2nd photo top right and the 3rd bottom right; when there are more
+    // than three, the 3rd tile is blurred and shows "+N" (N = how many pictures are not shown).
+    const attr = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    function galleryHtml(photos, { clickable = true } = {}) {
+        const list = (photos || []).filter(Boolean);
+        if (!list.length) return '';
+        const shown = list.slice(0, 3);
+        const more = list.length - 3;
+        const tag = clickable ? 'button type="button"' : 'div';
+        const close = clickable ? 'button' : 'div';
+        const tiles = shown.map((p, i) => {
+            const hasMore = i === 2 && more > 0;
+            return `<${tag} class="g-tile${hasMore ? ' g-blur' : ''}" data-photo="${i}" aria-label="照片 ${i + 1} / ${list.length}">`
+                + `<img src="${attr(resolve(p))}" alt="" loading="lazy" onload="this.classList.add('loaded')" `
+                + `onerror="this.onerror=null;this.src='https://placehold.co/800x600/1e293b/ffffff?text=Luxe+Property'">`
+                + (hasMore ? `<span class="g-more">+${more}</span>` : '')
+                + `</${close}>`;
+        }).join('');
+        return `<div class="gallery" data-count="${shown.length}">${tiles}</div>`;
+    }
+
+    return { ROOT, load, resolve, gmt8, phaseOf, pickHero, msUntilNextChange, galleryHtml };
 })();

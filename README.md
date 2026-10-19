@@ -47,6 +47,16 @@ npm start              # http://localhost:3000   (admin: http://localhost:3000/a
 Everything you add in `/admin` (listings, team, photos) is stored in this database and survives restarts.
 To start from zero, stop the database and delete the `.mysql/` folder, then run `npm run dev:setup` again.
 
+## Listing photos
+
+A listing can have up to 20 photos (dashboard -> 房源管理 -> add / edit). Pick several at once, reorder them with the arrows,
+make any photo the cover with the star, remove with the cross. The first photo is the **cover** (shown on the listing card).
+
+On the site the detail sheet shows the photos like a messaging-app album: **one big picture on the left, the 2nd photo top
+right, the 3rd bottom right**. With more than three photos the bottom-right tile is blurred and shows "+N" (N = pictures not
+shown). Tapping any tile opens a full-screen viewer (swipe, arrows or the keyboard; Esc closes it). The admin form shows the
+same layout as a live preview. Removing a photo, or deleting a listing, also deletes the uploaded files nobody uses any more.
+
 ## Scheduled hero banners
 
 In the dashboard, **首页横幅** manages which picture the home page shows. Everything is calculated in **GMT+8**

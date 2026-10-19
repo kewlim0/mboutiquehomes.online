@@ -481,8 +481,92 @@ $('bannerForm').addEventListener('submit', async (e) => {
 
 // ---------- listings ----------
 let editingListingId = null;
-$('lf-img-wrap').innerHTML = imageFieldHtml('lf-img', '房源照片', 'aspect-[16/10] w-full max-w-sm');
-bindImageField('lf-img', 1000);
+// ----- listing photos: several pictures per listing, the first one is the cover -----
+const MAX_PHOTOS = 20;
+let lfPhotos = [];
+let lfUploading = 0;
+
+$('lf-photos-wrap').innerHTML = `
+    <div class="space-y-2">
+        <span class="block text-[11px] font-bold text-gray-700">房源照片 <span id="lf-photo-count" class="text-gray-400 font-normal"></span></span>
+        <div id="lf-photo-grid" class="photo-grid"></div>
+        <div class="flex gap-2">
+            <input id="lf-photo-url" type="url" placeholder="或粘贴图片链接，再点「添加」" class="flex-1 min-w-0 text-xs px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-gold-500">
+            <button type="button" id="lf-photo-url-add" class="btn-ghost flex-shrink-0">添加</button>
+        </div>
+        <p class="text-[11px] text-gray-400 leading-relaxed">第一张是封面（显示在房源卡片上）。用 ‹ › 调整顺序，★ 设为封面。可以一次选多张。</p>
+        <div class="pt-2">
+            <span class="block text-[11px] font-bold text-gray-700 mb-1.5">前台详情页的样子</span>
+            <div class="gallery-preview"><div id="lf-gallery-preview" class="w-full h-full"></div></div>
+        </div>
+    </div>`;
+
+function renderLfPhotos() {
+    const total = lfPhotos.length;
+    $('lf-photo-grid').innerHTML = lfPhotos.map((p, i) => `
+        <div class="photo-tile ${i === 0 ? 'is-cover' : ''}">
+            <img src="${esc(Store.resolve(p))}" alt="" onerror="this.removeAttribute('src')">
+            ${i === 0 ? '<span class="cover-badge">封面</span>' : ''}
+            <button type="button" class="photo-del" data-act="del" data-i="${i}" aria-label="删除这张照片"><i class="fa-solid fa-xmark"></i></button>
+            <div class="photo-bar">
+                <button type="button" data-act="left" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="往前移"><i class="fa-solid fa-chevron-left"></i></button>
+                ${i === 0 ? '' : `<button type="button" data-act="cover" data-i="${i}" aria-label="设为封面"><i class="fa-solid fa-star"></i></button>`}
+                <button type="button" data-act="right" data-i="${i}" ${i === total - 1 ? 'disabled' : ''} aria-label="往后移"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>`).join('')
+        + Array.from({ length: lfUploading }, () => '<div class="photo-tile is-loading" aria-label="上传中"><span class="photo-spinner"></span></div>').join('')
+        + (total + lfUploading < MAX_PHOTOS
+            ? '<label class="photo-add"><i class="fa-solid fa-plus"></i><span>添加照片</span><input id="lf-photo-file" type="file" accept="image/*" multiple class="hidden"></label>'
+            : '');
+    $('lf-photo-count').textContent = `（${total} / ${MAX_PHOTOS}）`;
+    $('lf-gallery-preview').innerHTML = total
+        ? Store.galleryHtml(lfPhotos, { clickable: false })
+        : '<div class="img-empty" style="display:flex"><i class="fa-regular fa-image"></i><span>还没有照片</span></div>';
+}
+
+async function addLfFiles(files) {
+    const room = MAX_PHOTOS - lfPhotos.length - lfUploading;
+    const list = [...files].slice(0, Math.max(0, room));
+    if (files.length > list.length) toast(`最多 ${MAX_PHOTOS} 张，多出来的没有添加`, true);
+    lfUploading += list.length;
+    renderLfPhotos();
+    for (const file of list) {            // one after another: kind to the server and keeps the order
+        try {
+            lfPhotos.push(await uploadImage(file, 1400));
+        } catch (err) {
+            if (!(err instanceof UnauthorizedError)) toast(err.message, true);
+        } finally {
+            lfUploading--;
+            renderLfPhotos();
+        }
+    }
+}
+
+$('lf-photo-grid').addEventListener('change', (e) => {
+    if (e.target.id === 'lf-photo-file') { addLfFiles(e.target.files); e.target.value = ''; }
+});
+
+$('lf-photo-grid').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const i = Number(btn.dataset.i);
+    const act = btn.dataset.act;
+    if (act === 'del') lfPhotos.splice(i, 1);
+    else if (act === 'left' && i > 0) [lfPhotos[i - 1], lfPhotos[i]] = [lfPhotos[i], lfPhotos[i - 1]];
+    else if (act === 'right' && i < lfPhotos.length - 1) [lfPhotos[i + 1], lfPhotos[i]] = [lfPhotos[i], lfPhotos[i + 1]];
+    else if (act === 'cover' && i > 0) lfPhotos.unshift(lfPhotos.splice(i, 1)[0]);
+    renderLfPhotos();
+});
+
+$('lf-photo-url-add').addEventListener('click', () => {
+    const url = $('lf-photo-url').value.trim();
+    if (!/^https?:\/\/\S+$/i.test(url)) { toast('请粘贴以 http:// 或 https:// 开头的图片链接', true); return; }
+    if (lfPhotos.includes(url)) { toast('这张照片已经添加过了', true); return; }
+    if (lfPhotos.length + lfUploading >= MAX_PHOTOS) { toast(`最多 ${MAX_PHOTOS} 张照片`, true); return; }
+    lfPhotos.push(url);
+    $('lf-photo-url').value = '';
+    renderLfPhotos();
+});
 
 function formatPrice(p) {
     return p.type === 'rent' ? `RM ${Number(p.priceRM).toLocaleString()} / 月` : `RM ${(p.priceRM / 10000).toFixed(0)} 万`;
@@ -499,6 +583,7 @@ function renderListings() {
                     <div class="flex items-center gap-2 mb-0.5">
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${p.type === 'rent' ? 'bg-gold-500' : 'bg-charcoal-900'}">${p.type === 'rent' ? '出租' : '出售'}</span>
                         <span class="text-[11px] text-gray-400 truncate">${esc(p.location.zh)}</span>
+                        ${(p.photos || []).length > 1 ? `<span class="text-[11px] text-gray-400 flex-shrink-0"><i class="fa-regular fa-images mr-0.5"></i>${p.photos.length}</span>` : ''}
                     </div>
                     <h3 class="text-sm font-bold leading-snug line-clamp-2">${esc(p.title.zh)}</h3>
                     <p class="text-xs font-bold text-gold-700 mt-0.5">${formatPrice(p)}</p>
@@ -510,11 +595,46 @@ function renderListings() {
             </div>`).join('');
 }
 
+// Bedrooms / bathrooms: two dropdowns. The Chinese and English texts shown on the site are generated from them.
+const BEDROOM_OPTIONS = [
+    ['studio', '开放式 Studio'], ['1', '1 房'], ['2', '2 房'], ['3', '3 房'], ['3+1', '3+1 房'], ['4', '4 房'],
+    ['4+1', '4+1 房'], ['5', '5 房'], ['5+1', '5+1 房'], ['6', '6 房'], ['7+', '7 房或以上']
+];
+const BATHROOM_OPTIONS = [['1', '1 卫'], ['2', '2 卫'], ['3', '3 卫'], ['4', '4 卫'], ['5', '5 卫'], ['6', '6 卫'], ['7+', '7 卫或以上']];
+
+function bedsText(bedrooms, bathrooms) {
+    return {
+        zh: `${bedrooms === 'studio' ? '开放式' : bedrooms + ' 房'} ${bathrooms} 卫`,
+        en: `${bedrooms === 'studio' ? 'Studio' : bedrooms + ' Bed'} ${bathrooms} Bath`
+    };
+}
+
+function fillSelect(el, placeholder, options) {
+    el.innerHTML = `<option value="" disabled selected>${placeholder}</option>`
+        + options.map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join('');
+}
+fillSelect($('lf-bedrooms'), '几房', BEDROOM_OPTIONS);
+fillSelect($('lf-bathrooms'), '几卫', BATHROOM_OPTIONS);
+
+let legacyBedsNote = '';
+function updateBedsPreview() {
+    const b = $('lf-bedrooms').value;
+    const t = $('lf-bathrooms').value;
+    if (b && t) {
+        const text = bedsText(b, t);
+        $('lf-beds-preview').innerHTML = `前台会自动显示：<b>${esc(text.zh)}</b> ／ <b>${esc(text.en)}</b>`;
+    } else {
+        $('lf-beds-preview').textContent = legacyBedsNote || '选好几房、几卫，前台会自动显示中文和英文。';
+    }
+}
+$('lf-bedrooms').addEventListener('change', updateBedsPreview);
+$('lf-bathrooms').addEventListener('change', updateBedsPreview);
+
 function openListingForm(p) {
     editingListingId = p ? p.id : null;
     $('listingFormTitle').textContent = p ? '编辑房源' : '新增房源';
     const v = p || {
-        title: {}, type: 'rent', priceRM: '', areaSqft: '', area: 'KLCC', beds: {},
+        title: {}, type: 'rent', priceRM: '', areaSqft: '', area: 'KLCC', beds: {}, bedrooms: '', bathrooms: '',
         location: AREA_LABELS['KLCC'], address: '', status: {}, desc: {}, img: ''
     };
     $('lf-title-zh').value = v.title.zh || '';
@@ -523,8 +643,12 @@ function openListingForm(p) {
     $('lf-price').value = v.priceRM;
     $('lf-sqft').value = v.areaSqft;
     $('lf-area').value = v.area;
-    $('lf-bed-zh').value = v.beds.zh || '';
-    $('lf-bed-en').value = v.beds.en || '';
+    $('lf-bedrooms').value = v.bedrooms || '';
+    $('lf-bathrooms').value = v.bathrooms || '';
+    // an old listing whose room text could not be read: tell the owner what it said so they can pick again
+    legacyBedsNote = p && !(p.bedrooms && p.bathrooms) && p.beds && p.beds.zh
+        ? `原来的房型是「${p.beds.zh}」，请重新选择几房、几卫。` : '';
+    updateBedsPreview();
     $('lf-loc-zh').value = v.location.zh || '';
     $('lf-loc-en').value = v.location.en || '';
     $('lf-address').value = v.address || '';
@@ -532,7 +656,10 @@ function openListingForm(p) {
     $('lf-status-en').value = v.status.en || '';
     $('lf-desc-zh').value = v.desc.zh || '';
     $('lf-desc-en').value = v.desc.en || '';
-    setImageField('lf-img', v.img);
+    lfPhotos = p ? [...(p.photos && p.photos.length ? p.photos : [p.img])] : [];
+    lfUploading = 0;
+    $('lf-photo-url').value = '';
+    renderLfPhotos();
     $('listingForm').classList.remove('hidden');
     $('listingForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -555,7 +682,8 @@ $('lf-area').addEventListener('change', (e) => {
 
 $('listingForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!$('lf-img').value) { toast('请为房源添加一张照片', true); return; }
+    if (lfUploading > 0) { toast('照片还在上传，请稍等一下', true); return; }
+    if (!lfPhotos.length) { toast('请至少添加一张房源照片', true); return; }
 
     const area = $('lf-area').value;
     const data = {
@@ -563,14 +691,15 @@ $('listingForm').addEventListener('submit', async (e) => {
         type: $('lf-type').value,
         priceRM: Number($('lf-price').value),
         areaSqft: Number($('lf-sqft').value),
-        beds: { zh: $('lf-bed-zh').value, en: $('lf-bed-en').value },
+        bedrooms: $('lf-bedrooms').value,
+        bathrooms: $('lf-bathrooms').value,
         area,
         location: {
             zh: $('lf-loc-zh').value.trim() || AREA_LABELS[area].zh,
             en: $('lf-loc-en').value.trim() || AREA_LABELS[area].en
         },
         address: $('lf-address').value,
-        img: $('lf-img').value,
+        photos: lfPhotos,
         status: { zh: $('lf-status-zh').value, en: $('lf-status-en').value },
         desc: { zh: $('lf-desc-zh').value, en: $('lf-desc-en').value }
     };

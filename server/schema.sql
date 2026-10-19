@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS properties (
   area_sqft      INT UNSIGNED NOT NULL,
   beds_zh        VARCHAR(100) NOT NULL,
   beds_en        VARCHAR(100) NOT NULL DEFAULT '',
+  bedrooms       VARCHAR(10)  NULL,
+  bathrooms      VARCHAR(10)  NULL,
   area           VARCHAR(50)  NOT NULL,
   location_zh    VARCHAR(100) NOT NULL DEFAULT '',
   location_en    VARCHAR(100) NOT NULL DEFAULT '',
@@ -66,4 +68,14 @@ CREATE TABLE IF NOT EXISTS hero_banners (
   active     TINYINT(1)   NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Extra pictures of a listing (the first one is the cover; properties.img always mirrors it).
+CREATE TABLE IF NOT EXISTS property_photos (
+  id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  property_id INT UNSIGNED NOT NULL,
+  img         VARCHAR(600) NOT NULL,
+  sort_order  INT NOT NULL DEFAULT 0,
+  KEY idx_property_photos (property_id, sort_order),
+  CONSTRAINT fk_property_photos_property FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -343,6 +343,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: '服务器出错了，请稍后再试' });
 });
 
+repo.ensurePropertyPhotos().catch((err) => console.warn('⚠ 照片表暂时无法准备（数据库连不上？）：', err.message));
+repo.ensurePropertyColumns().catch((err) => console.warn('⚠ 房型字段暂时无法准备（数据库连不上？）：', err.message));
 repo.ensureHeroBanners().catch((err) => console.warn('⚠ 横幅表暂时无法准备（数据库连不上？）：', err.message));
 repo.ensureAdmins().catch((err) => console.warn('⚠ 管理员表暂时无法准备（数据库连不上？）：', err.message));
 

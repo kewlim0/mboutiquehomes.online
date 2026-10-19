@@ -46,6 +46,7 @@
     </script>
 
     <link rel="stylesheet" href="/admin/admin.css">
+    <link rel="stylesheet" href="/gallery.css">
 </head>
 <body class="antialiased bg-slate-100 text-charcoal-900 min-h-screen is-booting">
 
@@ -199,8 +200,14 @@
                 </div>
 
                 <div class="grid sm:grid-cols-2 gap-3">
-                    <label class="field"><span>房型（中文）*</span><input id="lf-bed-zh" required placeholder="3 房 2 卫"></label>
-                    <label class="field"><span>房型（英文）</span><input id="lf-bed-en" placeholder="3 Bed 2 Bath"></label>
+                    <div class="field sm:col-span-2">
+                        <span>房型 *</span>
+                        <div class="grid grid-cols-2 gap-3">
+                            <select id="lf-bedrooms" required aria-label="房间数"></select>
+                            <select id="lf-bathrooms" required aria-label="卫生间数"></select>
+                        </div>
+                        <p id="lf-beds-preview" class="text-[11px] text-gray-500 mt-1.5 leading-relaxed"></p>
+                    </div>
                     <label class="field"><span>地段显示名（中文）</span><input id="lf-loc-zh" placeholder="KLCC 核心区"></label>
                     <label class="field"><span>地段显示名（英文）</span><input id="lf-loc-en" placeholder="KLCC Core"></label>
                     <label class="field sm:col-span-2"><span>详细地址</span><input id="lf-address" placeholder="Jalan Bukit Bintang, KLCC"></label>
@@ -210,7 +217,7 @@
                     <label class="field"><span>描述（英文）</span><textarea id="lf-desc-en" rows="3"></textarea></label>
                 </div>
 
-                <div id="lf-img-wrap"></div>
+                <div id="lf-photos-wrap"></div>
 
                 <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
                     <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk mr-1.5"></i>保存房源</button>

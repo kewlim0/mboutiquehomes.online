@@ -38,6 +38,54 @@ function bilingual(obj, label, max, { required = false } = {}) {
   return { zh, en };
 }
 
+// Bedrooms / bathrooms are picked from dropdowns; the Chinese and English texts are generated from them.
+const BEDROOMS = ['studio', '1', '2', '3', '3+1', '4', '4+1', '5', '5+1', '6', '7+'];
+const BATHROOMS = ['1', '2', '3', '4', '5', '6', '7+'];
+
+function bedsText(bedrooms, bathrooms) {
+  const bedZh = bedrooms === 'studio' ? '开放式' : `${bedrooms} 房`;
+  const bedEn = bedrooms === 'studio' ? 'Studio' : `${bedrooms} Bed`;
+  return { zh: `${bedZh} ${bathrooms} 卫`, en: `${bedEn} ${bathrooms} Bath` };
+}
+
+// Reads the old free-text format ("3+1 房 4 卫", "开放式 Studio 1 卫") so existing listings fill the dropdowns by themselves
+function parseBeds(zh) {
+  const m = /^\s*(开放式(?:\s*Studio)?|Studio|\d+\+\d+|\d+\+?)\s*房?\s*(\d+\+?)\s*卫\s*$/i.exec(String(zh || ''));
+  if (!m) return null;
+  const bedrooms = /^(开放式|studio)/i.test(m[1]) ? 'studio' : m[1];
+  const bathrooms = m[2];
+  return BEDROOMS.includes(bedrooms) && BATHROOMS.includes(bathrooms) ? { bedrooms, bathrooms } : null;
+}
+
+const MAX_PHOTOS = 20;
+
+// A listing has 1-20 pictures; the first one is the cover. Older clients that only send `img` still work.
+function photosFields(b) {
+  let list;
+  if (Array.isArray(b.photos) && b.photos.length) {
+    if (b.photos.length > MAX_PHOTOS) throw new HttpError(400, `最多 ${MAX_PHOTOS} 张照片`);
+    list = b.photos.map((p) => image(p, '房源照片'));
+  } else {
+    list = [image(b.img, '房源照片')];
+  }
+  list = [...new Set(list)]; // the same picture twice is pointless
+  return { photos: list, img: list[0] };
+}
+
+function bedsFields(b) {
+  if (b.bedrooms !== undefined || b.bathrooms !== undefined) {
+    const bedrooms = String(b.bedrooms ?? '');
+    const bathrooms = String(b.bathrooms ?? '');
+    if (!BEDROOMS.includes(bedrooms)) throw new HttpError(400, '请选择房间数');
+    if (!BATHROOMS.includes(bathrooms)) throw new HttpError(400, '请选择卫生间数');
+    return { bedrooms, bathrooms, beds: bedsText(bedrooms, bathrooms) };
+  }
+  // older clients that still send free text
+  const beds = bilingual(b.beds, '房型', 100, { required: true });
+  const parsed = parseBeds(beds.zh);
+  return { bedrooms: parsed ? parsed.bedrooms : null, bathrooms: parsed ? parsed.bathrooms : null, beds };
+}
+
 function property(body) {
   const b = body && typeof body === 'object' ? body : {};
   if (!['rent', 'sale'].includes(b.type)) throw new HttpError(400, '类型必须是出租或出售');
@@ -47,11 +95,11 @@ function property(body) {
     type: b.type,
     priceRM: int(b.priceRM, '价格', { max: 9999999999 }),
     areaSqft: int(b.areaSqft, '面积', { max: 1000000 }),
-    beds: bilingual(b.beds, '房型', 100, { required: true }),
+    ...bedsFields(b),
     area: b.area,
     location: bilingual(b.location, '地段显示名', 100),
     address: str(b.address, '地址', 255),
-    img: image(b.img, '房源照片'),
+    ...photosFields(b),
     status: bilingual(b.status, '亮点标签', 255),
     desc: bilingual(b.desc, '描述', 5000),
   };
@@ -121,5 +169,6 @@ function heroBanner(body) {
 }
 
 module.exports = {
+  BEDROOMS, BATHROOMS, bedsText, parseBeds,
   heroBanner,
   weakPasscodeReason, passcode, adminName, HttpError, AREAS, image, property, teamMember };

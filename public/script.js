@@ -568,6 +568,7 @@ function renderProperties() {
 
     filtered.forEach(item => {
         const isFav = favorites.has(item.id);
+        const photoCount = (item.photos || []).length;
         const card = document.createElement('div');
         card.className = "bg-white rounded-2xl overflow-hidden border border-gray-200/80 shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col active:scale-[0.98]";
         card.setAttribute('role', 'button');
@@ -590,9 +591,10 @@ function renderProperties() {
                 <button onclick="toggleFavorite(${item.id}, event)" aria-label="${ui('favorite')}" aria-pressed="${isFav}" class="absolute top-1.5 right-1.5 w-8 h-8 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center text-sm shadow-sm active:scale-90 ${isFav ? 'text-red-500' : 'text-gray-500 hover:text-red-500'} transition">
                     <i class="fa-${isFav ? 'solid' : 'regular'} fa-heart"></i>
                 </button>
-                <div class="absolute bottom-1.5 left-2 right-2 w-fit max-w-[calc(100%-1rem)] truncate bg-black/55 backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] text-white">
+                <div class="absolute bottom-1.5 left-2 right-2 w-fit ${photoCount > 1 ? 'max-w-[calc(100%-3.6rem)]' : 'max-w-[calc(100%-1rem)]'} truncate bg-black/55 backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] text-white">
                     ${esc(item.status[L])}
                 </div>
+                ${photoCount > 1 ? `<span class="absolute bottom-1.5 right-2 bg-black/55 backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] text-white font-semibold" aria-label="${photoCount} photos"><i class="fa-regular fa-images mr-1"></i>${photoCount}</span>` : ''}
             </div>
 
             <div class="p-2.5 flex flex-col flex-1">
@@ -683,27 +685,31 @@ function openDetailModal(item, instant = false) {
     const L = currentLang;
     currentDetail = item;
     const modal = document.getElementById('detailModal');
-    const modalImg = document.getElementById('modalImg');
+    const gallery = document.getElementById('modalGallery');
+    const photos = item.photos && item.photos.length ? item.photos : [item.img];
     const token = ++detailLoadToken;
 
+    // the "real photo" caption only makes sense on a single big picture
+    document.getElementById('modalImgCaption').classList.toggle('hidden', photos.length > 1);
+
     if (instant) {
-        modalImg.src = Store.resolve(item.img);
+        gallery.innerHTML = Store.galleryHtml(photos);
     } else {
         modal.classList.add('is-loading');
-        modalImg.classList.remove('loaded');
-        modalImg.removeAttribute('src');
+        gallery.innerHTML = '';
 
+        // wait for the cover picture (the others load by themselves, each with its own placeholder)
         const imageReady = Promise.race([
             new Promise(resolve => {
                 const img = new Image();
                 img.onload = img.onerror = resolve;
-                img.src = Store.resolve(item.img);
+                img.src = Store.resolve(photos[0]);
             }),
             new Promise(resolve => setTimeout(resolve, 4000))
         ]);
         Promise.all([imageReady, new Promise(resolve => setTimeout(resolve, 600))]).then(() => {
             if (token !== detailLoadToken) return; // modal was closed or reopened for another listing
-            modalImg.src = Store.resolve(item.img);
+            gallery.innerHTML = Store.galleryHtml(photos);
             modal.classList.remove('is-loading');
         });
     }
@@ -726,6 +732,68 @@ function openDetailModal(item, instant = false) {
 function closeDetailModal() {
     detailLoadToken++;
     hideModal(document.getElementById('detailModal'));
+}
+
+// ---------- Full-screen photo viewer ----------
+const lightboxEl = document.getElementById('lightbox');
+let lightboxIndex = 0;
+let lightboxCount = 0;
+
+function updateLightbox() {
+    const track = document.getElementById('lbTrack');
+    lightboxIndex = Math.max(0, Math.min(lightboxCount - 1, Math.round(track.scrollLeft / Math.max(1, track.clientWidth))));
+    document.getElementById('lbCount').textContent = `${lightboxIndex + 1} / ${lightboxCount}`;
+    document.getElementById('lbPrev').disabled = lightboxIndex === 0;
+    document.getElementById('lbNext').disabled = lightboxIndex >= lightboxCount - 1;
+}
+
+function openLightbox(photos, index = 0) {
+    if (!lightboxEl || !photos || !photos.length) return;
+    const track = document.getElementById('lbTrack');
+    lightboxCount = photos.length;
+    track.innerHTML = photos.map((p, i) => `
+        <div class="lb-slide"><img src="${esc(Store.resolve(p))}" alt="" ${i === index ? '' : 'loading="lazy"'}
+            onerror="this.onerror=null;this.src='https://placehold.co/800x600/1e293b/ffffff?text=Luxe+Property'"></div>`).join('');
+    lightboxEl.classList.remove('hidden', 'is-closing');
+    track.style.scrollBehavior = 'auto';
+    track.scrollLeft = index * track.clientWidth;
+    track.style.scrollBehavior = '';
+    updateLightbox();
+}
+
+function closeLightbox() {
+    if (!lightboxEl || lightboxEl.classList.contains('hidden') || lightboxEl.classList.contains('is-closing')) return;
+    lightboxEl.classList.add('is-closing');
+    setTimeout(() => { lightboxEl.classList.add('hidden'); lightboxEl.classList.remove('is-closing'); }, 200);
+}
+
+if (lightboxEl) {
+    const track = document.getElementById('lbTrack');
+    let scrollTimer;
+    track.addEventListener('scroll', () => { clearTimeout(scrollTimer); scrollTimer = setTimeout(updateLightbox, 60); });
+    document.getElementById('lbClose').addEventListener('click', closeLightbox);
+    document.getElementById('lbPrev').addEventListener('click', () => track.scrollBy({ left: -track.clientWidth, behavior: 'smooth' }));
+    document.getElementById('lbNext').addEventListener('click', () => track.scrollBy({ left: track.clientWidth, behavior: 'smooth' }));
+    // tapping the dark area around a picture closes the viewer
+    track.addEventListener('click', (e) => { if (e.target.tagName !== 'IMG') closeLightbox(); });
+    // capture phase: while the viewer is open, Escape / arrows belong to it and not to the sheet underneath
+    document.addEventListener('keydown', (e) => {
+        if (lightboxEl.classList.contains('hidden')) return;
+        if (e.key === 'Escape') { e.stopImmediatePropagation(); closeLightbox(); }
+        else if (e.key === 'ArrowLeft') track.scrollBy({ left: -track.clientWidth, behavior: 'smooth' });
+        else if (e.key === 'ArrowRight') track.scrollBy({ left: track.clientWidth, behavior: 'smooth' });
+    }, true);
+}
+
+// tapping a picture in the detail sheet opens the viewer at that picture
+const modalGalleryEl = document.getElementById('modalGallery');
+if (modalGalleryEl) {
+    modalGalleryEl.addEventListener('click', (e) => {
+        const tile = e.target.closest('[data-photo]');
+        if (!tile || !currentDetail) return;
+        const photos = currentDetail.photos && currentDetail.photos.length ? currentDetail.photos : [currentDetail.img];
+        openLightbox(photos, Number(tile.dataset.photo));
+    });
 }
 
 // Close a modal by clicking the blurred area outside its sheet, or by pressing Escape

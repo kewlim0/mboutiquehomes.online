@@ -4,12 +4,15 @@ const fs = require('fs');
 const path = require('path');
 const pool = require('./db');
 const seedData = require('./seed-data');
+const v = require('./validate');
 
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
 
 const pair = (zh, en) => ({ zh, en: en || zh });
 
-function mapProperty(r) {
+function mapProperty(r, photos) {
+  // Bedrooms / bathrooms come from the two dropdowns; older rows that could not be read keep their stored text
+  const structured = r.bedrooms && r.bathrooms ? v.bedsText(r.bedrooms, r.bathrooms) : null;
   return {
     id: r.id,
     title: pair(r.title_zh, r.title_en),
@@ -17,11 +20,14 @@ function mapProperty(r) {
     priceRM: Number(r.price_rm),
     isRentPrice: r.type === 'rent',
     areaSqft: r.area_sqft,
-    beds: pair(r.beds_zh, r.beds_en),
+    beds: structured ? pair(structured.zh, structured.en) : pair(r.beds_zh, r.beds_en),
+    bedrooms: r.bedrooms || null,
+    bathrooms: r.bathrooms || null,
     area: r.area,
     location: pair(r.location_zh, r.location_en),
     address: r.address,
     img: r.img,
+    photos: photos && photos.length ? photos : [r.img],
     status: pair(r.status_zh, r.status_en),
     desc: pair(r.description_zh || '', r.description_en),
   };
@@ -37,17 +43,68 @@ function mapTeam(r) {
   };
 }
 
+// Extra pictures per listing. The table is created on first use, so an existing database upgrades by itself.
+let photosReady = null;
+
+function ensurePropertyPhotos() {
+  if (photosReady) return photosReady;
+  photosReady = pool.query(`CREATE TABLE IF NOT EXISTS property_photos (
+    id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    property_id INT UNSIGNED NOT NULL,
+    img         VARCHAR(600) NOT NULL,
+    sort_order  INT NOT NULL DEFAULT 0,
+    KEY idx_property_photos (property_id, sort_order),
+    CONSTRAINT fk_property_photos_property FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`).catch((err) => { photosReady = null; throw err; });
+  return photosReady;
+}
+
+async function photosByProperty() {
+  await ensurePropertyPhotos();
+  const [rows] = await pool.query('SELECT property_id, img FROM property_photos ORDER BY property_id, sort_order, id');
+  const map = new Map();
+  for (const row of rows) {
+    if (!map.has(row.property_id)) map.set(row.property_id, []);
+    map.get(row.property_id).push(row.img);
+  }
+  return map;
+}
+
+// Adds the bedrooms / bathrooms columns to an existing database and fills them from the old "3 房 2 卫" text.
+let propertyColsReady = null;
+
+function ensurePropertyColumns() {
+  if (propertyColsReady) return propertyColsReady;
+  propertyColsReady = (async () => {
+    const [cols] = await pool.query(
+      "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'properties'"
+    );
+    if (!cols.length) throw new Error('properties table does not exist yet (run npm run db:init)');
+    const have = new Set(cols.map((c) => c.COLUMN_NAME));
+    if (!have.has('bedrooms')) await pool.query('ALTER TABLE properties ADD COLUMN bedrooms VARCHAR(10) NULL AFTER beds_en');
+    if (!have.has('bathrooms')) await pool.query('ALTER TABLE properties ADD COLUMN bathrooms VARCHAR(10) NULL AFTER bedrooms');
+    const [rows] = await pool.query('SELECT id, beds_zh FROM properties WHERE bedrooms IS NULL OR bathrooms IS NULL');
+    for (const row of rows) {
+      const parsed = v.parseBeds(row.beds_zh);
+      if (parsed) await pool.query('UPDATE properties SET bedrooms = ?, bathrooms = ? WHERE id = ?', [parsed.bedrooms, parsed.bathrooms, row.id]);
+    }
+  })().catch((err) => { propertyColsReady = null; throw err; });
+  return propertyColsReady;
+}
+
 async function getHero() {
   const [rows] = await pool.query("SELECT `value` FROM settings WHERE `key` = 'hero_img'");
   return rows.length ? rows[0].value : seedData.hero.img;
 }
 
 async function getContent() {
+  await ensurePropertyColumns();
   const [props] = await pool.query('SELECT * FROM properties ORDER BY sort_order ASC, id DESC');
+  const photoMap = await photosByProperty();
   const [team] = await pool.query('SELECT * FROM team ORDER BY sort_order ASC, id ASC');
   // `img` is the default banner; `banners` are the active scheduled ones (the page picks one by date and day/night)
   const banners = (await listHeroBanners()).filter((b) => b.active);
-  return { hero: { img: await getHero(), banners }, properties: props.map(mapProperty), team: team.map(mapTeam) };
+  return { hero: { img: await getHero(), banners }, properties: props.map((p) => mapProperty(p, photoMap.get(p.id))), team: team.map(mapTeam) };
 }
 
 // ---------- uploaded-file cleanup ----------
@@ -55,12 +112,14 @@ async function getContent() {
 async function removeIfOrphan(imgPath) {
   if (!/^uploads\/[a-f0-9]+\.(jpg|png|webp|gif)$/.test(imgPath || '')) return;
   await ensureHeroBanners();
+  await ensurePropertyPhotos();
   const [rows] = await pool.query(
     `SELECT (SELECT COUNT(*) FROM properties WHERE img = ?)
+          + (SELECT COUNT(*) FROM property_photos WHERE img = ?)
           + (SELECT COUNT(*) FROM team WHERE img = ?)
           + (SELECT COUNT(*) FROM hero_banners WHERE img = ?)
           + (SELECT COUNT(*) FROM settings WHERE \`value\` = ?) AS n`,
-    [imgPath, imgPath, imgPath, imgPath]
+    [imgPath, imgPath, imgPath, imgPath, imgPath]
   );
   if (Number(rows[0].n) === 0) {
     fs.promises.unlink(path.join(UPLOAD_DIR, path.basename(imgPath))).catch(() => {});
@@ -69,40 +128,80 @@ async function removeIfOrphan(imgPath) {
 
 // ---------- properties ----------
 const propertyValues = (p) => [
-  p.title.zh, p.title.en, p.type, p.priceRM, p.areaSqft, p.beds.zh, p.beds.en, p.area,
+  p.title.zh, p.title.en, p.type, p.priceRM, p.areaSqft, p.beds.zh, p.beds.en, p.bedrooms || null, p.bathrooms || null, p.area,
   p.location.zh, p.location.en, p.address, p.img, p.status.zh, p.status.en, p.desc.zh, p.desc.en,
 ];
 
+async function writePhotos(conn, propertyId, photos) {
+  await conn.query('DELETE FROM property_photos WHERE property_id = ?', [propertyId]);
+  for (const [i, img] of photos.entries()) {
+    await conn.query('INSERT INTO property_photos (property_id, img, sort_order) VALUES (?, ?, ?)', [propertyId, img, i]);
+  }
+}
+
 async function createProperty(p) {
-  // New listings go to the top of the list
-  const [[{ top }]] = await pool.query('SELECT COALESCE(MIN(sort_order), 0) - 1 AS top FROM properties');
-  const [res] = await pool.query(
-    `INSERT INTO properties (title_zh, title_en, type, price_rm, area_sqft, beds_zh, beds_en, area,
-       location_zh, location_en, address, img, status_zh, status_en, description_zh, description_en, sort_order)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [...propertyValues(p), top]
-  );
-  return res.insertId;
+  await ensurePropertyColumns();
+  await ensurePropertyPhotos();
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    // New listings go to the top of the list
+    const [[{ top }]] = await conn.query('SELECT COALESCE(MIN(sort_order), 0) - 1 AS top FROM properties');
+    const [res] = await conn.query(
+      `INSERT INTO properties (title_zh, title_en, type, price_rm, area_sqft, beds_zh, beds_en, bedrooms, bathrooms, area,
+         location_zh, location_en, address, img, status_zh, status_en, description_zh, description_en, sort_order)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [...propertyValues(p), top]
+    );
+    await writePhotos(conn, res.insertId, p.photos);
+    await conn.commit();
+    return res.insertId;
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
 
 async function updateProperty(id, p) {
+  await ensurePropertyColumns();
+  await ensurePropertyPhotos();
   const [old] = await pool.query('SELECT img FROM properties WHERE id = ?', [id]);
   if (!old.length) return false;
-  await pool.query(
-    `UPDATE properties SET title_zh=?, title_en=?, type=?, price_rm=?, area_sqft=?, beds_zh=?, beds_en=?, area=?,
-       location_zh=?, location_en=?, address=?, img=?, status_zh=?, status_en=?, description_zh=?, description_en=?
-     WHERE id = ?`,
-    [...propertyValues(p), id]
-  );
-  if (old[0].img !== p.img) await removeIfOrphan(old[0].img);
+  const [oldPhotos] = await pool.query('SELECT img FROM property_photos WHERE property_id = ?', [id]);
+  const before = new Set([old[0].img, ...oldPhotos.map((x) => x.img)]);
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query(
+      `UPDATE properties SET title_zh=?, title_en=?, type=?, price_rm=?, area_sqft=?, beds_zh=?, beds_en=?, bedrooms=?, bathrooms=?, area=?,
+         location_zh=?, location_en=?, address=?, img=?, status_zh=?, status_en=?, description_zh=?, description_en=?
+       WHERE id = ?`,
+      [...propertyValues(p), id]
+    );
+    await writePhotos(conn, id, p.photos);
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+  // delete the files of pictures that were taken out of the listing (when nothing else uses them)
+  for (const img of before) if (!p.photos.includes(img)) await removeIfOrphan(img);
   return true;
 }
 
 async function deleteProperty(id) {
+  await ensurePropertyPhotos();
   const [old] = await pool.query('SELECT img FROM properties WHERE id = ?', [id]);
   if (!old.length) return false;
-  await pool.query('DELETE FROM properties WHERE id = ?', [id]);
-  await removeIfOrphan(old[0].img);
+  const [photos] = await pool.query('SELECT img FROM property_photos WHERE property_id = ?', [id]);
+  const files = new Set([old[0].img, ...photos.map((x) => x.img)]);
+  await pool.query('DELETE FROM properties WHERE id = ?', [id]); // the photo rows go with it (ON DELETE CASCADE)
+  for (const img of files) await removeIfOrphan(img);
   return true;
 }
 
@@ -314,6 +413,7 @@ async function deleteHeroBanner(id) {
 
 // ---------- first-time seed ----------
 async function seedDefaults() {
+  await ensurePropertyColumns();
   // Only ever fills an empty database (first-time setup). It never deletes existing content.
   const conn = await pool.getConnection();
   try {
@@ -322,10 +422,10 @@ async function seedDefaults() {
     await conn.beginTransaction();
     for (const [i, p] of seedData.properties.entries()) {
       await conn.query(
-        `INSERT INTO properties (title_zh, title_en, type, price_rm, area_sqft, beds_zh, beds_en, area,
+        `INSERT INTO properties (title_zh, title_en, type, price_rm, area_sqft, beds_zh, beds_en, bedrooms, bathrooms, area,
            location_zh, location_en, address, img, status_zh, status_en, description_zh, description_en, sort_order)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [p.title.zh, p.title.en, p.type, p.priceRM, p.areaSqft, p.beds.zh, p.beds.en, p.area, p.location.zh,
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [p.title.zh, p.title.en, p.type, p.priceRM, p.areaSqft, p.beds.zh, p.beds.en, p.bedrooms || null, p.bathrooms || null, p.area, p.location.zh,
          p.location.en, p.address, p.img, p.status.zh, p.status.en, p.desc.zh, p.desc.en, i]
       );
     }
@@ -351,5 +451,5 @@ module.exports = {
   createTeamMember, updateTeamMember, deleteTeamMember, setHero, seedDefaults,
   ensureAdmins, listAdmins, getAdmin, getAdminsWithHash, createAdmin, updateAdmin, setAdminPasscode, deleteAdmin,
   touchAdminLogin, setOwnerPasscode,
-  ensureHeroBanners, listHeroBanners, createHeroBanner, updateHeroBanner, deleteHeroBanner,
+  ensurePropertyColumns, ensurePropertyPhotos, ensureHeroBanners, listHeroBanners, createHeroBanner, updateHeroBanner, deleteHeroBanner,
 };
