@@ -615,3 +615,49 @@ body.sheet-open { overflow: hidden; }
 .img-empty i { font-size: 1.6rem; color: #C5A059; }
 .img-preview img[src=""] ~ .img-empty,
 .img-preview img:not([src]) ~ .img-empty { display: flex; }
+
+
+/* ---- No accidental zooming on phones ---------------------------------------------------------------
+   1) iPhone Safari zooms the whole page in when you tap a field whose text is smaller than 16px
+      -> form text is 16px on phones AND on any touch screen (landscape phones are wider than 767px).
+   2) Tapping a button twice quickly counts as "double-tap to zoom"
+      -> touch-action: manipulation switches that off but keeps pinch-zoom for accessibility.
+   3) Rotating the phone makes Safari enlarge the text on its own
+      -> text-size-adjust: 100%. */
+html {
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+@media (max-width: 767px), (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="range"]),
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+}
+
+/* Date fields: a native date input has a minimum width of its own, so inside a 2-column grid it can push past the
+   edge of the sheet on a phone. Let the grid tracks and the inputs shrink to the space that is really there. */
+.field { min-width: 0; }
+#bn-dates > .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.field input[type="date"] {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: left;
+    line-height: 1.4;
+}
+.field input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.4em; }
+@media (max-width: 767px) {
+    .field input[type="date"] { padding-left: 0.75rem; padding-right: 0.5rem; }
+}
+/* very small phones: stack the two dates so each one has the full width */
+@media (max-width: 340px) {
+    #bn-dates > .grid { grid-template-columns: minmax(0, 1fr); }
+}

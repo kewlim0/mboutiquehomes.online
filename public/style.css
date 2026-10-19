@@ -236,3 +236,26 @@ body {
         animation: none;
     }
 }
+
+
+/* ---- No accidental zooming on phones ---------------------------------------------------------------
+   1) iPhone Safari zooms the whole page in when you tap a field whose text is smaller than 16px
+      -> form text is 16px on phones AND on any touch screen (landscape phones are wider than 767px).
+   2) Tapping a button twice quickly counts as "double-tap to zoom"
+      -> touch-action: manipulation switches that off but keeps pinch-zoom for accessibility.
+   3) Rotating the phone makes Safari enlarge the text on its own
+      -> text-size-adjust: 100%. */
+html {
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+/* the owner-service form in the valuation sheet */
+@media (max-width: 767px), (pointer: coarse) {
+    #valuationModal input:not([type="radio"]):not([type="checkbox"]),
+    #valuationModal select,
+    #valuationModal textarea {
+        font-size: 16px !important;
+    }
+}
