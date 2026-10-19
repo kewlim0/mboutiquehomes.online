@@ -45,18 +45,22 @@ async function getHero() {
 async function getContent() {
   const [props] = await pool.query('SELECT * FROM properties ORDER BY sort_order ASC, id DESC');
   const [team] = await pool.query('SELECT * FROM team ORDER BY sort_order ASC, id ASC');
-  return { hero: { img: await getHero() }, properties: props.map(mapProperty), team: team.map(mapTeam) };
+  // `img` is the default banner; `banners` are the active scheduled ones (the page picks one by date and day/night)
+  const banners = (await listHeroBanners()).filter((b) => b.active);
+  return { hero: { img: await getHero(), banners }, properties: props.map(mapProperty), team: team.map(mapTeam) };
 }
 
 // ---------- uploaded-file cleanup ----------
 // Remove an uploaded file once nothing in the database points to it any more.
 async function removeIfOrphan(imgPath) {
   if (!/^uploads\/[a-f0-9]+\.(jpg|png|webp|gif)$/.test(imgPath || '')) return;
+  await ensureHeroBanners();
   const [rows] = await pool.query(
     `SELECT (SELECT COUNT(*) FROM properties WHERE img = ?)
           + (SELECT COUNT(*) FROM team WHERE img = ?)
+          + (SELECT COUNT(*) FROM hero_banners WHERE img = ?)
           + (SELECT COUNT(*) FROM settings WHERE \`value\` = ?) AS n`,
-    [imgPath, imgPath, imgPath]
+    [imgPath, imgPath, imgPath, imgPath]
   );
   if (Number(rows[0].n) === 0) {
     fs.promises.unlink(path.join(UPLOAD_DIR, path.basename(imgPath))).catch(() => {});
@@ -238,6 +242,76 @@ async function setOwnerPasscode(hash) {
   return 'created';
 }
 
+// ---------- scheduled hero banners ----------
+let bannersReady = null;
+
+function ensureHeroBanners() {
+  if (bannersReady) return bannersReady;
+  bannersReady = pool.query(`CREATE TABLE IF NOT EXISTS hero_banners (
+    id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    title      VARCHAR(80)  NOT NULL DEFAULT '',
+    img        VARCHAR(600) NOT NULL,
+    slot       ENUM('all','day','night') NOT NULL DEFAULT 'all',
+    start_date DATE NULL DEFAULT NULL,
+    end_date   DATE NULL DEFAULT NULL,
+    active     TINYINT(1)   NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`).catch((err) => { bannersReady = null; throw err; });
+  return bannersReady;
+}
+
+// Dates are returned as plain 'YYYY-MM-DD' strings (no time zone shifting)
+const mapBanner = (b) => ({
+  id: b.id,
+  title: b.title,
+  img: b.img,
+  slot: b.slot,
+  startDate: b.start_date,
+  endDate: b.end_date,
+  active: !!b.active,
+});
+
+async function listHeroBanners() {
+  await ensureHeroBanners();
+  const [rows] = await pool.query(
+    `SELECT id, title, img, slot, active,
+            DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date
+       FROM hero_banners ORDER BY id DESC`
+  );
+  return rows.map(mapBanner);
+}
+
+async function createHeroBanner(b) {
+  await ensureHeroBanners();
+  const [res] = await pool.query(
+    'INSERT INTO hero_banners (title, img, slot, start_date, end_date, active) VALUES (?, ?, ?, ?, ?, ?)',
+    [b.title, b.img, b.slot, b.startDate, b.endDate, b.active ? 1 : 0]
+  );
+  return res.insertId;
+}
+
+async function updateHeroBanner(id, b) {
+  await ensureHeroBanners();
+  const [old] = await pool.query('SELECT img FROM hero_banners WHERE id = ?', [id]);
+  if (!old.length) return false;
+  await pool.query(
+    'UPDATE hero_banners SET title = ?, img = ?, slot = ?, start_date = ?, end_date = ?, active = ? WHERE id = ?',
+    [b.title, b.img, b.slot, b.startDate, b.endDate, b.active ? 1 : 0, id]
+  );
+  if (old[0].img !== b.img) await removeIfOrphan(old[0].img);
+  return true;
+}
+
+async function deleteHeroBanner(id) {
+  await ensureHeroBanners();
+  const [old] = await pool.query('SELECT img FROM hero_banners WHERE id = ?', [id]);
+  if (!old.length) return false;
+  await pool.query('DELETE FROM hero_banners WHERE id = ?', [id]);
+  await removeIfOrphan(old[0].img);
+  return true;
+}
+
 // ---------- first-time seed ----------
 async function seedDefaults() {
   // Only ever fills an empty database (first-time setup). It never deletes existing content.
@@ -277,4 +351,5 @@ module.exports = {
   createTeamMember, updateTeamMember, deleteTeamMember, setHero, seedDefaults,
   ensureAdmins, listAdmins, getAdmin, getAdminsWithHash, createAdmin, updateAdmin, setAdminPasscode, deleteAdmin,
   touchAdminLogin, setOwnerPasscode,
+  ensureHeroBanners, listHeroBanners, createHeroBanner, updateHeroBanner, deleteHeroBanner,
 };

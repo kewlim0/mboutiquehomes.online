@@ -100,7 +100,7 @@ function imageFieldHtml(id, label, previewClass) {
     return `
         <div class="space-y-2">
             <span class="block text-[11px] font-bold text-gray-700">${label}</span>
-            <div class="img-preview ${previewClass}"><img id="${id}-preview" alt="预览"></div>
+            <div class="img-preview ${previewClass}"><img id="${id}-preview" alt="预览"><div class="img-empty"><i class="fa-regular fa-image"></i><span>还没有照片</span></div></div>
             <div class="flex flex-wrap items-center gap-2">
                 <label class="btn-ghost cursor-pointer">
                     <i class="fa-solid fa-upload mr-1.5"></i><span id="${id}-label">上传图片</span>
@@ -152,23 +152,331 @@ $('logoutBtn').addEventListener('click', async () => {
 function showTab(name) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('hidden', p.id !== `tab-${name}`));
+    $('bannerFab').classList.toggle('hidden', name !== 'hero');
+    document.body.classList.toggle('has-fab', name === 'hero'); // leaves room so the round button never covers content
     try { sessionStorage.setItem('admin-tab', name); } catch (e) { /* ignore */ }
 }
 
 document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
-// ---------- hero ----------
-$('heroField').innerHTML = imageFieldHtml('hero-img', '横幅照片', 'aspect-[16/9] w-full max-w-xl');
+// ---------- hero banners ----------
+// Default banner: shown whenever no scheduled banner matches the current date / time.
+$('heroField').innerHTML = imageFieldHtml('hero-img', '默认横幅照片', 'aspect-[16/9] w-full max-w-xl');
 bindImageField('hero-img', 1400);
 
 $('heroSave').addEventListener('click', () => {
     const img = $('hero-img').value;
     if (!img) { toast('请先选择一张横幅照片', true); return; }
-    run(() => api('PUT', 'admin/hero', { img }), '首页横幅已更新');
+    run(() => api('PUT', 'admin/hero', { img }), '默认横幅已更新');
 });
 
 $('heroReset').addEventListener('click', () => {
-    run(() => api('PUT', 'admin/hero', { img: 'img/banner-main.jpeg' }), '已恢复默认横幅');
+    run(() => api('PUT', 'admin/hero', { img: 'img/banner-main.jpeg' }), '已恢复原来的默认图');
+});
+
+// Scheduled banners
+let banners = [];           // every scheduled banner (also the disabled ones), newest first
+let editingBannerId = null;
+$('bn-img-wrap').innerHTML = imageFieldHtml('bn-img', '横幅照片', 'aspect-[16/9] w-full');
+bindImageField('bn-img', 1400);
+
+const heroSource = () => ({ img: content.hero.img, banners });
+const pad2 = (n) => String(n).padStart(2, '0');
+
+function fmtDay(ymd) {
+    if (!ymd) return '';
+    const [y, m, d] = ymd.split('-').map(Number);
+    const thisYear = Number(Store.gmt8().ymd.slice(0, 4));
+    return `${y !== thisYear ? y + '年' : ''}${m}月${d}日`;
+}
+
+function dateText(start, end) {
+    if (!start && !end) return '每天';
+    if (start && end) return start === end ? fmtDay(start) : `${fmtDay(start)} – ${fmtDay(end)}`;
+    return start ? `${fmtDay(start)} 起` : `至 ${fmtDay(end)}`;
+}
+
+const slotText = (slot) => (slot === 'day' ? '白天（07:00–19:00）' : slot === 'night' ? '夜晚（19:00–07:00）' : '全天');
+
+function slotChip(slot) {
+    if (slot === 'day') return '<span class="chip chip-day"><i class="fa-solid fa-sun"></i>白天</span>';
+    if (slot === 'night') return '<span class="chip chip-night"><i class="fa-solid fa-moon"></i>夜晚</span>';
+    return '<span class="chip chip-all"><i class="fa-solid fa-circle-half-stroke"></i>全天</span>';
+}
+
+function setPhaseChip(el, phase) {
+    el.className = 'chip ' + (phase === 'day' ? 'chip-day' : 'chip-night');
+    el.innerHTML = phase === 'day' ? '<i class="fa-solid fa-sun"></i>白天' : '<i class="fa-solid fa-moon"></i>夜晚';
+}
+
+// "GMT+8 | 10:50 AM": 12-hour clock with AM / PM
+function fmtClock(g) {
+    const h12 = g.hour % 12 || 12;
+    return `GMT+8 | ${h12}:${pad2(g.minute)} ${g.hour < 12 ? 'AM' : 'PM'}`;
+}
+
+// ----- "showing right now" -----
+function renderLive() {
+    const now = new Date();
+    const g = Store.gmt8(now);
+    const pick = Store.pickHero(heroSource(), now);
+    const url = Store.resolve(pick.img);
+    if ($('liveImg').getAttribute('src') !== url) $('liveImg').src = url;
+    $('liveClock').textContent = fmtClock(g);
+    setPhaseChip($('livePhase'), pick.phase);
+    $('liveReason').innerHTML = `今天是 <b>${esc(fmtDay(g.ymd))}</b>。${esc(pick.reason)}。`
+        + `<br><span class="text-gray-400">到了 07:00、19:00 或午夜，网站会自动换图，访客不用刷新页面。</span>`;
+    return pick;
+}
+
+// ----- preview another date / time -----
+function segValue(el) {
+    const on = el.querySelector('[aria-pressed="true"]');
+    return on ? on.dataset.value : null;
+}
+
+function setSeg(el, value) {
+    el.querySelectorAll('.seg-btn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === value)));
+}
+
+function renderSim() {
+    const ymd = $('simDate').value;
+    const phase = segValue($('simPhase'));
+    if (!ymd || !phase) return;
+    const pick = Store.pickHero(heroSource(), new Date(), { ymd, phase });
+    $('simImg').src = Store.resolve(pick.img);
+    $('simReason').innerHTML = `<b>${esc(fmtDay(ymd))} · ${phase === 'day' ? '白天' : '夜晚'}</b><br>${esc(pick.reason)}`;
+}
+
+function initSim() {
+    if ($('simDate').value) return;
+    const g = Store.gmt8();
+    $('simDate').value = g.ymd;
+    setSeg($('simPhase'), Store.phaseOf(g.hour));
+}
+
+$('simDate').addEventListener('input', renderSim);
+$('simPhase').addEventListener('click', (e) => {
+    const btn = e.target.closest('.seg-btn');
+    if (!btn) return;
+    setSeg($('simPhase'), btn.dataset.value);
+    renderSim();
+});
+
+// ----- the list -----
+function renderBanners() {
+    $('bannerCount').textContent = banners.length;
+    const live = Store.pickHero(heroSource()).banner;
+    $('bannerList').innerHTML = banners.length === 0
+        ? `<div class="card sm:col-span-2 text-center py-8">
+               <div class="text-3xl text-gold-500 mb-2"><i class="fa-regular fa-images"></i></div>
+               <p class="text-sm font-bold">还没有活动横幅</p>
+               <p class="text-xs text-gray-500 mt-1 leading-relaxed">点「新增横幅」，可以让节日、周末显示不同的图，<br>也可以让白天和夜晚显示不同的图。</p>
+           </div>`
+        : banners.map((b) => {
+            const isLive = !!live && live.id === b.id;
+            return `
+            <div class="banner-card ${isLive ? 'is-live' : ''} ${b.active ? '' : 'is-off'}">
+                <div class="banner-thumb">
+                    <img src="${esc(Store.resolve(b.img))}" alt="" loading="lazy" onerror="this.removeAttribute('src')">
+                    <div class="chips">
+                        ${isLive ? '<span class="chip chip-live"><i class="fa-solid fa-circle-play"></i>正在显示</span>' : ''}
+                        ${slotChip(b.slot)}
+                        ${b.active ? '' : '<span class="chip chip-off">已停用</span>'}
+                    </div>
+                </div>
+                <div class="p-3.5 space-y-3">
+                    <div>
+                        <h3 class="text-sm font-bold leading-snug">${esc(b.title || '未命名横幅')}</h3>
+                        <p class="text-xs text-gray-500 mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>${esc(dateText(b.startDate, b.endDate))} · ${esc(slotText(b.slot))}</p>
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                        <label class="flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer">
+                            <input type="checkbox" class="switch" data-toggle="${b.id}" ${b.active ? 'checked' : ''} aria-label="启用或停用">
+                            ${b.active ? '启用中' : '已停用'}
+                        </label>
+                        <div class="flex gap-2">
+                            <button class="btn-ghost !py-1.5 !px-3" data-edit="${b.id}"><i class="fa-solid fa-pen mr-1"></i>编辑</button>
+                            <button class="btn-danger !py-1.5 !px-3" data-del="${b.id}" aria-label="删除"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+}
+
+function renderHeroPanel() {
+    initSim();
+    renderLive();
+    renderSim();
+    renderBanners();
+}
+
+// keep the clock, the "live" badge and the preview up to date while the page stays open
+setInterval(() => { renderLive(); renderBanners(); }, 20000);
+
+const bannerBody = (b, patch = {}) => ({
+    title: b.title, img: b.img, slot: b.slot, startDate: b.startDate, endDate: b.endDate, active: b.active, ...patch
+});
+
+$('bannerList').addEventListener('change', (e) => {
+    const t = e.target.closest('[data-toggle]');
+    if (!t) return;
+    const b = banners.find((x) => x.id === Number(t.dataset.toggle));
+    if (!b) return;
+    run(() => api('PUT', `admin/hero-banners/${b.id}`, bannerBody(b, { active: t.checked })), t.checked ? '已启用这张横幅' : '已停用这张横幅');
+});
+
+$('bannerList').addEventListener('click', (e) => {
+    const edit = e.target.closest('[data-edit]');
+    const del = e.target.closest('[data-del]');
+    if (edit) {
+        openBannerSheet(banners.find((x) => x.id === Number(edit.dataset.edit)));
+    } else if (del) {
+        const b = banners.find((x) => x.id === Number(del.dataset.del));
+        if (b && confirm(`确定删除横幅「${b.title || '未命名横幅'}」吗？此操作无法撤销。`)) {
+            run(() => api('DELETE', `admin/hero-banners/${b.id}`), '横幅已删除');
+        }
+    }
+});
+
+// ----- the add / edit sheet -----
+const addDays = (ymd, n) => {
+    const [y, m, d] = ymd.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+};
+
+function bannerFormState() {
+    const daily = $('bn-daily').checked;
+    return {
+        title: $('bn-title').value.trim(),
+        img: $('bn-img').value,
+        slot: segValue($('bn-slot')) || 'all',
+        daily,
+        startDate: daily ? null : ($('bn-start').value || null),
+        endDate: daily ? null : ($('bn-end').value || null),
+        active: $('bn-active').checked
+    };
+}
+
+function updateBannerSummary() {
+    const s = bannerFormState();
+    const lines = [];
+    if (!s.daily && !s.startDate && !s.endDate) {
+        lines.push('请选一个日期范围，或者打开「每天都显示」。');
+    } else if (s.startDate && s.endDate && s.endDate < s.startDate) {
+        lines.push('<b class="text-red-600">结束日期不能早于开始日期。</b>');
+    } else {
+        lines.push(`将在 <b>${esc(dateText(s.startDate, s.endDate))}</b> 的 <b>${esc(slotText(s.slot))}</b> 显示（GMT+8）。`);
+    }
+    if (!s.active) lines.push('现在是「停用」状态，保存后不会显示。');
+    if (!s.img) lines.push('还没有选择照片。');
+    lines.push('<span class="text-[11px] text-gray-400">同一时间有多张横幅时，「指定日期 + 指定时段」的那张优先。</span>');
+    $('bn-summary').innerHTML = lines.join('<br>');
+}
+
+function setDatesMode(daily) {
+    $('bn-daily').checked = daily;
+    $('bn-dates').classList.toggle('hidden', daily);
+}
+
+function openBannerSheet(b) {
+    editingBannerId = b ? b.id : null;
+    $('bannerSheetTitle').textContent = b ? '编辑横幅' : '新增横幅';
+    const v = b || { title: '', img: '', slot: 'all', startDate: null, endDate: null, active: true };
+    $('bn-title').value = v.title;
+    setImageField('bn-img', v.img);
+    setSeg($('bn-slot'), v.slot);
+    const daily = !v.startDate && !v.endDate;
+    setDatesMode(daily);
+    $('bn-start').value = v.startDate || '';
+    $('bn-end').value = v.endDate || '';
+    $('bn-active').checked = v.active;
+    updateBannerSummary();
+    showSheet();
+}
+
+function showSheet() {
+    const wrap = $('bannerSheet');
+    wrap.classList.remove('hidden', 'is-closing');
+    document.body.classList.add('sheet-open');
+}
+
+function hideSheet() {
+    const wrap = $('bannerSheet');
+    if (wrap.classList.contains('hidden') || wrap.classList.contains('is-closing')) return;
+    document.body.classList.remove('sheet-open');
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { wrap.classList.add('hidden'); return; }
+    wrap.classList.add('is-closing');
+    const sheet = wrap.firstElementChild;
+    let done = false;
+    const finish = () => {
+        if (done || !wrap.classList.contains('is-closing')) return;
+        done = true;
+        wrap.classList.add('hidden');
+        wrap.classList.remove('is-closing');
+    };
+    sheet.addEventListener('animationend', (e) => { if (e.target === sheet) finish(); });
+    setTimeout(finish, 450);
+}
+
+$('bannerAdd').addEventListener('click', () => openBannerSheet(null));
+$('bannerFab').addEventListener('click', () => openBannerSheet(null));
+$('bannerSheetClose').addEventListener('click', hideSheet);
+$('bannerCancel').addEventListener('click', hideSheet);
+$('bannerSheet').addEventListener('click', (e) => { if (e.target === $('bannerSheet')) hideSheet(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideSheet(); });
+
+$('bn-slot').addEventListener('click', (e) => {
+    const btn = e.target.closest('.seg-btn');
+    if (!btn) return;
+    setSeg($('bn-slot'), btn.dataset.value);
+    updateBannerSummary();
+});
+
+$('bn-daily').addEventListener('change', () => {
+    setDatesMode($('bn-daily').checked);
+    updateBannerSummary();
+});
+
+['bn-title', 'bn-start', 'bn-end', 'bn-active'].forEach((id) => $(id).addEventListener('input', updateBannerSummary));
+$('bn-start').addEventListener('input', () => {
+    // keep the end date from being earlier than the start date
+    if ($('bn-end').value && $('bn-end').value < $('bn-start').value) $('bn-end').value = $('bn-start').value;
+    updateBannerSummary();
+});
+// the picture field changes asynchronously after an upload: refresh the summary when it does
+new MutationObserver(updateBannerSummary).observe($('bn-img-wrap'), { subtree: true, attributes: true, attributeFilter: ['src'] });
+
+$('bn-presets').addEventListener('click', (e) => {
+    const p = e.target.closest('.preset');
+    if (!p) return;
+    const today = Store.gmt8().ymd;
+    const [y, m] = today.split('-').map(Number);
+    const ranges = {
+        today: [today, today],
+        tomorrow: [addDays(today, 1), addDays(today, 1)],
+        week: [today, addDays(today, 6)],
+        month: [`${y}-${pad2(m)}-01`, new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)]
+    };
+    [$('bn-start').value, $('bn-end').value] = ranges[p.dataset.preset];
+    updateBannerSummary();
+});
+
+$('bannerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const s = bannerFormState();
+    if (!s.img) { toast('请先选择一张横幅照片', true); return; }
+    if (!s.daily && !s.startDate && !s.endDate) { toast('请选一个日期范围，或者打开「每天都显示」', true); return; }
+    if (s.startDate && s.endDate && s.endDate < s.startDate) { toast('结束日期不能早于开始日期', true); return; }
+
+    const body = { title: s.title, img: s.img, slot: s.slot, startDate: s.startDate, endDate: s.endDate, active: s.active };
+    const id = editingBannerId;
+    const ok = await run(
+        () => (id ? api('PUT', `admin/hero-banners/${id}`, body) : api('POST', 'admin/hero-banners', body)),
+        id ? '横幅已更新' : '横幅已添加'
+    );
+    if (ok) hideSheet();
 });
 
 // ---------- listings ----------
@@ -515,6 +823,8 @@ $('myPasscodeForm').addEventListener('submit', async (e) => {
 async function refresh() {
     content = await Store.load();
     setImageField('hero-img', content.hero.img);
+    banners = (await api('GET', 'admin/hero-banners')).banners;
+    renderHeroPanel();
     renderListings();
     renderTeam();
     $('statListings').textContent = content.properties.length;

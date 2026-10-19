@@ -471,6 +471,40 @@ function renderSkeletons() {
 
 // Fetch the content from the API. Skeletons stay visible until the data and the listing images have loaded
 // (at least 600ms so they never flash, at most 4s of waiting for slow images).
+// ---------- Hero banner: chosen by date and day / night (GMT+8) ----------
+let heroTimer = null;
+let heroShown = '';
+
+function showHero(first) {
+    const heroImg = document.getElementById('heroImg');
+    if (!heroImg || !content.hero) return;
+    const url = Store.resolve(Store.pickHero(content.hero).img);
+    if (url === heroShown) return;
+    heroShown = url;
+
+    if (first) { heroImg.src = url; return; }
+    // later swaps (7am / 7pm / midnight while the page is open): load the new picture first, then cross-fade to it
+    const next = new Image();
+    next.onload = () => {
+        heroImg.style.opacity = '0';
+        setTimeout(() => {
+            heroImg.src = url;
+            heroImg.style.opacity = '';
+        }, 350);
+    };
+    next.src = url;
+}
+
+function startHero() {
+    showHero(true);
+    clearTimeout(heroTimer);
+    const tick = () => {
+        showHero(false);
+        heroTimer = setTimeout(tick, Store.msUntilNextChange());
+    };
+    heroTimer = setTimeout(tick, Store.msUntilNextChange());
+}
+
 async function loadContent() {
     const minDelay = new Promise(resolve => setTimeout(resolve, 600));
     try {
@@ -480,12 +514,11 @@ async function loadContent() {
     } catch (err) {
         console.error(err);
         loadFailed = true;
-        content = { hero: { img: 'img/banner-main.jpeg' }, properties: [], team: [] };
+        content = { hero: { img: 'img/banner-main.jpeg', banners: [] }, properties: [], team: [] };
         properties = [];
     }
 
-    const heroImg = document.getElementById('heroImg');
-    if (heroImg) heroImg.src = Store.resolve(content.hero.img);
+    startHero();
 
     const images = Promise.race([
         Promise.all(properties.map(p => new Promise(resolve => {

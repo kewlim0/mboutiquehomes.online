@@ -54,3 +54,16 @@ CREATE TABLE IF NOT EXISTS admins (
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Scheduled hero banners: which picture the home page shows depends on the date and on day / night (GMT+8).
+CREATE TABLE IF NOT EXISTS hero_banners (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  title      VARCHAR(80)  NOT NULL DEFAULT '',
+  img        VARCHAR(600) NOT NULL,
+  slot       ENUM('all','day','night') NOT NULL DEFAULT 'all',
+  start_date DATE NULL DEFAULT NULL,
+  end_date   DATE NULL DEFAULT NULL,
+  active     TINYINT(1)   NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

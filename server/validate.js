@@ -90,5 +90,36 @@ function adminName(value) {
   return str(value, '名字', 60, { required: true });
 }
 
+const SLOTS = ['all', 'day', 'night'];
+
+function isoDate(value, label) {
+  if (value === null || value === undefined || value === '') return null;
+  const s = String(value).trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  const d = m && new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  if (!m || d.getUTCFullYear() !== +m[1] || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3]) {
+    throw new HttpError(400, `${label}不是有效的日期`);
+  }
+  return s;
+}
+
+function heroBanner(body) {
+  const b = body && typeof body === 'object' ? body : {};
+  if (!SLOTS.includes(b.slot)) throw new HttpError(400, '时段必须是全天、白天或夜晚');
+  const startDate = isoDate(b.startDate, '开始日期');
+  const endDate = isoDate(b.endDate, '结束日期');
+  if (startDate && endDate && endDate < startDate) throw new HttpError(400, '结束日期不能早于开始日期');
+  if (typeof b.active !== 'boolean') throw new HttpError(400, '请选择启用或停用');
+  return {
+    title: str(b.title, '名称', 80),
+    img: image(b.img, '横幅照片'),
+    slot: b.slot,
+    startDate,
+    endDate,
+    active: b.active,
+  };
+}
+
 module.exports = {
+  heroBanner,
   weakPasscodeReason, passcode, adminName, HttpError, AREAS, image, property, teamMember };

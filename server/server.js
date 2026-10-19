@@ -217,6 +217,20 @@ admin.put('/admins/:id/passcode', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ----- scheduled hero banners (which picture shows depends on date and day/night, GMT+8) -----
+admin.get('/hero-banners', wrap(async (req, res) => {
+  res.json({ banners: await repo.listHeroBanners() });
+}));
+admin.post('/hero-banners', wrap(async (req, res) => {
+  res.status(201).json({ id: await repo.createHeroBanner(v.heroBanner(req.body)) });
+}));
+admin.put('/hero-banners/:id', wrap(async (req, res) => {
+  (await repo.updateHeroBanner(idParam(req), v.heroBanner(req.body))) ? res.json({ ok: true }) : notFound(res);
+}));
+admin.delete('/hero-banners/:id', wrap(async (req, res) => {
+  (await repo.deleteHeroBanner(idParam(req))) ? res.json({ ok: true }) : notFound(res);
+}));
+
 admin.put('/hero', wrap(async (req, res) => {
   await repo.setHero(v.image(req.body && req.body.img, '横幅照片'));
   res.json({ ok: true });
@@ -329,6 +343,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: '服务器出错了，请稍后再试' });
 });
 
+repo.ensureHeroBanners().catch((err) => console.warn('⚠ 横幅表暂时无法准备（数据库连不上？）：', err.message));
 repo.ensureAdmins().catch((err) => console.warn('⚠ 管理员表暂时无法准备（数据库连不上？）：', err.message));
 
 app.listen(PORT, () => {

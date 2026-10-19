@@ -47,6 +47,19 @@ npm start              # http://localhost:3000   (admin: http://localhost:3000/a
 Everything you add in `/admin` (listings, team, photos) is stored in this database and survives restarts.
 To start from zero, stop the database and delete the `.mysql/` folder, then run `npm run dev:setup` again.
 
+## Scheduled hero banners
+
+In the dashboard, **首页横幅** manages which picture the home page shows. Everything is calculated in **GMT+8**
+(Malaysia time), whatever the visitor's own time zone:
+
+- **Day** is 07:00-19:00, **night** is 19:00-07:00.
+- Each banner has a **time slot** (all day / day / night) and a **date range** (every day, or from-to, both ends included).
+- If several banners match, the most specific one wins: date range + day/night > date range > day/night only > every day.
+  Nothing matches -> the **default banner**.
+- The home page switches picture by itself at 07:00, 19:00 and midnight, without a reload.
+- **预览其他时间** shows what visitors will see on any date / time slot; **此刻正在显示** shows what they see right now.
+- Disabled banners are kept in the list but never shown. Deleting a banner also deletes its uploaded picture file.
+
 ## Use the LIVE database from your own computer (optional, be careful)
 
 The live MySQL only listens on the VPS itself, so your computer reaches it through an SSH tunnel.

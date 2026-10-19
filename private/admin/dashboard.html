@@ -84,23 +84,78 @@
             你现在连接的是【线上数据库】：这里的任何修改、删除都会直接影响真实网站，无法撤销。本地模式下不能上传图片，请粘贴图片链接，或到线上后台上传。
         </div>
 
-        <div class="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 leading-relaxed">
-            <i class="fa-solid fa-database mr-1"></i>
-            修改会直接保存到服务器的 MySQL 数据库，首页和房源页对所有访客立即生效。
-        </div>
 
         <!-- ================= HERO ================= -->
         <section id="tab-hero" class="tab-panel space-y-4">
+
+            <!-- What visitors see RIGHT NOW (GMT+8) -->
+            <div class="card live-card">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="live-dot" aria-hidden="true"></span>
+                        <h2 class="card-title truncate">此刻正在显示</h2>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <span id="liveClock" class="chip chip-gray">GMT+8 | --:--</span>
+                        <span id="livePhase" class="chip chip-day">白天</span>
+                    </div>
+                </div>
+                <div class="hero-mock mt-3">
+                    <img id="liveImg" alt="当前横幅">
+                    <div class="hero-mock-overlay"></div>
+                    <div class="hero-mock-text">
+                        <span class="hero-mock-kicker">吉隆坡地标豪宅</span>
+                        <strong>筑梦吉隆坡</strong>
+                        <em>云端奢居 · 专属私享</em>
+                    </div>
+                </div>
+                <p id="liveReason" class="text-xs text-gray-600 mt-3 leading-relaxed"></p>
+            </div>
+
+            <!-- Try another date / time -->
             <div class="card">
-                <h2 class="card-title">首页横幅照片</h2>
-                <p class="card-sub">建议使用横向、高清的照片（会自动压缩到宽度 1400px）。</p>
+                <h2 class="card-title">预览其他时间</h2>
+                <p class="card-sub">选一个日期和时段，看看那时访客会看到哪张横幅。</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                    <label class="field"><span>日期</span><input id="simDate" type="date"></label>
+                    <div class="field">
+                        <span>时段</span>
+                        <div class="seg" id="simPhase" role="group" aria-label="时段">
+                            <button type="button" class="seg-btn" data-value="day"><i class="fa-solid fa-sun"></i>白天</button>
+                            <button type="button" class="seg-btn" data-value="night"><i class="fa-solid fa-moon"></i>夜晚</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="sim-result mt-3">
+                    <img id="simImg" alt="预览结果">
+                    <p id="simReason" class="text-xs text-gray-600 leading-relaxed"></p>
+                </div>
+            </div>
+
+            <!-- Scheduled banners -->
+            <div class="flex items-center justify-between gap-3 pt-2">
+                <div class="min-w-0">
+                    <h2 class="font-serif text-lg font-bold">活动横幅</h2>
+                    <p class="text-xs text-gray-500"><span id="bannerCount">0</span> 张 · 按日期和白天 / 夜晚（GMT+8）自动切换</p>
+                </div>
+                <button id="bannerAdd" class="btn-primary flex-shrink-0"><i class="fa-solid fa-plus mr-1.5"></i>新增横幅</button>
+            </div>
+            <div id="bannerList" class="grid gap-3 sm:grid-cols-2"></div>
+
+            <!-- Default banner (shown when no scheduled banner matches) -->
+            <div class="card">
+                <h2 class="card-title">默认横幅</h2>
+                <p class="card-sub">没有任何活动横幅匹配当前日期和时段时，就显示这一张。建议用横向、高清的照片（会自动压缩到宽度 1400px）。</p>
                 <div id="heroField" class="mt-4"></div>
                 <div class="flex flex-wrap gap-2 mt-5">
-                    <button id="heroSave" class="btn-primary"><i class="fa-solid fa-floppy-disk mr-1.5"></i>保存横幅</button>
-                    <button id="heroReset" class="btn-ghost"><i class="fa-solid fa-rotate-left mr-1.5"></i>恢复默认横幅</button>
+                    <button id="heroSave" class="btn-primary"><i class="fa-solid fa-floppy-disk mr-1.5"></i>保存默认横幅</button>
+                    <button id="heroReset" class="btn-ghost"><i class="fa-solid fa-rotate-left mr-1.5"></i>恢复原来的默认图</button>
                 </div>
             </div>
         </section>
+
+        <!-- Phone-style floating "add" button -->
+        <button id="bannerFab" class="fab hidden" aria-label="新增横幅"><i class="fa-solid fa-plus"></i></button>
 
         <!-- ================= LISTINGS ================= -->
         <section id="tab-listings" class="tab-panel hidden space-y-4">
@@ -263,6 +318,64 @@
             </ol>
             <p id="apiDownDetail" class="text-[11px] text-gray-400 break-all"></p>
             <button id="apiDownRetry" class="btn-primary w-full">重试</button>
+        </div>
+    </div>
+
+    <!-- Add / edit a scheduled banner: slides up from the bottom like a phone sheet -->
+    <div id="bannerSheet" class="sheet-wrap hidden" role="dialog" aria-modal="true" aria-labelledby="bannerSheetTitle">
+        <div class="sheet">
+            <div class="sheet-grab" aria-hidden="true"></div>
+            <div class="flex items-center justify-between px-5 pt-2 pb-3">
+                <h3 id="bannerSheetTitle" class="card-title">新增横幅</h3>
+                <button type="button" id="bannerSheetClose" class="icon-btn" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="bannerForm" class="sheet-body" autocomplete="off">
+                <div id="bn-img-wrap"></div>
+
+                <label class="field"><span>名称（只在后台看到，可不填）</span><input id="bn-title" maxlength="80" placeholder="例如：中秋节、周末特惠、夜景"></label>
+
+                <div class="field">
+                    <span>显示时段（GMT+8，马来西亚时间）</span>
+                    <div class="seg seg-3" id="bn-slot" role="group" aria-label="显示时段">
+                        <button type="button" class="seg-btn" data-value="all"><i class="fa-solid fa-circle-half-stroke"></i><b>全天</b><small>24 小时</small></button>
+                        <button type="button" class="seg-btn" data-value="day"><i class="fa-solid fa-sun"></i><b>白天</b><small>07:00–19:00</small></button>
+                        <button type="button" class="seg-btn" data-value="night"><i class="fa-solid fa-moon"></i><b>夜晚</b><small>19:00–07:00</small></button>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <span>显示日期</span>
+                    <label class="switch-row">
+                        <span><b>每天都显示</b><small>关闭后可以指定一段日期</small></span>
+                        <input type="checkbox" id="bn-daily" class="switch" checked>
+                    </label>
+                    <div id="bn-dates" class="hidden">
+                        <div class="grid grid-cols-2 gap-3 mt-3">
+                            <label class="field"><span>开始日期</span><input id="bn-start" type="date"></label>
+                            <label class="field"><span>结束日期（含当天）</span><input id="bn-end" type="date"></label>
+                        </div>
+                        <div class="flex flex-wrap gap-2 mt-3" id="bn-presets">
+                            <button type="button" class="preset" data-preset="today">只有今天</button>
+                            <button type="button" class="preset" data-preset="tomorrow">只有明天</button>
+                            <button type="button" class="preset" data-preset="week">未来 7 天</button>
+                            <button type="button" class="preset" data-preset="month">整个本月</button>
+                        </div>
+                    </div>
+                </div>
+
+                <label class="switch-row">
+                    <span><b>启用这张横幅</b><small>停用后不会显示，但会保留在列表里</small></span>
+                    <input type="checkbox" id="bn-active" class="switch" checked>
+                </label>
+
+                <div class="summary" id="bn-summary" aria-live="polite"></div>
+
+                <div class="sheet-actions">
+                    <button type="submit" class="btn-primary flex-1"><i class="fa-solid fa-floppy-disk mr-1.5"></i>保存横幅</button>
+                    <button type="button" id="bannerCancel" class="btn-ghost">取消</button>
+                </div>
+            </form>
         </div>
     </div>
 
