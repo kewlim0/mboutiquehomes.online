@@ -339,15 +339,23 @@ try {
     if (saved === 'zh' || saved === 'en') currentLang = saved;
 } catch (e) { /* storage unavailable */ }
 
-// ---------- Shareable listing links: /listing/12 ----------
+// ---------- Shareable listing links: /CH/listing/<code> (中文) and /EN/listing/<code> (English) ----------
+const LISTING_PATH = /^\/(?:(CH|EN)\/)?listing\/([A-Za-z0-9]+)/i;
+const isListingPath = () => LISTING_PATH.test(location.pathname);
+
+// a shared link says which language it is in: that wins over the language this browser remembered
+(() => {
+    const m = LISTING_PATH.exec(location.pathname);
+    if (m && m[1]) currentLang = m[1].toUpperCase() === 'EN' ? 'en' : 'zh';
+})();
 let listingEntryPushed = false; // true when opening the sheet added a browser-history entry
 
-const listingUrl = (item) => `/listing/${item.code || item.id}`;
+const listingUrl = (item) => `/${currentLang === 'en' ? 'EN' : 'CH'}/listing/${item.code || item.id}`;
 const findListing = (ref) => properties.find((p) => p.code === ref || String(p.id) === ref);
 
 function listingIdFromUrl() {
-    const m = /^\/listing\/([A-Za-z0-9]+)/.exec(location.pathname);
-    if (m) return m[1];
+    const m = LISTING_PATH.exec(location.pathname);
+    if (m) return m[2];
     const q = new URLSearchParams(location.search).get('listing');
     return q && /^[A-Za-z0-9]+$/.test(q) ? q : null;
 }
@@ -364,7 +372,7 @@ function applyTitle() {
 
 // opened by tapping a card: the address becomes /listing/12 so the page can be shared; Back closes the sheet
 function openListing(item) {
-    if (!/^\/listing\/\d+/.test(location.pathname)) {
+    if (!isListingPath()) {
         history.pushState({ listing: item.id }, '', listingUrl(item));
         listingEntryPushed = true;
     }
@@ -444,6 +452,8 @@ function toggleLanguage() {
     currentLang = currentLang === 'zh' ? 'en' : 'zh';
     try { localStorage.setItem(LANG_KEY, currentLang); } catch (e) { /* ignore */ }
     applyLanguage();
+    // the sheet is open on a shared-style address: keep the address in the language that is now showing
+    if (currentDetail && isListingPath()) history.replaceState(history.state, '', listingUrl(currentDetail));
 }
 
 // Filter Handlers
@@ -775,7 +785,7 @@ function closeDetailModal(fromBrowserBack = false) {
     hideModal(document.getElementById('detailModal'));
     applyTitle();
     // the address was /listing/12 while the sheet was open: put it back
-    if (!fromBrowserBack && /^\/listing\/\d+/.test(location.pathname)) {
+    if (!fromBrowserBack && isListingPath()) {
         if (listingEntryPushed) {
             listingEntryPushed = false;
             history.back();                       // we added that history entry ourselves: remove it
@@ -899,7 +909,7 @@ function openFromUrl() {
     if (item) {
         listingEntryPushed = false;
         openDetailModal(item);
-    } else if (/^\/listing\//.test(location.pathname)) {
+    } else if (isListingPath()) {
         history.replaceState(null, '', '/');     // that listing does not exist (any more): show the normal page
     }
 }

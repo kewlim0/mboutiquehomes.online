@@ -302,25 +302,29 @@ app.use('/api', (req, res) => res.status(404).json({ error: '接口不存在' })
 // (title, price line, cover picture) into the HTML itself.
 const escHtml = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-function listingPreviewTags(p, origin) {
-  const price = p.type === 'rent' ? `RM ${p.priceRM.toLocaleString('en-US')} / 月` : `RM ${(p.priceRM / 10000).toFixed(0)} 万`;
-  const title = `${p.title.zh} | m.boutiquehomes`;
-  const description = [price, p.beds.zh, `${p.areaSqft.toLocaleString('en-US')} sqft`, p.location.zh].filter(Boolean).join(' · ');
+function listingPreviewTags(p, origin, lang = 'zh') {
+  const en = lang === 'en';
+  const price = p.type === 'rent'
+    ? `RM ${p.priceRM.toLocaleString('en-US')} ${en ? '/ month' : '/ 月'}`
+    : en ? `RM ${(p.priceRM / 1000000).toFixed(2)}M` : `RM ${(p.priceRM / 10000).toFixed(0)} 万`;
+  const name = en ? p.title.en : p.title.zh;
+  const title = `${name} | m.boutiquehomes`;
+  const description = [price, en ? p.beds.en : p.beds.zh, `${p.areaSqft.toLocaleString('en-US')} sqft`, en ? p.location.en : p.location.zh].filter(Boolean).join(' · ');
   const cover = p.photos && p.photos.length ? p.photos[0] : p.img;
   const image = /^https?:\/\//i.test(cover) ? cover : `${origin}/${cover.replace(/^\/+/, '')}`;
-  const url = `${origin}/listing/${p.code || p.id}`;
+  const url = `${origin}/${en ? 'EN' : 'CH'}/listing/${p.code || p.id}`;
   return {
     title,
     tags: [
       `<link rel="canonical" href="${escHtml(url)}">`,
       '<meta property="og:type" content="website">',
       '<meta property="og:site_name" content="m.boutiquehomes">',
-      '<meta property="og:locale" content="zh_CN">',
+      `<meta property="og:locale" content="${en ? 'en_US' : 'zh_CN'}">`,
       `<meta property="og:title" content="${escHtml(title)}">`,
       `<meta property="og:description" content="${escHtml(description)}">`,
       `<meta property="og:url" content="${escHtml(url)}">`,
       `<meta property="og:image" content="${escHtml(image)}">`,
-      `<meta property="og:image:alt" content="${escHtml(p.title.zh)}">`,
+      `<meta property="og:image:alt" content="${escHtml(name)}">`,
       '<meta name="twitter:card" content="summary_large_image">',
       `<meta name="twitter:title" content="${escHtml(title)}">`,
       `<meta name="twitter:description" content="${escHtml(description)}">`,
@@ -330,20 +334,23 @@ function listingPreviewTags(p, origin) {
   };
 }
 
-app.get('/listing/:ref', wrap(async (req, res) => {
-  const ref = String(req.params.ref);
+// /listing/<code> (language = the visitor's own), /CH/listing/<code> (中文), /EN/listing/<code> (English)
+app.get(/^\/(?:(CH|EN)\/)?listing\/([A-Za-z0-9]+)\/?$/i, wrap(async (req, res) => {
+  const prefix = req.params[0] ? req.params[0].toUpperCase() : '';
+  const ref = String(req.params[1]);
+  const lang = prefix === 'EN' ? 'en' : 'zh';
   const origin = `${req.protocol}://${req.get('host')}`;
   // old links with the plain number (/listing/6) are sent on to the private code
   if (/^\d+$/.test(ref)) {
     const old = await repo.getPropertyById(Number(ref));
-    if (old && old.code) return res.redirect(301, `/listing/${old.code}`);
+    if (old && old.code) return res.redirect(301, `${prefix ? `/${prefix}` : ''}/listing/${old.code}`);
   }
   let html = await fs.promises.readFile(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   // the page lives at /listing/<code>, so its relative links (style.css, img/...) must still point at the site root
   html = html.replace('<head>', '<head>\n    <base href="/">');
   const property = /^[a-z0-9]{6,16}$/.test(ref) ? await repo.getPropertyByCode(ref) : null;
   if (property) {
-    const preview = listingPreviewTags(property, origin);
+    const preview = listingPreviewTags(property, origin, lang);
     html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${escHtml(preview.title)}</title>`).replace('</head>', `    ${preview.tags}\n</head>`);
   }
   res.set('Cache-Control', 'no-cache').type('html').send(html);
