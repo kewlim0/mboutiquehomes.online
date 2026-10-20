@@ -3,11 +3,6 @@ body {
     font-family: 'Plus Jakarta Sans', sans-serif;
     margin: 0;
     padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    min-height: 100vh;
-    min-height: 100dvh; /* the visible height on phones (the address bar comes and goes) */
     color: #1E232A;
 }
 
@@ -15,12 +10,10 @@ body {
 .mobile-frame {
     width: 430px;
     min-height: 100vh;
-    min-height: 100dvh;
     margin: 20px auto;
     box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.35);
-    /* NOT overflow:hidden: that turns the frame into a scroll container, which breaks the sticky header and makes
-       touch scrolling stick on iPhone. `clip` only trims sideways overflow and creates no scroll container. */
-    overflow-x: clip;
+    /* No overflow rule here on purpose: any overflow value on the frame (hidden, or even clip on some iPhone
+       browsers) can break the sticky header and make touch scrolling stick. Nothing inside is wider than the frame. */
     position: relative;
     background: #F8F9FB;
     display: flex;
@@ -34,7 +27,7 @@ body {
     }
     .mobile-frame {
         width: 100%;
-        min-height: 100vh;
+        min-height: 0;
         box-shadow: none;
         margin: 0px;
         border-radius: 0px;

@@ -595,7 +595,7 @@ function renderListings() {
                     </div>
                     <h3 class="text-sm font-bold leading-snug line-clamp-2">${esc(p.title.zh)}</h3>
                     <p class="text-xs font-bold text-gold-700 mt-0.5">${formatPrice(p)}</p>
-                    <div class="mt-auto pt-2 flex gap-2">
+                    <div class="mt-auto pt-2 flex justify-end gap-2">
                         <button class="btn-ghost !py-1 !px-3" data-edit="${p.id}"><i class="fa-solid fa-pen mr-1"></i>编辑</button>
                         <button class="btn-danger !py-1 !px-3" data-delete="${p.id}"><i class="fa-solid fa-trash mr-1"></i>删除</button>
                     </div>
@@ -847,7 +847,7 @@ function renderTeam() {
                     <h3 class="text-sm font-bold truncate">${esc(t.name)}</h3>
                     <p class="text-xs text-gold-700 font-medium truncate">${esc(t.role.zh)}</p>
                     <p class="text-[11px] text-gray-400 line-clamp-2">${esc(t.meta.zh)}</p>
-                    <div class="mt-auto pt-2 flex gap-2">
+                    <div class="mt-auto pt-2 flex justify-end gap-2">
                         <button class="btn-ghost !py-1 !px-3" data-edit="${t.id}"><i class="fa-solid fa-pen mr-1"></i>编辑</button>
                         <button class="btn-danger !py-1 !px-3" data-delete="${t.id}"><i class="fa-solid fa-trash mr-1"></i>删除</button>
                     </div>
