@@ -11,6 +11,7 @@ Browser (/, /listings, /admin)  →  Express API  →  MySQL
 |---|---|
 | `/` | Home: hero banner, listings, team |
 | `/listings` | Listings page |
+| `/listing/<id>` | One listing's detail sheet opens straight away. This is the link the sheet's share button copies; the server adds the title, photo and price so WhatsApp/Instagram show a preview |
 | `/admin` | Admin login page (6-digit passcode). Signed-in admins are sent straight to the dashboard |
 | `/admin/dashboard` | The control panel: hero banner, listings, team. The server only sends it to a signed-in admin, everyone else is redirected to `/admin` |
 | `/api/content` | Public JSON the pages read |
@@ -54,8 +55,9 @@ make any photo the cover with the star, remove with the cross. The first photo i
 
 On the site the detail sheet shows the photos like a messaging-app album: **one big picture on the left, the 2nd photo top
 right, the 3rd bottom right**. With more than three photos the bottom-right tile is blurred and shows "+N" (N = pictures not
-shown). Tapping any tile opens a full-screen viewer (swipe, arrows or the keyboard; Esc closes it). The admin form shows the
-same layout as a live preview. Removing a photo, or deleting a listing, also deletes the uploaded files nobody uses any more.
+shown). Tapping any tile opens a full-screen viewer (swipe, arrows or the keyboard; Esc closes it). The listing editor (dashboard -> 房源管理 -> add / edit) is shaped like that sheet: the photo gallery on top
+(tap the badge to switch rent / sale), then you type straight into the name, address, price, area, rooms, status and
+description boxes. Switch 中文 / English at the top to fill in the other language. Removing a photo, or deleting a listing, also deletes the uploaded files nobody uses any more.
 
 ## Scheduled hero banners
 

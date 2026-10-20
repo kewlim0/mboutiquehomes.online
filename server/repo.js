@@ -97,6 +97,16 @@ async function getHero() {
   return rows.length ? rows[0].value : seedData.hero.img;
 }
 
+// One listing (used for the link preview of a shared listing)
+async function getPropertyById(id) {
+  await ensurePropertyColumns();
+  await ensurePropertyPhotos();
+  const [rows] = await pool.query('SELECT * FROM properties WHERE id = ?', [id]);
+  if (!rows.length) return null;
+  const [photos] = await pool.query('SELECT img FROM property_photos WHERE property_id = ? ORDER BY sort_order, id', [id]);
+  return mapProperty(rows[0], photos.map((p) => p.img));
+}
+
 async function getContent() {
   await ensurePropertyColumns();
   const [props] = await pool.query('SELECT * FROM properties ORDER BY sort_order ASC, id DESC');
@@ -447,7 +457,7 @@ async function seedDefaults() {
 }
 
 module.exports = {
-  UPLOAD_DIR, getContent, createProperty, updateProperty, deleteProperty,
+  UPLOAD_DIR, getContent, getPropertyById, createProperty, updateProperty, deleteProperty,
   createTeamMember, updateTeamMember, deleteTeamMember, setHero, seedDefaults,
   ensureAdmins, listAdmins, getAdmin, getAdminsWithHash, createAdmin, updateAdmin, setAdminPasscode, deleteAdmin,
   touchAdminLogin, setOwnerPasscode,

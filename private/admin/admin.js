@@ -396,14 +396,14 @@ function openBannerSheet(b) {
     showSheet();
 }
 
-function showSheet() {
-    const wrap = $('bannerSheet');
+function showSheet(id = 'bannerSheet') {
+    const wrap = $(id);
     wrap.classList.remove('hidden', 'is-closing');
     document.body.classList.add('sheet-open');
 }
 
-function hideSheet() {
-    const wrap = $('bannerSheet');
+function hideSheet(id = 'bannerSheet') {
+    const wrap = $(id);
     if (wrap.classList.contains('hidden') || wrap.classList.contains('is-closing')) return;
     document.body.classList.remove('sheet-open');
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { wrap.classList.add('hidden'); return; }
@@ -422,10 +422,10 @@ function hideSheet() {
 
 $('bannerAdd').addEventListener('click', () => openBannerSheet(null));
 $('bannerFab').addEventListener('click', () => openBannerSheet(null));
-$('bannerSheetClose').addEventListener('click', hideSheet);
-$('bannerCancel').addEventListener('click', hideSheet);
+$('bannerSheetClose').addEventListener('click', () => hideSheet());
+$('bannerCancel').addEventListener('click', () => hideSheet());
 $('bannerSheet').addEventListener('click', (e) => { if (e.target === $('bannerSheet')) hideSheet(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideSheet(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hideSheet('bannerSheet'); hideSheet('listingSheet'); } });
 
 $('bn-slot').addEventListener('click', (e) => {
     const btn = e.target.closest('.seg-btn');
@@ -495,10 +495,6 @@ $('lf-photos-wrap').innerHTML = `
             <button type="button" id="lf-photo-url-add" class="btn-ghost flex-shrink-0">添加</button>
         </div>
         <p class="text-[11px] text-gray-400 leading-relaxed">第一张是封面（显示在房源卡片上）。用 ‹ › 调整顺序，★ 设为封面。可以一次选多张。</p>
-        <div class="pt-2">
-            <span class="block text-[11px] font-bold text-gray-700 mb-1.5">前台详情页的样子</span>
-            <div class="gallery-preview"><div id="lf-gallery-preview" class="w-full h-full"></div></div>
-        </div>
     </div>`;
 
 function renderLfPhotos() {
@@ -660,18 +656,60 @@ function openListingForm(p) {
     lfUploading = 0;
     $('lf-photo-url').value = '';
     renderLfPhotos();
-    $('listingForm').classList.remove('hidden');
-    $('listingForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setLfType(v.type);
+    updatePriceFmt();
+    setLfLang('zh');
+    showSheet('listingSheet');
+    $('listingForm').scrollTop = 0;
 }
 
 function closeListingForm() {
-    $('listingForm').classList.add('hidden');
+    hideSheet('listingSheet');
     editingListingId = null;
 }
+
+// ----- the editor looks like the site: rent/sale badge, price line and the language boxes -----
+function setLfType(type) {
+    $('lf-type').value = type;
+    const rent = type === 'rent';
+    const badge = $('lf-type-badge');
+    badge.textContent = rent ? '出租 · 点此切换' : '出售 · 点此切换';
+    badge.classList.toggle('is-sale', !rent);
+    $('lf-price-unit').textContent = rent ? '/ 月' : '';
+}
+$('lf-type-badge').addEventListener('click', () => setLfType($('lf-type').value === 'rent' ? 'sale' : 'rent'));
+
+function updatePriceFmt() {
+    const n = Number($('lf-price').value);
+    $('lf-price-fmt').textContent = n > 0 ? `RM ${n.toLocaleString('en-US')}${$('lf-type').value === 'rent' ? ' / 月' : ''}` : '';
+}
+$('lf-price').addEventListener('input', updatePriceFmt);
+$('lf-type-badge').addEventListener('click', updatePriceFmt);
+
+const LF_EN_IDS = ['lf-title-en', 'lf-loc-en', 'lf-status-en', 'lf-desc-en'];
+let lfLang = 'zh';
+function updateEnDot() {
+    $('lfEnDot').classList.toggle('is-off', LF_EN_IDS.every(id => $(id).value.trim()));
+}
+function setLfLang(lang) {
+    lfLang = lang;
+    document.querySelectorAll('#listingForm [data-lang]').forEach(el => el.classList.toggle('is-off', el.dataset.lang !== lang));
+    document.querySelectorAll('#lfLang .seg-btn').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === lang)));
+    $('lfLangHint').textContent = lang === 'zh'
+        ? '先填中文。名称、地段、装修状态和描述各有中、英文两份，英文留空的话，前台英文页会显示空白。'
+        : '现在填的是英文版本（English 页面看到的内容）。价格、面积、照片和中文版共用。';
+    updateEnDot();
+}
+$('lfLang').addEventListener('click', (e) => {
+    const b = e.target.closest('.seg-btn');
+    if (b) setLfLang(b.dataset.value);
+});
+LF_EN_IDS.forEach(id => $(id).addEventListener('input', updateEnDot));
 
 $('listingAdd').addEventListener('click', () => openListingForm(null));
 $('listingCancel').addEventListener('click', closeListingForm);
 $('listingCancel2').addEventListener('click', closeListingForm);
+$('listingSheet').addEventListener('click', (e) => { if (e.target === $('listingSheet')) closeListingForm(); });
 
 // Changing the area fills in that area's default display name
 $('lf-area').addEventListener('change', (e) => {

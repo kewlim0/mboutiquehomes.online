@@ -289,6 +289,8 @@ const uiText = {
         wan: "万",
         details: "详情",
         favorite: "收藏",
+        share: "分享",
+        linkCopied: "链接已复制，可以发给朋友了",
         submitted: "委托信息已成功提交！我们的豪宅顾问与专业摄影团队将尽快与您联系。"
     },
     en: {
@@ -303,6 +305,8 @@ const uiText = {
         wan: "0K",
         details: "Details",
         favorite: "Favorite",
+        share: "Share",
+        linkCopied: "Link copied. Send it to a friend!",
         submitted: "Your request has been submitted! Our luxury advisors and photography team will contact you shortly."
     }
 };
@@ -332,6 +336,37 @@ try {
     const saved = localStorage.getItem(LANG_KEY);
     if (saved === 'zh' || saved === 'en') currentLang = saved;
 } catch (e) { /* storage unavailable */ }
+
+// ---------- Shareable listing links: /listing/12 ----------
+let listingEntryPushed = false; // true when opening the sheet added a browser-history entry
+
+const listingUrl = (id) => `/listing/${id}`;
+
+function listingIdFromUrl() {
+    const m = /^\/listing\/(\d+)/.exec(location.pathname);
+    if (m) return Number(m[1]);
+    const q = new URLSearchParams(location.search).get('listing');
+    return q && /^\d+$/.test(q) ? Number(q) : null;
+}
+
+// page title: the listing's name while its sheet is open, the normal page title otherwise
+function applyTitle() {
+    const detail = document.getElementById('detailModal');
+    if (currentDetail && detail && isModalOpen(detail)) {
+        document.title = `${currentDetail.title[currentLang]} | m.boutiquehomes`;
+    } else {
+        document.title = ui(document.body.dataset.page === 'listings' ? 'pageTitleListings' : 'pageTitle');
+    }
+}
+
+// opened by tapping a card: the address becomes /listing/12 so the page can be shared; Back closes the sheet
+function openListing(item) {
+    if (!/^\/listing\/\d+/.test(location.pathname)) {
+        history.pushState({ listing: item.id }, '', listingUrl(item.id));
+        listingEntryPushed = true;
+    }
+    openDetailModal(item);
+}
 
 function esc(value) {
     return String(value ?? '')
@@ -381,7 +416,7 @@ function renderTeam() {
 // Apply the current language to all static (data-i18n) and dynamic content
 function applyLanguage() {
     document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
-    document.title = ui(document.body.dataset.page === 'listings' ? 'pageTitleListings' : 'pageTitle');
+    applyTitle();
 
     document.querySelectorAll('[data-i18n]').forEach(el => {
         el.textContent = i18n[el.dataset.i18n][currentLang];
@@ -535,6 +570,7 @@ async function loadContent() {
     document.getElementById('propertyGrid').removeAttribute('aria-busy');
     renderProperties();
     renderTeam();
+    openFromUrl();
 }
 
 function renderProperties() {
@@ -574,11 +610,11 @@ function renderProperties() {
         card.setAttribute('role', 'button');
         card.tabIndex = 0;
         card.setAttribute('aria-label', item.title[L]);
-        card.onclick = () => openDetailModal(item);
+        card.onclick = () => openListing(item);
         card.onkeydown = (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                openDetailModal(item);
+                openListing(item);
             }
         };
 
@@ -727,11 +763,22 @@ function openDetailModal(item, instant = false) {
     badge.className = `absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-md ${item.type === 'rent' ? 'bg-gold-500' : 'bg-charcoal-900'}`;
 
     showModal(document.getElementById('detailModal'));
+    applyTitle(); // the tab title becomes the listing's name
 }
 
-function closeDetailModal() {
+function closeDetailModal(fromBrowserBack = false) {
     detailLoadToken++;
     hideModal(document.getElementById('detailModal'));
+    applyTitle();
+    // the address was /listing/12 while the sheet was open: put it back
+    if (!fromBrowserBack && /^\/listing\/\d+/.test(location.pathname)) {
+        if (listingEntryPushed) {
+            listingEntryPushed = false;
+            history.back();                       // we added that history entry ourselves: remove it
+        } else {
+            history.replaceState(null, '', '/');  // arrived through a shared link: there is nothing to go back to
+        }
+    }
 }
 
 // ---------- Full-screen photo viewer ----------
@@ -794,6 +841,68 @@ if (modalGalleryEl) {
         const photos = currentDetail.photos && currentDetail.photos.length ? currentDetail.photos : [currentDetail.img];
         openLightbox(photos, Number(tile.dataset.photo));
     });
+}
+
+// ---------- Share ----------
+let siteToastTimer;
+function showSiteToast(message) {
+    let el = document.getElementById('siteToast');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'siteToast';
+        el.className = 'site-toast';
+        el.setAttribute('role', 'status');
+        document.body.appendChild(el);
+    }
+    el.textContent = message;
+    el.classList.add('show');
+    clearTimeout(siteToastTimer);
+    siteToastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+async function shareCurrentListing() {
+    if (!currentDetail) return;
+    const url = `${location.origin}${listingUrl(currentDetail.id)}`;
+    const title = `${currentDetail.title[currentLang]} | m.boutiquehomes`;
+    if (navigator.share) {                       // phones: the system share sheet (WhatsApp, Instagram, ...)
+        try { await navigator.share({ title, text: title, url }); return; }
+        catch (err) { if (err && err.name === 'AbortError') return; }
+    }
+    try {
+        await navigator.clipboard.writeText(url);
+        showSiteToast(ui('linkCopied'));
+    } catch (err) {
+        window.prompt('', url);                  // very old browsers: let the visitor copy it by hand
+    }
+}
+
+const shareBtn = document.getElementById('shareBtn');
+if (shareBtn) shareBtn.addEventListener('click', shareCurrentListing);
+
+// browser Back / Forward: close or re-open the sheet to match the address
+window.addEventListener('popstate', () => {
+    const id = listingIdFromUrl();
+    const detail = document.getElementById('detailModal');
+    if (id) {
+        const item = properties.find((p) => p.id === id);
+        if (item && !(currentDetail && currentDetail.id === id && isModalOpen(detail))) openDetailModal(item);
+    } else if (detail && isModalOpen(detail)) {
+        listingEntryPushed = false;
+        closeDetailModal(true);
+    }
+});
+
+// somebody tapped a shared link (/listing/12): open that listing as soon as the content has loaded
+function openFromUrl() {
+    const id = listingIdFromUrl();
+    if (!id) return;
+    const item = properties.find((p) => p.id === id);
+    if (item) {
+        listingEntryPushed = false;
+        openDetailModal(item);
+    } else if (/^\/listing\//.test(location.pathname)) {
+        history.replaceState(null, '', '/');     // that listing does not exist (any more): show the normal page
+    }
 }
 
 // Close a modal by clicking the blurred area outside its sheet, or by pressing Escape

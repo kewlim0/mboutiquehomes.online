@@ -7,6 +7,7 @@ body {
     justify-content: center;
     align-items: flex-start;
     min-height: 100vh;
+    min-height: 100dvh; /* the visible height on phones (the address bar comes and goes) */
     color: #1E232A;
 }
 
@@ -14,9 +15,12 @@ body {
 .mobile-frame {
     width: 430px;
     min-height: 100vh;
+    min-height: 100dvh;
     margin: 20px auto;
     box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.35);
-    overflow: hidden;
+    /* NOT overflow:hidden: that turns the frame into a scroll container, which breaks the sticky header and makes
+       touch scrolling stick on iPhone. `clip` only trims sideways overflow and creates no scroll container. */
+    overflow-x: clip;
     position: relative;
     background: #F8F9FB;
     display: flex;
@@ -259,3 +263,24 @@ html {
         font-size: 16px !important;
     }
 }
+
+/* small message at the bottom ("link copied") */
+.site-toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    z-index: 90;
+    max-width: calc(100vw - 2rem);
+    padding: 0.7rem 1.1rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: rgba(23, 26, 31, 0.94);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.3);
+    transform: translate(-50%, 0.75rem);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+}
+.site-toast.show { opacity: 1; transform: translate(-50%, 0); }

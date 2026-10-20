@@ -296,6 +296,54 @@ admin.post('/upload', (req, res, next) => {
 app.use('/api/admin', admin);
 app.use('/api', (req, res) => res.status(404).json({ error: '接口不存在' }));
 
+// ---------- shareable listing links ----------
+// /listing/12 is the home page with that listing's detail sheet already open. Messaging apps (WhatsApp, Instagram,
+// Facebook...) do not run JavaScript when they build a link preview, so the server writes the preview tags
+// (title, price line, cover picture) into the HTML itself.
+const escHtml = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function listingPreviewTags(p, origin) {
+  const price = p.type === 'rent' ? `RM ${p.priceRM.toLocaleString('en-US')} / 月` : `RM ${(p.priceRM / 10000).toFixed(0)} 万`;
+  const title = `${p.title.zh} | m.boutiquehomes`;
+  const description = [price, p.beds.zh, `${p.areaSqft.toLocaleString('en-US')} sqft`, p.location.zh].filter(Boolean).join(' · ');
+  const cover = p.photos && p.photos.length ? p.photos[0] : p.img;
+  const image = /^https?:\/\//i.test(cover) ? cover : `${origin}/${cover.replace(/^\/+/, '')}`;
+  const url = `${origin}/listing/${p.id}`;
+  return {
+    title,
+    tags: [
+      `<link rel="canonical" href="${escHtml(url)}">`,
+      '<meta property="og:type" content="website">',
+      '<meta property="og:site_name" content="m.boutiquehomes">',
+      '<meta property="og:locale" content="zh_CN">',
+      `<meta property="og:title" content="${escHtml(title)}">`,
+      `<meta property="og:description" content="${escHtml(description)}">`,
+      `<meta property="og:url" content="${escHtml(url)}">`,
+      `<meta property="og:image" content="${escHtml(image)}">`,
+      `<meta property="og:image:alt" content="${escHtml(p.title.zh)}">`,
+      '<meta name="twitter:card" content="summary_large_image">',
+      `<meta name="twitter:title" content="${escHtml(title)}">`,
+      `<meta name="twitter:description" content="${escHtml(description)}">`,
+      `<meta name="twitter:image" content="${escHtml(image)}">`,
+      `<meta name="description" content="${escHtml(description)}">`,
+    ].join('\n    '),
+  };
+}
+
+app.get('/listing/:id', wrap(async (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  const origin = `${req.protocol}://${req.get('host')}`;
+  let html = await fs.promises.readFile(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  // the page lives at /listing/12, so its relative links (style.css, img/...) must still point at the site root
+  html = html.replace('<head>', '<head>\n    <base href="/">');
+  const property = Number.isInteger(id) && id > 0 ? await repo.getPropertyById(id) : null;
+  if (property) {
+    const preview = listingPreviewTags(property, origin);
+    html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${escHtml(preview.title)}</title>`).replace('</head>', `    ${preview.tags}\n</head>`);
+  }
+  res.set('Cache-Control', 'no-cache').type('html').send(html);
+}));
+
 // ---------- admin pages ----------
 // /admin           the login page (public). A signed-in admin is sent straight to the dashboard.
 // /admin/dashboard the control panel. The server only sends it to a signed-in admin; everybody else is redirected

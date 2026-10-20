@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="h-full">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -169,61 +169,7 @@
             </div>
 
             <!-- Add / edit form -->
-            <form id="listingForm" class="card hidden space-y-4" autocomplete="off">
-                <div class="flex items-center justify-between">
-                    <h3 id="listingFormTitle" class="card-title">新增房源</h3>
-                    <button type="button" id="listingCancel" class="icon-btn" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-
-                <div class="grid sm:grid-cols-2 gap-3">
-                    <label class="field"><span>标题（中文）*</span><input id="lf-title-zh" required placeholder="例如：Pavilion Suites KLCC 奢华公馆"></label>
-                    <label class="field"><span>标题（英文）</span><input id="lf-title-en" placeholder="e.g. Pavilion Suites KLCC Luxury Residence"></label>
-                </div>
-
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <label class="field"><span>类型 *</span>
-                        <select id="lf-type" required>
-                            <option value="rent">出租 For Rent</option>
-                            <option value="sale">出售 For Sale</option>
-                        </select>
-                    </label>
-                    <label class="field"><span>价格 (RM) *</span><input id="lf-price" type="number" min="0" required placeholder="出租填月租"></label>
-                    <label class="field"><span>面积 (sqft) *</span><input id="lf-sqft" type="number" min="0" required placeholder="1250"></label>
-                    <label class="field"><span>地段 *</span>
-                        <select id="lf-area" required>
-                            <option value="KLCC">KLCC</option>
-                            <option value="Mont Kiara">Mont Kiara</option>
-                            <option value="TRX">TRX</option>
-                            <option value="Bangsar">Bangsar</option>
-                        </select>
-                    </label>
-                </div>
-
-                <div class="grid sm:grid-cols-2 gap-3">
-                    <div class="field sm:col-span-2">
-                        <span>房型 *</span>
-                        <div class="grid grid-cols-2 gap-3">
-                            <select id="lf-bedrooms" required aria-label="房间数"></select>
-                            <select id="lf-bathrooms" required aria-label="卫生间数"></select>
-                        </div>
-                        <p id="lf-beds-preview" class="text-[11px] text-gray-500 mt-1.5 leading-relaxed"></p>
-                    </div>
-                    <label class="field"><span>地段显示名（中文）</span><input id="lf-loc-zh" placeholder="KLCC 核心区"></label>
-                    <label class="field"><span>地段显示名（英文）</span><input id="lf-loc-en" placeholder="KLCC Core"></label>
-                    <label class="field sm:col-span-2"><span>详细地址</span><input id="lf-address" placeholder="Jalan Bukit Bintang, KLCC"></label>
-                    <label class="field"><span>亮点标签（中文）</span><input id="lf-status-zh" placeholder="95% 新 · 拎包入住"></label>
-                    <label class="field"><span>亮点标签（英文）</span><input id="lf-status-en" placeholder="95% New · Move-in Ready"></label>
-                    <label class="field"><span>描述（中文）</span><textarea id="lf-desc-zh" rows="3"></textarea></label>
-                    <label class="field"><span>描述（英文）</span><textarea id="lf-desc-en" rows="3"></textarea></label>
-                </div>
-
-                <div id="lf-photos-wrap"></div>
-
-                <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-                    <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk mr-1.5"></i>保存房源</button>
-                    <button type="button" id="listingCancel2" class="btn-ghost">取消</button>
-                </div>
-            </form>
+            
 
             <div id="listingList" class="grid sm:grid-cols-2 gap-3"></div>
         </section>
@@ -325,6 +271,109 @@
             </ol>
             <p id="apiDownDetail" class="text-[11px] text-gray-400 break-all"></p>
             <button id="apiDownRetry" class="btn-primary w-full">重试</button>
+        </div>
+    </div>
+
+    <!-- Add / edit a listing: it looks like the sheet visitors see, and you type straight into it -->
+    <div id="listingSheet" class="sheet-wrap hidden" role="dialog" aria-modal="true" aria-labelledby="listingFormTitle">
+        <div class="sheet sheet-lg">
+            <div class="sheet-grab" aria-hidden="true"></div>
+            <div class="flex items-center justify-between gap-3 px-5 pt-2 pb-2">
+                <h3 id="listingFormTitle" class="card-title">编辑房源</h3>
+                <button type="button" id="listingCancel" class="icon-btn" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- the same boxes are used for both languages: switch here to fill in the other one -->
+            <div class="px-5 pb-3">
+                <div class="lang-bar">
+                    <span>正在编辑</span>
+                    <div class="seg seg-lang" id="lfLang" role="group" aria-label="编辑的语言">
+                        <button type="button" class="seg-btn" data-value="zh" aria-pressed="true">中文</button>
+                        <button type="button" class="seg-btn" data-value="en" aria-pressed="false">English<i class="lang-dot is-off" id="lfEnDot" title="英文还有没填的"></i></button>
+                    </div>
+                </div>
+                <p id="lfLangHint" class="text-[11px] text-gray-400 mt-1.5 leading-relaxed"></p>
+            </div>
+
+            <form id="listingForm" class="sheet-body" autocomplete="off" novalidate>
+                <div class="editor-phone">
+                    <!-- top: the photos exactly as they appear on the site -->
+                    <div class="editor-hero">
+                        <div id="lf-gallery-preview" class="w-full h-full"></div>
+                        <button type="button" id="lf-type-badge" class="type-toggle" aria-label="切换出租或出售"></button>
+                    </div>
+                    <input type="hidden" id="lf-type" value="rent">
+
+                    <div class="editor-photos"><div id="lf-photos-wrap"></div></div>
+
+                    <div class="editor-body">
+                        <!-- name, address and price: where they sit on the site -->
+                        <div class="ed-head">
+                            <div class="min-w-0 flex-1">
+                                <input id="lf-title-zh" data-lang="zh" class="ed-title" placeholder="房源名称（中文）" maxlength="255">
+                                <input id="lf-title-en" data-lang="en" class="ed-title is-off" placeholder="Listing name (English)" maxlength="255">
+                                <div class="ed-location">
+                                    <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                                    <input id="lf-address" class="ed-line" placeholder="详细地址，例如 Jalan Bukit Bintang, KLCC" maxlength="255">
+                                </div>
+                            </div>
+                            <div class="ed-price">
+                                <div class="ed-price-row">
+                                    <span>RM</span>
+                                    <input id="lf-price" type="number" inputmode="numeric" min="0" placeholder="价格">
+                                    <small id="lf-price-unit">/ 月</small>
+                                </div>
+                                <p id="lf-price-fmt"></p>
+                            </div>
+                        </div>
+
+                        <!-- area -->
+                        <div class="ed-area">
+                            <label class="ed-chip" title="地段（用来筛选）">
+                                <i class="fa-solid fa-map-pin" aria-hidden="true"></i>
+                                <select id="lf-area" aria-label="地段">
+                                    <option value="KLCC">KLCC</option>
+                                    <option value="Mont Kiara">Mont Kiara</option>
+                                    <option value="TRX">TRX</option>
+                                    <option value="Bangsar">Bangsar</option>
+                                </select>
+                            </label>
+                            <input id="lf-loc-zh" data-lang="zh" class="ed-line" placeholder="房源卡片上的地段名，例如 KLCC 核心区" maxlength="100">
+                            <input id="lf-loc-en" data-lang="en" class="ed-line is-off" placeholder="Area name on the card, e.g. KLCC Core" maxlength="100">
+                        </div>
+
+                        <!-- the three boxes under the title on the site -->
+                        <div class="ed-specs">
+                            <div>
+                                <span>实用面积</span>
+                                <div class="ed-sqft"><input id="lf-sqft" type="number" inputmode="numeric" min="0" placeholder="1250"><small>sqft</small></div>
+                            </div>
+                            <div class="ed-spec-mid">
+                                <span>卧室 / 卫浴</span>
+                                <select id="lf-bedrooms" aria-label="房间数"></select>
+                                <select id="lf-bathrooms" aria-label="卫生间数"></select>
+                            </div>
+                            <div>
+                                <span>装修状态</span>
+                                <input id="lf-status-zh" data-lang="zh" placeholder="95% 新 · 拎包入住" maxlength="255">
+                                <input id="lf-status-en" data-lang="en" class="is-off" placeholder="95% New · Move-in Ready" maxlength="255">
+                            </div>
+                        </div>
+                        <p id="lf-beds-preview" class="text-[11px] text-gray-500 leading-relaxed"></p>
+
+                        <div>
+                            <h4 class="ed-h">详细描述</h4>
+                            <textarea id="lf-desc-zh" data-lang="zh" class="ed-desc" rows="4" placeholder="写一写这套房源的亮点、周边环境、交通……" maxlength="5000"></textarea>
+                            <textarea id="lf-desc-en" data-lang="en" class="ed-desc is-off" rows="4" placeholder="Describe the property: highlights, surroundings, transport…" maxlength="5000"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sheet-actions">
+                    <button type="submit" class="btn-primary flex-1"><i class="fa-solid fa-floppy-disk mr-1.5"></i>保存房源</button>
+                    <button type="button" id="listingCancel2" class="btn-ghost">取消</button>
+                </div>
+            </form>
         </div>
     </div>
 

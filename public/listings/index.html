@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="h-full">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -75,7 +75,7 @@
         </header>
 
         <!-- SCROLLABLE MAIN CONTENT AREA -->
-        <main class="flex-1 overflow-y-auto no-scrollbar pb-24">
+        <main class="flex-1 pb-24">
 
                         <!-- LISTINGS SECTION & FILTER BAR -->
             <section id="listingsSection" class="mt-5 px-4">
@@ -240,7 +240,10 @@
         <div id="detailModal" class="hidden absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center transition-all">
             <div class="bg-white w-full max-h-[92%] rounded-t-3xl sm:rounded-2xl overflow-y-auto text-charcoal-900 shadow-2xl relative animate-slide-up">
                 <!-- Close Button -->
-                <button onclick="closeDetailModal()" class="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-md">
+                <button type="button" id="shareBtn" aria-label="分享" class="absolute top-3 right-14 z-20 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-md">
+                    <i class="fa-solid fa-share-nodes text-sm"></i>
+                </button>
+                <button onclick="closeDetailModal()" aria-label="关闭" class="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-md">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
 
