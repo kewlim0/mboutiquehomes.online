@@ -259,7 +259,7 @@ const i18n = {
     },
     "waBook": {
         "zh": "WhatsApp 预约看房",
-        "en": "Book Viewing on WhatsApp"
+        "en": "Book a Viewing"
     },
     "listSimilar": {
         "zh": "我有同款房放盘",

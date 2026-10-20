@@ -341,6 +341,10 @@ async function sendSitePage(res, file) {
   html = html.replace('<head>', '<head>\n    <base href="/">');
   res.set('Cache-Control', 'no-cache').type('html').send(html);
 }
+// the plain address (no language) goes to English: / -> /EN, /listings -> /EN/listings, /listing/<code> -> /EN/listing/<code>
+const toEnglish = (req, p) => `${p}${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
+app.get('/', (req, res) => res.redirect(302, toEnglish(req, '/EN')));
+app.get(/^\/listings\/?$/, (req, res) => res.redirect(302, toEnglish(req, '/EN/listings')));
 app.get(/^\/(?:CH|EN)\/?$/i, wrap((req, res) => sendSitePage(res, 'index.html')));
 app.get(/^\/(?:CH|EN)\/listings\/?$/i, wrap((req, res) => sendSitePage(res, 'listings/index.html')));
 
@@ -348,12 +352,13 @@ app.get(/^\/(?:CH|EN)\/listings\/?$/i, wrap((req, res) => sendSitePage(res, 'lis
 app.get(/^\/(?:(CH|EN)\/)?listing\/([A-Za-z0-9]+)\/?$/i, wrap(async (req, res) => {
   const prefix = req.params[0] ? req.params[0].toUpperCase() : '';
   const ref = String(req.params[1]);
+  if (!prefix) return res.redirect(302, toEnglish(req, `/EN/listing/${ref}`));
   const lang = prefix === 'EN' ? 'en' : 'zh';
   const origin = `${req.protocol}://${req.get('host')}`;
   // old links with the plain number (/listing/6) are sent on to the private code
   if (/^\d+$/.test(ref)) {
     const old = await repo.getPropertyById(Number(ref));
-    if (old && old.code) return res.redirect(301, `${prefix ? `/${prefix}` : ''}/listing/${old.code}`);
+    if (old && old.code) return res.redirect(301, `/${prefix || 'EN'}/listing/${old.code}`);
   }
   let html = await fs.promises.readFile(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   // the page lives at /listing/<code>, so its relative links (style.css, img/...) must still point at the site root
