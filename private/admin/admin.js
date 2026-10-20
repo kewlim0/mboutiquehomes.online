@@ -645,7 +645,7 @@ function fillRenovation(status) {
     const known = RENOVATION_OPTIONS.findIndex(o => o.zh === (status.zh || '') && o.en === (status.en || ''));
     lfLegacyStatus = !status.zh && !status.en || known >= 0 ? null : { zh: status.zh || '', en: status.en || '' };
     sel.innerHTML = RENOVATION_OPTIONS.map((o, i) => `<option value="${i}">${esc(o.zh)}</option>`).join('')
-        + (lfLegacyStatus ? `<option value="legacy">${esc(lfLegacyStatus.zh || lfLegacyStatus.en)}（原来的）</option>` : '');
+        + (lfLegacyStatus ? `<option value="legacy">${esc(lfLegacyStatus.zh || lfLegacyStatus.en)}</option>` : '');
     sel.value = lfLegacyStatus ? 'legacy' : String(known >= 0 ? known : 0);
 }
 function selectedRenovation() {

@@ -63,7 +63,7 @@ fail=0
 check() { # description, command that must succeed
   if eval "$2" >/dev/null 2>&1; then echo "     ✓ $1"; else echo "     ✗ $1"; fail=1; fi
 }
-check "首页能打开 (200)"                     "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/')\" = 200 ]"
+check "首页能打开 (/ 会跳到 /EN，英文版 200)"  "[ \"\$(curl -s -L -o /dev/null -w '%{http_code}' --max-time 20 '$URL/')\" = 200 ]"
 check "房源接口返回数据"                     "curl -s --max-time 20 '$URL/api/content' | grep -q '\"properties\"'"
 check "后台登录页是 6 位数字密码版"           "curl -s --max-time 20 '$URL/admin/login.js' | grep -q passcode"
 check "面板对未登录访客不可见 (跳转到登录页)"   "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/admin/dashboard')\" = 302 ]"
