@@ -115,6 +115,7 @@ function ensurePropertyColumns() {
       await pool.query('UPDATE properties SET highlights = ?', [JSON.stringify(DEFAULT_HIGHLIGHTS)]);
     }
     if (!have.has('is_closed')) await pool.query('ALTER TABLE properties ADD COLUMN is_closed TINYINT(1) NOT NULL DEFAULT 0');
+    await pool.query("UPDATE properties SET area = 'Outskirt' WHERE area = 'Suburb'");
     const [missing] = await pool.query('SELECT id FROM properties WHERE code IS NULL');
     for (const row of missing) await pool.query('UPDATE properties SET code = ? WHERE id = ?', [newCode(), row.id]);
     const [rows] = await pool.query('SELECT id, beds_zh FROM properties WHERE bedrooms IS NULL OR bathrooms IS NULL');

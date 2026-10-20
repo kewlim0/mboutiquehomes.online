@@ -105,9 +105,9 @@ const i18n = {
         "zh": "Bangsar 邸宅",
         "en": "Bangsar Estates"
     },
-    "areaSuburb": {
+    "areaOutskirt": {
         "zh": "郊区",
-        "en": "Suburbs"
+        "en": "Outskirt"
     },
     "areaBukitTunku": {
         "zh": "Bukit Tunku",
@@ -116,6 +116,10 @@ const i18n = {
     "areaDH": {
         "zh": "Damansara Heights",
         "en": "Damansara Heights"
+    },
+    "areaSeputeh": {
+        "zh": "Seputeh",
+        "en": "Seputeh"
     },
     "teamTitle": {
         "zh": "顾问团队 & 后勤管家服务",
@@ -338,7 +342,7 @@ let loadFailed = false;
 const LANG_KEY = 'luxe-lang';
 let currentLang = 'zh'; // 'zh' or 'en'
 let currentTypeFilter = 'all'; // 'all', 'sale', 'rent'
-let currentAreaFilter = 'all'; // 'all', or one of the areas (KLCC, Mont Kiara, TRX, Bangsar, Suburb, Bukit Tunku, Damansara Heights)
+let currentAreaFilter = 'all'; // 'all', or one of the areas (KLCC, Mont Kiara, TRX, Bangsar, Outskirt, Bukit Tunku, Damansara Heights, Seputeh)
 let currentDetail = null;
 let detailLoadToken = 0; // cancels stale detail-image loads when the modal is reopened/closed
 let isLoading = true; // true while listings are being fetched (shows skeleton cards)

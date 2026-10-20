@@ -785,7 +785,7 @@ body { min-height: 100dvh; }
 @media (max-width: 420px) { .ed-specs { grid-template-columns: 1fr; } }
 
 .ed-h { font-size: 0.9rem; font-weight: 800; color: #111827; margin-bottom: 0.4rem; }
-.ed-desc { resize: vertical; min-height: 7rem; line-height: 1.6; font-size: 0.85rem; }
+.ed-desc { resize: vertical; min-height: 21rem; line-height: 1.6; font-size: 0.85rem; }
 
 /* never trigger the phone's zoom-on-focus */
 @media (max-width: 639px), (pointer: coarse) {

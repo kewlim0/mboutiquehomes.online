@@ -7,7 +7,7 @@ class HttpError extends Error {
   }
 }
 
-const AREAS = ['KLCC', 'Mont Kiara', 'TRX', 'Bangsar', 'Suburb', 'Bukit Tunku', 'Damansara Heights'];
+const AREAS = ['KLCC', 'Mont Kiara', 'TRX', 'Bangsar', 'Outskirt', 'Bukit Tunku', 'Damansara Heights', 'Seputeh'];
 
 function str(value, label, max, { required = false } = {}) {
   const v = typeof value === 'string' ? value.trim() : '';

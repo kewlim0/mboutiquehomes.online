@@ -9,9 +9,10 @@ const AREA_LABELS = {
     'Mont Kiara': { zh: 'Mont Kiara', en: 'Mont Kiara' },
     'TRX': { zh: 'TRX', en: 'TRX' },
     'Bangsar': { zh: 'Bangsar', en: 'Bangsar' },
-    'Suburb': { zh: '郊区', en: 'Suburbs' },
+    'Outskirt': { zh: '郊区', en: 'Outskirt' },
     'Bukit Tunku': { zh: 'Bukit Tunku', en: 'Bukit Tunku' },
-    'Damansara Heights': { zh: 'Damansara Heights', en: 'Damansara Heights' }
+    'Damansara Heights': { zh: 'Damansara Heights', en: 'Damansara Heights' },
+    'Seputeh': { zh: 'Seputeh', en: 'Seputeh' }
 };
 
 // Renovation status is picked from a list. To offer another option, add a line here (Chinese and English text).
@@ -762,9 +763,6 @@ function setLfLang(lang) {
     lfLang = lang;
     document.querySelectorAll('#listingForm [data-lang]').forEach(el => el.classList.toggle('is-off', el.dataset.lang !== lang));
     document.querySelectorAll('#lfLang .seg-btn').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === lang)));
-    $('lfLangHint').textContent = lang === 'zh'
-        ? '先填中文。名称、地段、亮点标签和描述各有中、英文两份，英文留空的话，前台英文页会显示空白。'
-        : '现在填的是英文版本（English 页面看到的内容）。价格、面积、照片和中文版共用。';
     renderLfHighlights();
     updateEnDot();
 }
