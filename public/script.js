@@ -341,13 +341,34 @@ try {
 
 // ---------- Shareable listing links: /CH/listing/<code> (中文) and /EN/listing/<code> (English) ----------
 const LISTING_PATH = /^\/(?:(CH|EN)\/)?listing\/([A-Za-z0-9]+)/i;
+const LANG_PREFIX = /^\/(CH|EN)(?=\/|$)/i;
 const isListingPath = () => LISTING_PATH.test(location.pathname);
 
-// a shared link says which language it is in: that wins over the language this browser remembered
+// an address that names a language (/EN, /CH/listings, /EN/listing/abc...) wins over the language this browser remembered
+let langInUrl = false;
 (() => {
-    const m = LISTING_PATH.exec(location.pathname);
-    if (m && m[1]) currentLang = m[1].toUpperCase() === 'EN' ? 'en' : 'zh';
+    const m = LANG_PREFIX.exec(location.pathname);
+    if (m) { langInUrl = true; currentLang = m[1].toUpperCase() === 'EN' ? 'en' : 'zh'; }
 })();
+const langSegment = () => (currentLang === 'en' ? 'EN' : 'CH');
+const homePath = () => (langInUrl ? `/${langSegment()}` : '/');
+const listingsPagePath = () => (langInUrl ? `/${langSegment()}/listings` : '/listings/');
+
+// keep the address and the menu links in the language that is showing (home: /EN, listings: /EN/listings)
+function syncLangUrl() {
+    if (!langInUrl) return;
+    const rest = location.pathname.replace(LANG_PREFIX, '') || '/';
+    if (!isListingPath()) {
+        const target = /^\/listings\/?$/.test(rest) ? listingsPagePath() : homePath();
+        if (location.pathname !== target) history.replaceState(history.state, '', target + location.search + location.hash);
+    }
+    document.querySelectorAll('a[href]').forEach((a) => {
+        if (a.origin !== location.origin) return;
+        const p = a.pathname.replace(LANG_PREFIX, '') || '/';
+        if (p === '/') a.setAttribute('href', homePath() + a.hash);
+        else if (/^\/listings\/?$/.test(p)) a.setAttribute('href', listingsPagePath() + a.hash);
+    });
+}
 let listingEntryPushed = false; // true when opening the sheet added a browser-history entry
 
 const listingUrl = (item) => `/${currentLang === 'en' ? 'EN' : 'CH'}/listing/${item.code || item.id}`;
@@ -452,8 +473,10 @@ function toggleLanguage() {
     currentLang = currentLang === 'zh' ? 'en' : 'zh';
     try { localStorage.setItem(LANG_KEY, currentLang); } catch (e) { /* ignore */ }
     applyLanguage();
-    // the sheet is open on a shared-style address: keep the address in the language that is now showing
+    // from now on the address names the language: /EN or /CH (and /EN/listings, /EN/listing/<code>)
+    langInUrl = true;
     if (currentDetail && isListingPath()) history.replaceState(history.state, '', listingUrl(currentDetail));
+    syncLangUrl();
 }
 
 // Filter Handlers
@@ -675,7 +698,7 @@ function scrollToListings() {
 function scrollToTeam() {
     const team = document.getElementById('teamSection');
     if (!team) {
-        window.location.href = '../#teamSection'; // not on the home page: go there
+        window.location.href = homePath() + '#teamSection'; // not on the home page: go there
         return;
     }
     team.scrollIntoView({ behavior: 'smooth' });
@@ -790,7 +813,7 @@ function closeDetailModal(fromBrowserBack = false) {
             listingEntryPushed = false;
             history.back();                       // we added that history entry ourselves: remove it
         } else {
-            history.replaceState(null, '', '/');  // arrived through a shared link: there is nothing to go back to
+            history.replaceState(null, '', homePath());  // arrived through a shared link: there is nothing to go back to
         }
     }
 }
@@ -899,6 +922,7 @@ window.addEventListener('popstate', () => {
         listingEntryPushed = false;
         closeDetailModal(true);
     }
+    syncLangUrl();
 });
 
 // somebody tapped a shared link (/listing/12): open that listing as soon as the content has loaded
@@ -910,7 +934,7 @@ function openFromUrl() {
         listingEntryPushed = false;
         openDetailModal(item);
     } else if (isListingPath()) {
-        history.replaceState(null, '', '/');     // that listing does not exist (any more): show the normal page
+        history.replaceState(null, '', homePath());     // that listing does not exist (any more): show the normal page
     }
 }
 
@@ -932,5 +956,6 @@ window.onload = function() {
         if (img.complete && img.naturalWidth > 0) img.classList.add('loaded');
     });
     applyLanguage(); // renders skeleton cards while isLoading
+    syncLangUrl();
     loadContent();
 };

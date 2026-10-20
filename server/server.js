@@ -334,6 +334,16 @@ function listingPreviewTags(p, origin, lang = 'zh') {
   };
 }
 
+// /CH and /EN are the home page, /CH/listings and /EN/listings the listings page, in that language
+// (the page itself reads the language from the address). <base href="/"> keeps its relative files working.
+async function sendSitePage(res, file) {
+  let html = await fs.promises.readFile(path.join(__dirname, '..', 'public', file), 'utf8');
+  html = html.replace('<head>', '<head>\n    <base href="/">');
+  res.set('Cache-Control', 'no-cache').type('html').send(html);
+}
+app.get(/^\/(?:CH|EN)\/?$/i, wrap((req, res) => sendSitePage(res, 'index.html')));
+app.get(/^\/(?:CH|EN)\/listings\/?$/i, wrap((req, res) => sendSitePage(res, 'listings/index.html')));
+
 // /listing/<code> (language = the visitor's own), /CH/listing/<code> (中文), /EN/listing/<code> (English)
 app.get(/^\/(?:(CH|EN)\/)?listing\/([A-Za-z0-9]+)\/?$/i, wrap(async (req, res) => {
   const prefix = req.params[0] ? req.params[0].toUpperCase() : '';
