@@ -290,6 +290,7 @@ const uiText = {
         details: "详情",
         favorite: "收藏",
         share: "分享",
+        copyLink: "复制连接",
         linkCopied: "链接已复制，可以发给朋友了",
         submitted: "委托信息已成功提交！我们的豪宅顾问与专业摄影团队将尽快与您联系。"
     },
@@ -306,6 +307,7 @@ const uiText = {
         details: "Details",
         favorite: "Favorite",
         share: "Share",
+        copyLink: "Copy link",
         linkCopied: "Link copied. Send it to a friend!",
         submitted: "Your request has been submitted! Our luxury advisors and photography team will contact you shortly."
     }
@@ -340,13 +342,14 @@ try {
 // ---------- Shareable listing links: /listing/12 ----------
 let listingEntryPushed = false; // true when opening the sheet added a browser-history entry
 
-const listingUrl = (id) => `/listing/${id}`;
+const listingUrl = (item) => `/listing/${item.code || item.id}`;
+const findListing = (ref) => properties.find((p) => p.code === ref || String(p.id) === ref);
 
 function listingIdFromUrl() {
-    const m = /^\/listing\/(\d+)/.exec(location.pathname);
-    if (m) return Number(m[1]);
+    const m = /^\/listing\/([A-Za-z0-9]+)/.exec(location.pathname);
+    if (m) return m[1];
     const q = new URLSearchParams(location.search).get('listing');
-    return q && /^\d+$/.test(q) ? Number(q) : null;
+    return q && /^[A-Za-z0-9]+$/.test(q) ? q : null;
 }
 
 // page title: the listing's name while its sheet is open, the normal page title otherwise
@@ -362,7 +365,7 @@ function applyTitle() {
 // opened by tapping a card: the address becomes /listing/12 so the page can be shared; Back closes the sheet
 function openListing(item) {
     if (!/^\/listing\/\d+/.test(location.pathname)) {
-        history.pushState({ listing: item.id }, '', listingUrl(item.id));
+        history.pushState({ listing: item.id }, '', listingUrl(item));
         listingEntryPushed = true;
     }
     openDetailModal(item);
@@ -753,6 +756,7 @@ function openDetailModal(item, instant = false) {
     document.getElementById('modalTitle').innerText = item.title[L];
     document.getElementById('modalPrice').innerText = formatPrice(item.priceRM, item.isRentPrice);
     document.getElementById('modalLocation').innerHTML = `<i class="fa-solid fa-location-dot text-gold-600 mr-1"></i> ${esc(item.address)}`;
+    document.getElementById('shareBtnLabel').textContent = ui('copyLink');
     document.getElementById('modalArea').innerText = formatArea(item.areaSqft);
     document.getElementById('modalBeds').innerText = item.beds[L];
     document.getElementById('modalFurnish').innerText = item.status[L];
@@ -862,12 +866,7 @@ function showSiteToast(message) {
 
 async function shareCurrentListing() {
     if (!currentDetail) return;
-    const url = `${location.origin}${listingUrl(currentDetail.id)}`;
-    const title = `${currentDetail.title[currentLang]} | m.boutiquehomes`;
-    if (navigator.share) {                       // phones: the system share sheet (WhatsApp, Instagram, ...)
-        try { await navigator.share({ title, text: title, url }); return; }
-        catch (err) { if (err && err.name === 'AbortError') return; }
-    }
+    const url = `${location.origin}${listingUrl(currentDetail)}`;
     try {
         await navigator.clipboard.writeText(url);
         showSiteToast(ui('linkCopied'));
@@ -884,8 +883,8 @@ window.addEventListener('popstate', () => {
     const id = listingIdFromUrl();
     const detail = document.getElementById('detailModal');
     if (id) {
-        const item = properties.find((p) => p.id === id);
-        if (item && !(currentDetail && currentDetail.id === id && isModalOpen(detail))) openDetailModal(item);
+        const item = findListing(id);
+        if (item && !(currentDetail && currentDetail.id === item.id && isModalOpen(detail))) openDetailModal(item);
     } else if (detail && isModalOpen(detail)) {
         listingEntryPushed = false;
         closeDetailModal(true);
@@ -896,7 +895,7 @@ window.addEventListener('popstate', () => {
 function openFromUrl() {
     const id = listingIdFromUrl();
     if (!id) return;
-    const item = properties.find((p) => p.id === id);
+    const item = findListing(id);
     if (item) {
         listingEntryPushed = false;
         openDetailModal(item);

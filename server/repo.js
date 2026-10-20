@@ -10,11 +10,19 @@ const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
 
 const pair = (zh, en) => ({ zh, en: en || zh });
 
+// Public id used in shared links (/listing/k3v9x2m7qa): short, random, not guessable from the listing number
+const CODE_CHARS = 'abcdefghijkmnpqrstuvwxyz23456789';
+function newCode() {
+  const bytes = require('crypto').randomBytes(10);
+  return Array.from(bytes, (b) => CODE_CHARS[b % CODE_CHARS.length]).join('');
+}
+
 function mapProperty(r, photos) {
   // Bedrooms / bathrooms come from the two dropdowns; older rows that could not be read keep their stored text
   const structured = r.bedrooms && r.bathrooms ? v.bedsText(r.bedrooms, r.bathrooms) : null;
   return {
     id: r.id,
+    code: r.code || null,
     title: pair(r.title_zh, r.title_en),
     type: r.type,
     priceRM: Number(r.price_rm),
@@ -83,6 +91,12 @@ function ensurePropertyColumns() {
     const have = new Set(cols.map((c) => c.COLUMN_NAME));
     if (!have.has('bedrooms')) await pool.query('ALTER TABLE properties ADD COLUMN bedrooms VARCHAR(10) NULL AFTER beds_en');
     if (!have.has('bathrooms')) await pool.query('ALTER TABLE properties ADD COLUMN bathrooms VARCHAR(10) NULL AFTER bedrooms');
+    if (!have.has('code')) {
+      await pool.query('ALTER TABLE properties ADD COLUMN code VARCHAR(16) NULL');
+      await pool.query('ALTER TABLE properties ADD UNIQUE KEY uq_properties_code (code)');
+    }
+    const [missing] = await pool.query('SELECT id FROM properties WHERE code IS NULL');
+    for (const row of missing) await pool.query('UPDATE properties SET code = ? WHERE id = ?', [newCode(), row.id]);
     const [rows] = await pool.query('SELECT id, beds_zh FROM properties WHERE bedrooms IS NULL OR bathrooms IS NULL');
     for (const row of rows) {
       const parsed = v.parseBeds(row.beds_zh);
@@ -98,11 +112,15 @@ async function getHero() {
 }
 
 // One listing (used for the link preview of a shared listing)
-async function getPropertyById(id) {
+async function getPropertyById(id) { return getOneProperty('id', id); }
+async function getPropertyByCode(code) { return getOneProperty('code', code); }
+
+async function getOneProperty(column, value) {
   await ensurePropertyColumns();
   await ensurePropertyPhotos();
-  const [rows] = await pool.query('SELECT * FROM properties WHERE id = ?', [id]);
+  const [rows] = await pool.query(`SELECT * FROM properties WHERE ${column === 'code' ? 'code' : 'id'} = ?`, [value]);
   if (!rows.length) return null;
+  const id = rows[0].id;
   const [photos] = await pool.query('SELECT img FROM property_photos WHERE property_id = ? ORDER BY sort_order, id', [id]);
   return mapProperty(rows[0], photos.map((p) => p.img));
 }
@@ -163,6 +181,7 @@ async function createProperty(p) {
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [...propertyValues(p), top]
     );
+    await conn.query('UPDATE properties SET code = ? WHERE id = ?', [newCode(), res.insertId]);
     await writePhotos(conn, res.insertId, p.photos);
     await conn.commit();
     return res.insertId;
@@ -457,7 +476,7 @@ async function seedDefaults() {
 }
 
 module.exports = {
-  UPLOAD_DIR, getContent, getPropertyById, createProperty, updateProperty, deleteProperty,
+  UPLOAD_DIR, getContent, getPropertyById, getPropertyByCode, createProperty, updateProperty, deleteProperty,
   createTeamMember, updateTeamMember, deleteTeamMember, setHero, seedDefaults,
   ensureAdmins, listAdmins, getAdmin, getAdminsWithHash, createAdmin, updateAdmin, setAdminPasscode, deleteAdmin,
   touchAdminLogin, setOwnerPasscode,

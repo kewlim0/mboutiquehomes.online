@@ -308,7 +308,7 @@ function listingPreviewTags(p, origin) {
   const description = [price, p.beds.zh, `${p.areaSqft.toLocaleString('en-US')} sqft`, p.location.zh].filter(Boolean).join(' · ');
   const cover = p.photos && p.photos.length ? p.photos[0] : p.img;
   const image = /^https?:\/\//i.test(cover) ? cover : `${origin}/${cover.replace(/^\/+/, '')}`;
-  const url = `${origin}/listing/${p.id}`;
+  const url = `${origin}/listing/${p.code || p.id}`;
   return {
     title,
     tags: [
@@ -330,13 +330,18 @@ function listingPreviewTags(p, origin) {
   };
 }
 
-app.get('/listing/:id', wrap(async (req, res) => {
-  const id = Number.parseInt(req.params.id, 10);
+app.get('/listing/:ref', wrap(async (req, res) => {
+  const ref = String(req.params.ref);
   const origin = `${req.protocol}://${req.get('host')}`;
+  // old links with the plain number (/listing/6) are sent on to the private code
+  if (/^\d+$/.test(ref)) {
+    const old = await repo.getPropertyById(Number(ref));
+    if (old && old.code) return res.redirect(301, `/listing/${old.code}`);
+  }
   let html = await fs.promises.readFile(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  // the page lives at /listing/12, so its relative links (style.css, img/...) must still point at the site root
+  // the page lives at /listing/<code>, so its relative links (style.css, img/...) must still point at the site root
   html = html.replace('<head>', '<head>\n    <base href="/">');
-  const property = Number.isInteger(id) && id > 0 ? await repo.getPropertyById(id) : null;
+  const property = /^[a-z0-9]{6,16}$/.test(ref) ? await repo.getPropertyByCode(ref) : null;
   if (property) {
     const preview = listingPreviewTags(property, origin);
     html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${escHtml(preview.title)}</title>`).replace('</head>', `    ${preview.tags}\n</head>`);

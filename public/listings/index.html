@@ -240,9 +240,6 @@
         <div id="detailModal" class="hidden absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center transition-all">
             <div class="bg-white w-full max-h-[92%] rounded-t-3xl sm:rounded-2xl overflow-y-auto text-charcoal-900 shadow-2xl relative animate-slide-up">
                 <!-- Close Button -->
-                <button type="button" id="shareBtn" aria-label="分享" class="absolute top-3 right-14 z-20 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-md">
-                    <i class="fa-solid fa-share-nodes text-sm"></i>
-                </button>
                 <button onclick="closeDetailModal()" aria-label="关闭" class="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-md">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
@@ -261,7 +258,7 @@
                 <!-- Content -->
                 <!-- Skeleton shown while the detail view is loading -->
                 <div id="modalSkeleton" class="p-5 space-y-4" aria-hidden="true">
-                    <div class="flex justify-between items-start gap-4">
+                    <div class="flex justify-between items-start gap-2">
                         <div class="flex-1 space-y-2">
                             <div class="skeleton h-5 w-10/12 rounded"></div>
                             <div class="skeleton h-3 w-6/12 rounded"></div>
@@ -297,11 +294,18 @@
                 <!-- Content -->
                 <div id="modalContent" class="p-5 space-y-4">
                     <div>
-                        <div class="flex justify-between items-start">
+                        <div class="flex justify-between items-start gap-2">
                             <h2 id="modalTitle" class="font-serif text-lg font-bold text-charcoal-900">Pavilion Suites KLCC</h2>
-                            <span id="modalPrice" class="text-base font-bold text-gold-700">RM 6,500 / 月</span>
+                            <span id="modalPrice" class="text-base font-bold text-gold-700 flex-shrink-0 whitespace-nowrap">RM 6,500 / 月</span>
                         </div>
-                        <p id="modalLocation" class="text-xs text-gray-500 mt-1"><i class="fa-solid fa-location-dot text-gold-600 mr-1"></i> Jalan Bukit Bintang, KLCC</p>
+                        <!-- address takes most of the row; a small column on the right holds the copy-link button -->
+                        <div class="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                            <p id="modalLocation" class="text-xs text-gray-500 min-w-0"><i class="fa-solid fa-location-dot text-gold-600 mr-1"></i> Jalan Bukit Bintang, KLCC</p>
+                            <button type="button" id="shareBtn" class="flex flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border border-gold-500/40 text-gold-700 hover:bg-gold-500/10 active:scale-95 transition">
+                                <i class="fa-regular fa-copy text-sm" aria-hidden="true"></i>
+                                <span id="shareBtnLabel" class="text-[11px] font-bold leading-none whitespace-nowrap">复制连接</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Key Spec Grid -->
