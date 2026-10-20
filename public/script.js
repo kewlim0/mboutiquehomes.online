@@ -105,6 +105,18 @@ const i18n = {
         "zh": "Bangsar 邸宅",
         "en": "Bangsar Estates"
     },
+    "areaSuburb": {
+        "zh": "郊区",
+        "en": "Suburbs"
+    },
+    "areaBukitTunku": {
+        "zh": "Bukit Tunku",
+        "en": "Bukit Tunku"
+    },
+    "areaDH": {
+        "zh": "Damansara Heights",
+        "en": "Damansara Heights"
+    },
     "teamTitle": {
         "zh": "顾问团队 & 后勤管家服务",
         "en": "Advisors & Concierge Services"
@@ -291,6 +303,8 @@ const uiText = {
         favorite: "收藏",
         share: "分享",
         copyLink: "复制连接",
+        sold: "已售出",
+        rented: "已出租",
         linkCopied: "链接已复制，可以发给朋友了",
         submitted: "委托信息已成功提交！我们的豪宅顾问与专业摄影团队将尽快与您联系。"
     },
@@ -308,6 +322,8 @@ const uiText = {
         favorite: "Favorite",
         share: "Share",
         copyLink: "Copy link",
+        sold: "Sold",
+        rented: "Rented",
         linkCopied: "Link copied. Send it to a friend!",
         submitted: "Your request has been submitted! Our luxury advisors and photography team will contact you shortly."
     }
@@ -322,7 +338,7 @@ let loadFailed = false;
 const LANG_KEY = 'luxe-lang';
 let currentLang = 'zh'; // 'zh' or 'en'
 let currentTypeFilter = 'all'; // 'all', 'sale', 'rent'
-let currentAreaFilter = 'all'; // 'all', 'KLCC', 'Mont Kiara', 'TRX', 'Bangsar'
+let currentAreaFilter = 'all'; // 'all', or one of the areas (KLCC, Mont Kiara, TRX, Bangsar, Suburb, Bukit Tunku, Damansara Heights)
 let currentDetail = null;
 let detailLoadToken = 0; // cancels stale detail-image loads when the modal is reopened/closed
 let isLoading = true; // true while listings are being fetched (shows skeleton cards)
@@ -609,6 +625,41 @@ async function loadContent() {
     openFromUrl();
 }
 
+// "Sold" for a sale listing, "Rented" for a rental one (only when the admin marked it as closed)
+const closedLabel = (item) => (item.closed ? ui(item.type === 'rent' ? 'rented' : 'sold') : '');
+
+// Room line of the detail sheet: Chinese stays on one line (3 房 2 卫); English goes on two (3 bedrooms / 2 bathrooms)
+function bedsHtml(item, L) {
+    if (L === 'en' && item.bedrooms && item.bathrooms) {
+        const plural = (n, one, many) => (n === '1' || n === 'studio' ? one : many);
+        const bed = item.bedrooms === 'studio' ? 'Studio' : `${item.bedrooms} ${plural(item.bedrooms, 'bedroom', 'bedrooms')}`;
+        return `${esc(bed)}<br>${esc(`${item.bathrooms} ${plural(item.bathrooms, 'bathroom', 'bathrooms')}`)}`;
+    }
+    return esc(item.beds[L]);
+}
+
+// a small icon that fits the tag when the words are recognisable, a tick otherwise
+function highlightIcon(text) {
+    const t = String(text).toLowerCase();
+    if (/pool|泳池/.test(t)) return 'fa-person-swimming';
+    if (/gym|fitness|健身/.test(t)) return 'fa-dumbbell';
+    if (/secur|guard|安保|保安/.test(t)) return 'fa-shield-halved';
+    if (/mrt|lrt|train|station|地铁|车站/.test(t)) return 'fa-train';
+    if (/park|car|车位|停车/.test(t)) return 'fa-car';
+    if (/view|景/.test(t)) return 'fa-mountain-sun';
+    if (/furnish|家具|装修/.test(t)) return 'fa-couch';
+    return 'fa-circle-check';
+}
+
+function renderHighlights(item, L) {
+    const list = item.highlights || [];
+    document.getElementById('modalHighlightsWrap').classList.toggle('hidden', list.length === 0);
+    document.getElementById('modalHighlights').innerHTML = list.map((h) => {
+        const text = h[L] || h.zh;
+        return `<span class="px-2 py-1 bg-gray-100 rounded-md text-gray-600"><i class="fa-solid ${highlightIcon(`${h.zh} ${h.en}`)} text-gold-600 mr-1"></i>${esc(text)}</span>`;
+    }).join('');
+}
+
 function renderProperties() {
     if (isLoading) {
         renderSkeletons();
@@ -657,6 +708,7 @@ function renderProperties() {
         card.innerHTML = `
             <div class="relative h-28 w-full overflow-hidden skeleton">
                 <img src="${esc(Store.resolve(item.img))}" alt="${esc(item.title[L])}" loading="lazy" onload="this.classList.add('loaded')" class="img-fade w-full h-full object-cover group-hover:scale-105 transition duration-500" onerror="this.src='https://placehold.co/600x400/1e293b/ffffff?text=Luxe+Property'">
+                ${item.closed ? `<div class="absolute inset-0 bg-black/45 flex items-center justify-center pointer-events-none"><span class="px-3 py-1 rounded-full bg-white/95 text-charcoal-900 text-[11px] font-extrabold uppercase tracking-wider shadow-md">${esc(closedLabel(item))}</span></div>` : ''}
                 <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[9px] font-bold text-white uppercase tracking-wide ${item.type === 'rent' ? 'bg-gold-500' : 'bg-charcoal-900'} shadow-md">
                     ${ui(item.type)}
                 </span>
@@ -791,9 +843,28 @@ function openDetailModal(item, instant = false) {
     document.getElementById('modalLocation').innerHTML = `<i class="fa-solid fa-location-dot text-gold-600 mr-1"></i> ${esc(item.address)}`;
     document.getElementById('shareBtnLabel').textContent = ui('copyLink');
     document.getElementById('modalArea').innerText = formatArea(item.areaSqft);
-    document.getElementById('modalBeds').innerText = item.beds[L];
+    document.getElementById('modalBeds').innerHTML = bedsHtml(item, L);
     document.getElementById('modalFurnish').innerText = item.status[L];
     document.getElementById('modalDesc').innerText = item.desc[L];
+
+    renderHighlights(item, L);
+
+    // sold / rented: say so clearly and stop the "book a viewing" button
+    const closedBadge = document.getElementById('modalClosedBadge');
+    closedBadge.textContent = closedLabel(item);
+    closedBadge.classList.toggle('hidden', !item.closed);
+    const book = document.getElementById('modalBookBtn');
+    const bookText = book.querySelector('[data-i18n="waBook"]');
+    book.classList.toggle('is-closed', !!item.closed);
+    if (item.closed) {
+        book.removeAttribute('href');
+        book.setAttribute('aria-disabled', 'true');
+        bookText.textContent = closedLabel(item);
+    } else {
+        book.href = 'https://api.whatsapp.com/send?phone=60149314514';
+        book.removeAttribute('aria-disabled');
+        bookText.textContent = i18n.waBook[L];
+    }
 
     const badge = document.getElementById('modalTypeBadge');
     badge.innerText = ui(item.type);

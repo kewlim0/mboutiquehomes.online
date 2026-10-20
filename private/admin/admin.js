@@ -8,8 +8,18 @@ const AREA_LABELS = {
     'KLCC': { zh: 'KLCC 核心区', en: 'KLCC Core' },
     'Mont Kiara': { zh: 'Mont Kiara', en: 'Mont Kiara' },
     'TRX': { zh: 'TRX', en: 'TRX' },
-    'Bangsar': { zh: 'Bangsar', en: 'Bangsar' }
+    'Bangsar': { zh: 'Bangsar', en: 'Bangsar' },
+    'Suburb': { zh: '郊区', en: 'Suburbs' },
+    'Bukit Tunku': { zh: 'Bukit Tunku', en: 'Bukit Tunku' },
+    'Damansara Heights': { zh: 'Damansara Heights', en: 'Damansara Heights' }
 };
+
+// Renovation status is picked from a list. To offer another option, add a line here (Chinese and English text).
+const RENOVATION_OPTIONS = [
+    { zh: '95% 新', en: '95% New' },
+    { zh: '90% 新', en: '90% New' },
+    { zh: '85% 新', en: '85% New' }
+];
 
 // ---------- helpers ----------
 function esc(value) {
@@ -578,6 +588,7 @@ function renderListings() {
                 <div class="min-w-0 flex-1 flex flex-col">
                     <div class="flex items-center gap-2 mb-0.5">
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${p.type === 'rent' ? 'bg-gold-500' : 'bg-charcoal-900'}">${p.type === 'rent' ? '出租' : '出售'}</span>
+                        ${p.closed ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">${p.type === 'rent' ? '已出租' : '已售出'}</span>` : ''}
                         <span class="text-[11px] text-gray-400 truncate">${esc(p.location.zh)}</span>
                         ${(p.photos || []).length > 1 ? `<span class="text-[11px] text-gray-400 flex-shrink-0"><i class="fa-regular fa-images mr-0.5"></i>${p.photos.length}</span>` : ''}
                     </div>
@@ -626,6 +637,59 @@ function updateBedsPreview() {
 $('lf-bedrooms').addEventListener('change', updateBedsPreview);
 $('lf-bathrooms').addEventListener('change', updateBedsPreview);
 
+// ----- renovation status: a dropdown; an older free-text value is kept as one extra choice until it is changed -----
+let lfLegacyStatus = null;
+function fillRenovation(status) {
+    const sel = $('lf-status');
+    const known = RENOVATION_OPTIONS.findIndex(o => o.zh === (status.zh || '') && o.en === (status.en || ''));
+    lfLegacyStatus = !status.zh && !status.en || known >= 0 ? null : { zh: status.zh || '', en: status.en || '' };
+    sel.innerHTML = RENOVATION_OPTIONS.map((o, i) => `<option value="${i}">${esc(o.zh)}</option>`).join('')
+        + (lfLegacyStatus ? `<option value="legacy">${esc(lfLegacyStatus.zh || lfLegacyStatus.en)}（原来的）</option>` : '');
+    sel.value = lfLegacyStatus ? 'legacy' : String(known >= 0 ? known : 0);
+}
+function selectedRenovation() {
+    const v = $('lf-status').value;
+    return v === 'legacy' && lfLegacyStatus ? lfLegacyStatus : RENOVATION_OPTIONS[Number(v)] || RENOVATION_OPTIONS[0];
+}
+
+// ----- highlight tags: add, rename, remove. The box shows the language picked at the top. -----
+const MAX_HIGHLIGHTS = 12;
+let lfHighlights = [];
+function renderLfHighlights() {
+    const other = lfLang === 'zh' ? 'en' : 'zh';
+    $('lf-highlights').innerHTML = lfHighlights.length
+        ? lfHighlights.map((h, i) => `
+            <div class="hl-row">
+                <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                <input data-hl="${i}" value="${esc(h[lfLang])}" maxlength="40" placeholder="${lfLang === 'zh' ? '例如：无边际泳池' : 'e.g. Infinity Pool'}"
+                    title="${esc(h[other] ? (lfLang === 'zh' ? 'English: ' : '中文：') + h[other] : '')}">
+                <button type="button" class="hl-del" data-hl-del="${i}" aria-label="删除这个标签"><i class="fa-solid fa-xmark"></i></button>
+            </div>`).join('')
+        : '<p class="text-[11px] text-gray-400">还没有标签。点下面「添加标签」，例如：无边际泳池、24 小时安保。</p>';
+    $('lf-hl-add').classList.toggle('hidden', lfHighlights.length >= MAX_HIGHLIGHTS);
+}
+$('lf-highlights').addEventListener('input', (e) => {
+    const i = e.target.dataset.hl;
+    if (i === undefined) return;
+    lfHighlights[Number(i)][lfLang] = e.target.value;
+    updateEnDot();
+});
+$('lf-highlights').addEventListener('click', (e) => {
+    const del = e.target.closest('[data-hl-del]');
+    if (!del) return;
+    lfHighlights.splice(Number(del.dataset.hlDel), 1);
+    renderLfHighlights();
+    updateEnDot();
+});
+$('lf-hl-add').addEventListener('click', () => {
+    if (lfHighlights.length >= MAX_HIGHLIGHTS) return;
+    lfHighlights.push({ zh: '', en: '' });
+    renderLfHighlights();
+    const inputs = $('lf-highlights').querySelectorAll('input');
+    inputs[inputs.length - 1].focus();
+    updateEnDot();
+});
+
 function openListingForm(p) {
     editingListingId = p ? p.id : null;
     $('listingFormTitle').textContent = p ? '编辑房源' : '新增房源';
@@ -648,8 +712,9 @@ function openListingForm(p) {
     $('lf-loc-zh').value = v.location.zh || '';
     $('lf-loc-en').value = v.location.en || '';
     $('lf-address').value = v.address || '';
-    $('lf-status-zh').value = v.status.zh || '';
-    $('lf-status-en').value = v.status.en || '';
+    fillRenovation(v.status);
+    lfHighlights = (v.highlights || []).map(h => ({ zh: h.zh || '', en: h.en || '' }));
+    $('lf-closed').checked = !!v.closed;
     $('lf-desc-zh').value = v.desc.zh || '';
     $('lf-desc-en').value = v.desc.en || '';
     lfPhotos = p ? [...(p.photos && p.photos.length ? p.photos : [p.img])] : [];
@@ -658,7 +723,7 @@ function openListingForm(p) {
     renderLfPhotos();
     setLfType(v.type);
     updatePriceFmt();
-    setLfLang('zh');
+    setLfLang('zh');         // also draws the highlight tags
     showSheet('listingSheet');
     $('listingForm').scrollTop = 0;
 }
@@ -676,6 +741,8 @@ function setLfType(type) {
     badge.textContent = rent ? '出租 · 点此切换' : '出售 · 点此切换';
     badge.classList.toggle('is-sale', !rent);
     $('lf-price-unit').textContent = rent ? '/ 月' : '';
+    $('lf-closed-title').textContent = rent ? '标记为已出租' : '标记为已售出';
+    $('lf-closed-sub').textContent = `打开后，前台这个房源会显示「${rent ? '已出租' : '已售出'}」，并且不能再预约看房。`;
 }
 $('lf-type-badge').addEventListener('click', () => setLfType($('lf-type').value === 'rent' ? 'sale' : 'rent'));
 
@@ -686,18 +753,19 @@ function updatePriceFmt() {
 $('lf-price').addEventListener('input', updatePriceFmt);
 $('lf-type-badge').addEventListener('click', updatePriceFmt);
 
-const LF_EN_IDS = ['lf-title-en', 'lf-loc-en', 'lf-status-en', 'lf-desc-en'];
+const LF_EN_IDS = ['lf-title-en', 'lf-loc-en', 'lf-desc-en'];
 let lfLang = 'zh';
 function updateEnDot() {
-    $('lfEnDot').classList.toggle('is-off', LF_EN_IDS.every(id => $(id).value.trim()));
+    $('lfEnDot').classList.toggle('is-off', LF_EN_IDS.every(id => $(id).value.trim()) && lfHighlights.every(h => h.en.trim() || !h.zh.trim()));
 }
 function setLfLang(lang) {
     lfLang = lang;
     document.querySelectorAll('#listingForm [data-lang]').forEach(el => el.classList.toggle('is-off', el.dataset.lang !== lang));
     document.querySelectorAll('#lfLang .seg-btn').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === lang)));
     $('lfLangHint').textContent = lang === 'zh'
-        ? '先填中文。名称、地段、装修状态和描述各有中、英文两份，英文留空的话，前台英文页会显示空白。'
+        ? '先填中文。名称、地段、亮点标签和描述各有中、英文两份，英文留空的话，前台英文页会显示空白。'
         : '现在填的是英文版本（English 页面看到的内容）。价格、面积、照片和中文版共用。';
+    renderLfHighlights();
     updateEnDot();
 }
 $('lfLang').addEventListener('click', (e) => {
@@ -738,7 +806,9 @@ $('listingForm').addEventListener('submit', async (e) => {
         },
         address: $('lf-address').value,
         photos: lfPhotos,
-        status: { zh: $('lf-status-zh').value, en: $('lf-status-en').value },
+        status: selectedRenovation(),
+        highlights: lfHighlights.filter(h => h.zh.trim() || h.en.trim()),
+        closed: $('lf-closed').checked,
         desc: { zh: $('lf-desc-zh').value, en: $('lf-desc-en').value }
     };
 

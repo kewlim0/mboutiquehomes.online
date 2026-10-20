@@ -284,3 +284,6 @@ html {
     transition: opacity 0.25s, transform 0.25s;
 }
 .site-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* sold / rented listing: the "book a viewing" button is greyed out and does nothing */
+#modalBookBtn.is-closed { background: #9ca3af; box-shadow: none; pointer-events: none; cursor: default; }

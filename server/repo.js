@@ -17,6 +17,19 @@ function newCode() {
   return Array.from(bytes, (b) => CODE_CHARS[b % CODE_CHARS.length]).join('');
 }
 
+function parseHighlights(text) {
+  try {
+    const list = JSON.parse(text || '[]');
+    return Array.isArray(list) ? list.filter((h) => h && (h.zh || h.en)).map((h) => pair(h.zh || h.en, h.en)) : [];
+  } catch (e) { return []; }
+}
+
+// the four tags the site used to show on every listing: existing listings keep them when the column is first added
+const DEFAULT_HIGHLIGHTS = [
+  { zh: '无边际泳池', en: 'Infinity Pool' }, { zh: '高空健身房', en: 'Sky Gym' },
+  { zh: '24小时安保', en: '24-hour Security' }, { zh: '直通 MRT 车站', en: 'Direct MRT Access' },
+];
+
 function mapProperty(r, photos) {
   // Bedrooms / bathrooms come from the two dropdowns; older rows that could not be read keep their stored text
   const structured = r.bedrooms && r.bathrooms ? v.bedsText(r.bedrooms, r.bathrooms) : null;
@@ -34,6 +47,8 @@ function mapProperty(r, photos) {
     area: r.area,
     location: pair(r.location_zh, r.location_en),
     address: r.address,
+    highlights: parseHighlights(r.highlights),
+    closed: !!r.is_closed,   // sold (sale) / rented (rent): shown as such on the site
     img: r.img,
     photos: photos && photos.length ? photos : [r.img],
     status: pair(r.status_zh, r.status_en),
@@ -95,6 +110,11 @@ function ensurePropertyColumns() {
       await pool.query('ALTER TABLE properties ADD COLUMN code VARCHAR(16) NULL');
       await pool.query('ALTER TABLE properties ADD UNIQUE KEY uq_properties_code (code)');
     }
+    if (!have.has('highlights')) {
+      await pool.query('ALTER TABLE properties ADD COLUMN highlights TEXT NULL');
+      await pool.query('UPDATE properties SET highlights = ?', [JSON.stringify(DEFAULT_HIGHLIGHTS)]);
+    }
+    if (!have.has('is_closed')) await pool.query('ALTER TABLE properties ADD COLUMN is_closed TINYINT(1) NOT NULL DEFAULT 0');
     const [missing] = await pool.query('SELECT id FROM properties WHERE code IS NULL');
     for (const row of missing) await pool.query('UPDATE properties SET code = ? WHERE id = ?', [newCode(), row.id]);
     const [rows] = await pool.query('SELECT id, beds_zh FROM properties WHERE bedrooms IS NULL OR bathrooms IS NULL');
@@ -160,6 +180,12 @@ const propertyValues = (p) => [
   p.location.zh, p.location.en, p.address, p.img, p.status.zh, p.status.en, p.desc.zh, p.desc.en,
 ];
 
+// highlight tags and the sold / rented flag; a field the client did not send stays as it is
+async function writeExtras(conn, id, p) {
+  if (p.highlights !== undefined) await conn.query('UPDATE properties SET highlights = ? WHERE id = ?', [JSON.stringify(p.highlights), id]);
+  if (p.closed !== undefined) await conn.query('UPDATE properties SET is_closed = ? WHERE id = ?', [p.closed ? 1 : 0, id]);
+}
+
 async function writePhotos(conn, propertyId, photos) {
   await conn.query('DELETE FROM property_photos WHERE property_id = ?', [propertyId]);
   for (const [i, img] of photos.entries()) {
@@ -182,6 +208,7 @@ async function createProperty(p) {
       [...propertyValues(p), top]
     );
     await conn.query('UPDATE properties SET code = ? WHERE id = ?', [newCode(), res.insertId]);
+    await writeExtras(conn, res.insertId, p);
     await writePhotos(conn, res.insertId, p.photos);
     await conn.commit();
     return res.insertId;
@@ -210,6 +237,7 @@ async function updateProperty(id, p) {
        WHERE id = ?`,
       [...propertyValues(p), id]
     );
+    await writeExtras(conn, id, p);
     await writePhotos(conn, id, p.photos);
     await conn.commit();
   } catch (err) {
@@ -458,6 +486,7 @@ async function seedDefaults() {
          p.location.en, p.address, p.img, p.status.zh, p.status.en, p.desc.zh, p.desc.en, i]
       );
     }
+    await conn.query('UPDATE properties SET highlights = ?', [JSON.stringify(DEFAULT_HIGHLIGHTS)]);
     for (const [i, t] of seedData.team.entries()) {
       await conn.query(
         'INSERT INTO team (name, role_zh, role_en, meta_zh, meta_en, img, sort_order) VALUES (?,?,?,?,?,?,?)',

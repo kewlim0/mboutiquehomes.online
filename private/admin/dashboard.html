@@ -336,6 +336,9 @@
                                     <option value="Mont Kiara">Mont Kiara</option>
                                     <option value="TRX">TRX</option>
                                     <option value="Bangsar">Bangsar</option>
+                                    <option value="Suburb">郊区 Suburb</option>
+                                    <option value="Bukit Tunku">Bukit Tunku</option>
+                                    <option value="Damansara Heights">Damansara Heights</option>
                                 </select>
                             </label>
                             <input id="lf-loc-zh" data-lang="zh" class="ed-line" placeholder="房源卡片上的地段名，例如 KLCC 核心区" maxlength="100">
@@ -355,11 +358,21 @@
                             </div>
                             <div>
                                 <span>装修状态</span>
-                                <input id="lf-status-zh" data-lang="zh" placeholder="95% 新 · 拎包入住" maxlength="255">
-                                <input id="lf-status-en" data-lang="en" class="is-off" placeholder="95% New · Move-in Ready" maxlength="255">
+                                <select id="lf-status" aria-label="装修状态"></select>
                             </div>
                         </div>
                         <p id="lf-beds-preview" class="text-[11px] text-gray-500 leading-relaxed"></p>
+
+                        <div>
+                            <h4 class="ed-h">房源亮点与配置 <small class="ed-h-sub">前台显示的小标签</small></h4>
+                            <div id="lf-highlights" class="hl-list"></div>
+                            <button type="button" id="lf-hl-add" class="hl-add"><i class="fa-solid fa-plus mr-1"></i>添加标签</button>
+                        </div>
+
+                        <label class="switch-row ed-closed">
+                            <span><b id="lf-closed-title">标记为已售出</b><small id="lf-closed-sub">打开后，前台这个房源会显示「已售出」，并且不能再预约看房。</small></span>
+                            <input type="checkbox" id="lf-closed" class="switch">
+                        </label>
 
                         <div>
                             <h4 class="ed-h">详细描述</h4>

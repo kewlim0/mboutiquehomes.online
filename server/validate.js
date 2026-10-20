@@ -7,7 +7,7 @@ class HttpError extends Error {
   }
 }
 
-const AREAS = ['KLCC', 'Mont Kiara', 'TRX', 'Bangsar'];
+const AREAS = ['KLCC', 'Mont Kiara', 'TRX', 'Bangsar', 'Suburb', 'Bukit Tunku', 'Damansara Heights'];
 
 function str(value, label, max, { required = false } = {}) {
   const v = typeof value === 'string' ? value.trim() : '';
@@ -86,6 +86,24 @@ function bedsFields(b) {
   return { bedrooms: parsed ? parsed.bedrooms : null, bathrooms: parsed ? parsed.bathrooms : null, beds };
 }
 
+// Highlight tags shown under "Highlights & Facilities". Each one has a Chinese and an English text; a missing one
+// falls back to the other, empty tags are dropped. `undefined` means "the client did not send them": leave as stored.
+const MAX_HIGHLIGHTS = 12;
+function highlights(value) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new HttpError(400, '亮点标签格式不对');
+  if (value.length > MAX_HIGHLIGHTS * 2) throw new HttpError(400, `亮点标签最多 ${MAX_HIGHLIGHTS} 个`);
+  const list = [];
+  for (const item of value) {
+    const o = item && typeof item === 'object' ? item : {};
+    const zh = str(o.zh, '亮点标签（中文）', 40);
+    const en = str(o.en, '亮点标签（英文）', 40);
+    if (zh || en) list.push({ zh: zh || en, en: en || zh });
+  }
+  if (list.length > MAX_HIGHLIGHTS) throw new HttpError(400, `亮点标签最多 ${MAX_HIGHLIGHTS} 个`);
+  return list;
+}
+
 function property(body) {
   const b = body && typeof body === 'object' ? body : {};
   if (!['rent', 'sale'].includes(b.type)) throw new HttpError(400, '类型必须是出租或出售');
@@ -102,6 +120,8 @@ function property(body) {
     ...photosFields(b),
     status: bilingual(b.status, '亮点标签', 255),
     desc: bilingual(b.desc, '描述', 5000),
+    highlights: highlights(b.highlights),
+    closed: b.closed === undefined ? undefined : b.closed === true,
   };
 }
 

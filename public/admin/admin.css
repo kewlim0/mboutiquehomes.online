@@ -803,3 +803,30 @@ body { min-height: 100dvh; }
     .ed-price-row { justify-content: flex-start; }
     .ed-price input { width: 8rem; text-align: left; }
 }
+
+/* ===== listing editor: full screen ===== */
+#listingSheet { align-items: stretch; background: #fff; backdrop-filter: none; }
+#listingSheet .sheet-lg {
+    max-width: none; width: 100%;
+    height: 100vh; height: 100dvh; max-height: none;
+    border-radius: 0; box-shadow: none;
+}
+#listingSheet .sheet-grab { display: none; }
+#listingSheet .sheet-lg > :not(.sheet-body) { width: 100%; max-width: 56rem; margin-left: auto; margin-right: auto; }
+#listingSheet .sheet-body { flex: 1 1 auto; min-height: 0; padding-top: 0.5rem; }
+#listingSheet .editor-phone, #listingSheet .sheet-actions { width: 100%; max-width: 56rem; margin-left: auto; margin-right: auto; }
+@media (min-width: 720px) { #listingSheet .editor-hero { aspect-ratio: 16 / 7; } }
+
+/* ===== highlight tags ===== */
+.ed-h-sub { font-size: 0.65rem; font-weight: 500; color: #9ca3af; margin-left: 0.35rem; }
+.hl-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.hl-row { display: flex; align-items: center; gap: 0.5rem; }
+.hl-row > i { color: #b8860b; font-size: 0.8rem; flex: 0 0 auto; }
+.hl-row input { flex: 1; min-width: 0; font: inherit; font-size: 0.8rem; padding: 0.45rem 0.65rem; border: 1px dashed #d1d5db; border-radius: 0.6rem; outline: none; background: #fff; }
+.hl-row input:focus { border-style: solid; border-color: #b8860b; box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.12); }
+.hl-del { flex: 0 0 auto; width: 1.9rem; height: 1.9rem; border: 0; border-radius: 9999px; background: #f3f4f6; color: #6b7280; cursor: pointer; }
+.hl-del:hover { background: #fee2e2; color: #b91c1c; }
+.hl-add { margin-top: 0.5rem; padding: 0.4rem 0.9rem; border: 1px dashed #b8860b; border-radius: 9999px; background: transparent; color: #8a6508; font-size: 0.75rem; font-weight: 700; cursor: pointer; }
+.hl-add.hidden { display: none; }
+.ed-closed { background: #f9fafb; border-radius: 0.8rem; padding: 0.75rem; }
+@media (max-width: 639px), (pointer: coarse) { .hl-row input { font-size: 16px; } }

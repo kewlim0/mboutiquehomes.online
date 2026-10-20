@@ -157,6 +157,9 @@
                         <button onclick="setAreaFilter('Mont Kiara')" data-area="Mont Kiara" class="area-btn px-3 py-1 rounded-full text-xs whitespace-nowrap bg-white text-gray-600 border border-gray-200 font-medium"><span data-i18n="areaMK">满家乐 Mont Kiara</span></button>
                         <button onclick="setAreaFilter('TRX')" data-area="TRX" class="area-btn px-3 py-1 rounded-full text-xs whitespace-nowrap bg-white text-gray-600 border border-gray-200 font-medium"><span data-i18n="areaTRX">TRX 金融中心</span></button>
                         <button onclick="setAreaFilter('Bangsar')" data-area="Bangsar" class="area-btn px-3 py-1 rounded-full text-xs whitespace-nowrap bg-white text-gray-600 border border-gray-200 font-medium"><span data-i18n="areaBangsar">Bangsar 邸宅</span></button>
+                        <button onclick="setAreaFilter('Suburb')" data-area="Suburb" class="area-btn px-3 py-1 rounded-full text-xs whitespace-nowrap bg-white text-gray-600 border border-gray-200 font-medium"><span data-i18n="areaSuburb">郊区</span></button>
+                        <button onclick="setAreaFilter('Bukit Tunku')" data-area="Bukit Tunku" class="area-btn px-3 py-1 rounded-full text-xs whitespace-nowrap bg-white text-gray-600 border border-gray-200 font-medium"><span data-i18n="areaBukitTunku">Bukit Tunku</span></button>
+                        <button onclick="setAreaFilter('Damansara Heights')" data-area="Damansara Heights" class="area-btn px-3 py-1 rounded-full text-xs whitespace-nowrap bg-white text-gray-600 border border-gray-200 font-medium"><span data-i18n="areaDH">Damansara Heights</span></button>
                     </div>
                 </div>
 
@@ -363,6 +366,7 @@
                     <div id="modalImgCaption" class="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-white text-[10px] font-medium">
                         <i class="fa-solid fa-camera mr-1"></i> <span data-i18n="realPhoto">实拍样板间照片</span>
                     </div>
+                    <span id="modalClosedBadge" class="hidden absolute right-3 bottom-3 px-3 py-1.5 rounded-full bg-white/95 text-charcoal-900 text-[11px] font-extrabold uppercase tracking-wider shadow-md"></span>
                     <span id="modalTypeBadge" class="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gold-500 text-white shadow-md">
                         <span data-i18n="detailTagDefault">出租</span>
                     </span>
@@ -437,15 +441,10 @@
                         </div>
                     </div>
 
-                    <!-- Highlights -->
-                    <div>
+                    <!-- Highlights (filled per listing from the admin) -->
+                    <div id="modalHighlightsWrap">
                         <h4 class="text-xs font-bold text-charcoal-900 mb-2"><span data-i18n="highlightsTitle">房源亮点与配置</span></h4>
-                        <div class="flex flex-wrap gap-1.5 text-[10px]">
-                            <span class="px-2 py-1 bg-gray-100 rounded-md text-gray-600"><i class="fa-solid fa-person-swimming text-gold-600 mr-1"></i><span data-i18n="hl1">无边际泳池</span></span>
-                            <span class="px-2 py-1 bg-gray-100 rounded-md text-gray-600"><i class="fa-solid fa-dumbbell text-gold-600 mr-1"></i><span data-i18n="hl2">高空健身房</span></span>
-                            <span class="px-2 py-1 bg-gray-100 rounded-md text-gray-600"><i class="fa-solid fa-shield-halved text-gold-600 mr-1"></i><span data-i18n="hl3">24小时安保</span></span>
-                            <span class="px-2 py-1 bg-gray-100 rounded-md text-gray-600"><i class="fa-solid fa-train text-gold-600 mr-1"></i><span data-i18n="hl4">直通 MRT 车站</span></span>
-                        </div>
+                        <div id="modalHighlights" class="flex flex-wrap gap-1.5 text-[10px]"></div>
                     </div>
 
                     <!-- Description -->
@@ -458,7 +457,7 @@
 
                     <!-- CTA Buttons -->
                     <div class="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
-                        <a href="https://api.whatsapp.com/send?phone=60149314514" target="_blank" rel="noopener noreferrer" class="py-3 px-2 rounded-xl bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 text-center shadow-md hover:bg-emerald-600">
+                        <a id="modalBookBtn" href="https://api.whatsapp.com/send?phone=60149314514" target="_blank" rel="noopener noreferrer" class="py-3 px-2 rounded-xl bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 text-center shadow-md hover:bg-emerald-600">
                             <i class="fa-brands fa-whatsapp text-base flex-shrink-0"></i><span data-i18n="waBook" class="whitespace-nowrap">WhatsApp 预约看房</span>
                         </a>
                         <button onclick="openValuationModal(); closeDetailModal();" class="py-3 px-2 rounded-xl bg-charcoal-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 text-center hover:bg-charcoal-800">
