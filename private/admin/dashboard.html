@@ -292,6 +292,15 @@
                         <button type="button" class="seg-btn" data-value="en" aria-pressed="false">English<i class="lang-dot is-off" id="lfEnDot" title="英文还有没填的"></i></button>
                     </div>
                 </div>
+                <!-- rent / sale: off = rent, on = sale -->
+                <div class="type-bar">
+                    <span>房源类型</span>
+                    <label class="type-switch" for="lf-type-switch">
+                        <b id="lf-type-rent-label">出租</b>
+                        <input type="checkbox" id="lf-type-switch" class="switch" aria-label="出租或出售（打开是出售）">
+                        <b id="lf-type-sale-label">出售</b>
+                    </label>
+                </div>
             </div>
 
             <form id="listingForm" class="sheet-body" autocomplete="off" novalidate>

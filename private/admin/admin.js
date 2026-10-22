@@ -738,6 +738,9 @@ function closeListingForm() {
 function setLfType(type) {
     $('lf-type').value = type;
     const rent = type === 'rent';
+    $('lf-type-switch').checked = !rent;
+    $('lf-type-rent-label').classList.toggle('is-on', rent);
+    $('lf-type-sale-label').classList.toggle('is-on', !rent);
     const badge = $('lf-type-badge');
     badge.textContent = rent ? '出租 · 点此切换' : '出售 · 点此切换';
     badge.classList.toggle('is-sale', !rent);
@@ -753,6 +756,7 @@ function updatePriceFmt() {
 }
 $('lf-price').addEventListener('input', updatePriceFmt);
 $('lf-type-badge').addEventListener('click', updatePriceFmt);
+$('lf-type-switch').addEventListener('change', (e) => { setLfType(e.target.checked ? 'sale' : 'rent'); updatePriceFmt(); });
 
 const LF_EN_IDS = ['lf-title-en', 'lf-loc-en', 'lf-desc-en'];
 let lfLang = 'zh';
