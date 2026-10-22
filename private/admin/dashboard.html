@@ -372,10 +372,20 @@
                         </div>
                         <p id="lf-beds-preview" class="text-[11px] text-gray-500 leading-relaxed"></p>
 
-                        <div>
-                            <h4 class="ed-h">房源亮点与配置 <small class="ed-h-sub">前台显示的小标签</small></h4>
-                            <div id="lf-highlights" class="hl-list"></div>
-                            <button type="button" id="lf-hl-add" class="hl-add"><i class="fa-solid fa-plus mr-1"></i>添加标签</button>
+                        <div class="hl-section">
+                            <div class="hl-head">
+                                <h4 class="ed-h">房源亮点与配置</h4>
+                                <span id="lf-hl-count" class="hl-count"></span>
+                            </div>
+                            <p class="hl-hint">点一下就能选上，再点一下取消。前台会按访客的语言显示中文或英文名称。</p>
+                            <div class="hl-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="lf-hl-search" type="search" placeholder="搜索标签，例如 泳池 / pool" autocomplete="off"></div>
+                            <div id="lf-hl-picker" class="hl-picker" role="group" aria-label="可选的亮点标签"></div>
+
+                            <div class="hl-custom">
+                                <h5>自定义标签 <small>列表里没有的，自己加</small></h5>
+                                <div id="lf-highlights" class="hl-list"></div>
+                                <button type="button" id="lf-hl-add" class="hl-add"><i class="fa-solid fa-plus mr-1"></i>添加自定义标签</button>
+                            </div>
                         </div>
 
                         <label class="switch-row ed-closed">
@@ -461,6 +471,7 @@
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script src="/store.js"></script>
+    <script src="/facilities.js"></script>
     <script src="/admin/app/admin.js"></script>
 </body>
 </html>

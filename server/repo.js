@@ -20,7 +20,7 @@ function newCode() {
 function parseHighlights(text) {
   try {
     const list = JSON.parse(text || '[]');
-    return Array.isArray(list) ? list.filter((h) => h && (h.zh || h.en)).map((h) => pair(h.zh || h.en, h.en)) : [];
+    return Array.isArray(list) ? list.filter((h) => h && (h.zh || h.en)).map((h) => ({ ...(h.key ? { key: h.key } : {}), ...pair(h.zh || h.en, h.en) })) : [];
   } catch (e) { return []; }
 }
 

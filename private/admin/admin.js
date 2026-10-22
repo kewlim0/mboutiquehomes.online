@@ -653,26 +653,77 @@ function selectedRenovation() {
     return v === 'legacy' && lfLegacyStatus ? lfLegacyStatus : RENOVATION_OPTIONS[Number(v)] || RENOVATION_OPTIONS[0];
 }
 
-// ----- highlight tags: add, rename, remove. The box shows the language picked at the top. -----
+// ----- highlight tags: tick ready-made ones (public/facilities.js) and/or add your own -----
 const MAX_HIGHLIGHTS = 12;
-let lfHighlights = [];
-function renderLfHighlights() {
-    const other = lfLang === 'zh' ? 'en' : 'zh';
-    $('lf-highlights').innerHTML = lfHighlights.length
-        ? lfHighlights.map((h, i) => `
-            <div class="hl-row">
-                <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                <input data-hl="${i}" value="${esc(h[lfLang])}" maxlength="40" placeholder="${lfLang === 'zh' ? '例如：无边际泳池' : 'e.g. Infinity Pool'}"
-                    title="${esc(h[other] ? (lfLang === 'zh' ? 'English: ' : '中文：') + h[other] : '')}">
-                <button type="button" class="hl-del" data-hl-del="${i}" aria-label="删除这个标签"><i class="fa-solid fa-xmark"></i></button>
-            </div>`).join('')
-        : '<p class="text-[11px] text-gray-400">还没有标签。点下面「添加标签」，例如：无边际泳池、24 小时安保。</p>';
-    $('lf-hl-add').classList.toggle('hidden', lfHighlights.length >= MAX_HIGHLIGHTS);
+let lfHighlights = [];   // { key?, zh, en }; a tag with a key comes from the list, the others are custom
+let lfHlFilter = '';
+
+// an older tag that says the same thing as a list item (same English or Chinese text) becomes that list item
+function matchFacility(h) {
+    if (h.key && FACILITY_BY_KEY[h.key]) return h.key;
+    const en = (h.en || '').trim().toLowerCase();
+    const zh = (h.zh || '').trim();
+    const f = FACILITIES.find(x => (en && x.en.toLowerCase() === en) || (zh && x.zh === zh));
+    return f ? f.key : null;
 }
+function loadHighlights(list) {
+    const seen = new Set();
+    lfHighlights = [];
+    (list || []).forEach(h => {
+        const key = matchFacility(h);
+        if (key) {
+            if (seen.has(key)) return;
+            seen.add(key);
+            lfHighlights.push({ key, zh: FACILITY_BY_KEY[key].zh, en: FACILITY_BY_KEY[key].en });
+        } else {
+            lfHighlights.push({ zh: h.zh || '', en: h.en || '' });
+        }
+    });
+}
+
+function renderLfHighlights() {
+    const chosen = new Set(lfHighlights.filter(h => h.key).map(h => h.key));
+    const q = lfHlFilter.trim().toLowerCase();
+    const shown = FACILITIES.filter(f => !q || f.en.toLowerCase().includes(q) || f.zh.includes(q));
+    $('lf-hl-picker').innerHTML = shown.length ? shown.map(f => `
+        <button type="button" class="hl-chip ${chosen.has(f.key) ? 'is-on' : ''}" data-fac="${f.key}" aria-pressed="${chosen.has(f.key)}">
+            <i class="fa-solid ${f.icon}" aria-hidden="true"></i><span>${esc(f[lfLang])}</span><i class="fa-solid fa-check hl-tick" aria-hidden="true"></i>
+        </button>`).join('') : '<p class="text-[11px] text-gray-400 py-2">没有找到这个标签，可以在下面「自定义标签」里自己加。</p>';
+
+    const other = lfLang === 'zh' ? 'en' : 'zh';
+    const customs = lfHighlights.map((h, i) => ({ h, i })).filter(x => !x.h.key);
+    $('lf-highlights').innerHTML = customs.length ? customs.map(({ h, i }) => `
+        <div class="hl-row">
+            <i class="fa-solid fa-tag" aria-hidden="true"></i>
+            <input data-hl="${i}" value="${esc(h[lfLang])}" maxlength="40" placeholder="${lfLang === 'zh' ? '中文标签，例如：私人泳池' : 'English tag, e.g. Private pool'}"
+                title="${esc(h[other] ? (lfLang === 'zh' ? 'English: ' : '中文：') + h[other] : '')}">
+            <button type="button" class="hl-del" data-hl-del="${i}" aria-label="删除这个标签"><i class="fa-solid fa-xmark"></i></button>
+        </div>`).join('') : '';
+    const count = lfHighlights.filter(h => h.zh.trim() || h.en.trim() || h.key).length;
+    $('lf-hl-count').textContent = `已选 ${count} / ${MAX_HIGHLIGHTS}`;
+    $('lf-hl-count').classList.toggle('is-full', count >= MAX_HIGHLIGHTS);
+}
+
+$('lf-hl-picker').addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-fac]');
+    if (!chip) return;
+    const key = chip.dataset.fac;
+    const at = lfHighlights.findIndex(h => h.key === key);
+    if (at >= 0) {
+        lfHighlights.splice(at, 1);
+    } else {
+        if (lfHighlights.length >= MAX_HIGHLIGHTS) { toast(`最多 ${MAX_HIGHLIGHTS} 个标签`, true); return; }
+        lfHighlights.push({ key, zh: FACILITY_BY_KEY[key].zh, en: FACILITY_BY_KEY[key].en });
+    }
+    renderLfHighlights();
+    updateEnDot();
+});
+$('lf-hl-search').addEventListener('input', (e) => { lfHlFilter = e.target.value; renderLfHighlights(); });
 $('lf-highlights').addEventListener('input', (e) => {
     const i = e.target.dataset.hl;
     if (i === undefined) return;
     lfHighlights[Number(i)][lfLang] = e.target.value;
+    $('lf-hl-count').textContent = `已选 ${lfHighlights.filter(h => h.zh.trim() || h.en.trim() || h.key).length} / ${MAX_HIGHLIGHTS}`;
     updateEnDot();
 });
 $('lf-highlights').addEventListener('click', (e) => {
@@ -683,7 +734,7 @@ $('lf-highlights').addEventListener('click', (e) => {
     updateEnDot();
 });
 $('lf-hl-add').addEventListener('click', () => {
-    if (lfHighlights.length >= MAX_HIGHLIGHTS) return;
+    if (lfHighlights.length >= MAX_HIGHLIGHTS) { toast(`最多 ${MAX_HIGHLIGHTS} 个标签`, true); return; }
     lfHighlights.push({ zh: '', en: '' });
     renderLfHighlights();
     const inputs = $('lf-highlights').querySelectorAll('input');
@@ -714,7 +765,9 @@ function openListingForm(p) {
     $('lf-loc-en').value = v.location.en || '';
     $('lf-address').value = v.address || '';
     fillRenovation(v.status);
-    lfHighlights = (v.highlights || []).map(h => ({ zh: h.zh || '', en: h.en || '' }));
+    loadHighlights(v.highlights);
+    lfHlFilter = '';
+    $('lf-hl-search').value = '';
     $('lf-closed').checked = !!v.closed;
     $('lf-desc-zh').value = v.desc.zh || '';
     $('lf-desc-en').value = v.desc.en || '';
@@ -761,7 +814,7 @@ $('lf-type-switch').addEventListener('change', (e) => { setLfType(e.target.check
 const LF_EN_IDS = ['lf-title-en', 'lf-loc-en', 'lf-desc-en'];
 let lfLang = 'zh';
 function updateEnDot() {
-    $('lfEnDot').classList.toggle('is-off', LF_EN_IDS.every(id => $(id).value.trim()) && lfHighlights.every(h => h.en.trim() || !h.zh.trim()));
+    $('lfEnDot').classList.toggle('is-off', LF_EN_IDS.every(id => $(id).value.trim()) && lfHighlights.every(h => h.key || h.en.trim() || !h.zh.trim()));
 }
 function setLfLang(lang) {
     lfLang = lang;

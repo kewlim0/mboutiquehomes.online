@@ -659,8 +659,10 @@ function renderHighlights(item, L) {
     const list = item.highlights || [];
     document.getElementById('modalHighlightsWrap').classList.toggle('hidden', list.length === 0);
     document.getElementById('modalHighlights').innerHTML = list.map((h) => {
-        const text = h[L] || h.zh;
-        return `<span class="px-2 py-1 bg-gray-100 rounded-md text-gray-600"><i class="fa-solid ${highlightIcon(`${h.zh} ${h.en}`)} text-gold-600 mr-1"></i>${esc(text)}</span>`;
+        const known = typeof FACILITY_BY_KEY !== 'undefined' ? FACILITY_BY_KEY[h.key] : null;
+        const text = known ? known[L] : (h[L] || h.zh);
+        const icon = known ? known.icon : highlightIcon(`${h.zh} ${h.en}`);
+        return `<span class="px-2 py-1 bg-gray-100 rounded-md text-gray-600"><i class="fa-solid ${icon} text-gold-600 mr-1"></i>${esc(text)}</span>`;
     }).join('');
 }
 

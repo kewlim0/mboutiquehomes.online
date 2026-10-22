@@ -98,7 +98,8 @@ function highlights(value) {
     const o = item && typeof item === 'object' ? item : {};
     const zh = str(o.zh, '亮点标签（中文）', 40);
     const en = str(o.en, '亮点标签（英文）', 40);
-    if (zh || en) list.push({ zh: zh || en, en: en || zh });
+    const key = typeof o.key === 'string' && /^[a-z0-9-]{1,40}$/.test(o.key) ? o.key : undefined;
+    if (zh || en) list.push({ ...(key ? { key } : {}), zh: zh || en, en: en || zh });
   }
   if (list.length > MAX_HIGHLIGHTS) throw new HttpError(400, `亮点标签最多 ${MAX_HIGHLIGHTS} 个`);
   return list;
