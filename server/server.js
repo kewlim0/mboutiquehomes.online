@@ -239,6 +239,14 @@ admin.put('/hero', wrap(async (req, res) => {
 admin.post('/properties', wrap(async (req, res) => {
   res.status(201).json({ id: await repo.createProperty(v.property(req.body)) });
 }));
+// drag-and-drop in the dashboard: the listing ids in the order they should be shown (must come before /properties/:id)
+admin.put('/properties/order', wrap(async (req, res) => {
+  const ids = req.body && req.body.ids;
+  if (!Array.isArray(ids) || ids.length > 1000 || !ids.every((n) => Number.isInteger(n) && n > 0) || new Set(ids).size !== ids.length) {
+    throw new v.HttpError(400, '排序数据无效');
+  }
+  res.json({ ok: true, order: await repo.setPropertyOrder(ids) });
+}));
 admin.put('/properties/:id', wrap(async (req, res) => {
   (await repo.updateProperty(idParam(req), v.property(req.body))) ? res.json({ ok: true }) : notFound(res);
 }));

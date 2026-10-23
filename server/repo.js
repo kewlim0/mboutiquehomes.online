@@ -252,6 +252,27 @@ async function updateProperty(id, p) {
   return true;
 }
 
+// New display order of the listings: `ids` first (in that order), any listing that is not named keeps its place after them.
+async function setPropertyOrder(ids) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [rows] = await conn.query('SELECT id FROM properties ORDER BY sort_order ASC, id DESC FOR UPDATE');
+    const existing = rows.map((r) => r.id);
+    const named = ids.filter((id) => existing.includes(id));
+    const rest = existing.filter((id) => !named.includes(id));
+    const order = [...named, ...rest];
+    for (const [i, id] of order.entries()) await conn.query('UPDATE properties SET sort_order = ? WHERE id = ?', [i, id]);
+    await conn.commit();
+    return order;
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
 async function deleteProperty(id) {
   await ensurePropertyPhotos();
   const [old] = await pool.query('SELECT img FROM properties WHERE id = ?', [id]);
@@ -506,7 +527,7 @@ async function seedDefaults() {
 }
 
 module.exports = {
-  UPLOAD_DIR, getContent, getPropertyById, getPropertyByCode, createProperty, updateProperty, deleteProperty,
+  UPLOAD_DIR, getContent, getPropertyById, getPropertyByCode, setPropertyOrder, createProperty, updateProperty, deleteProperty,
   createTeamMember, updateTeamMember, deleteTeamMember, setHero, seedDefaults,
   ensureAdmins, listAdmins, getAdmin, getAdminsWithHash, createAdmin, updateAdmin, setAdminPasscode, deleteAdmin,
   touchAdminLogin, setOwnerPasscode,

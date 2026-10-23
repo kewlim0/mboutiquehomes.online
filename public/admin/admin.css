@@ -870,3 +870,19 @@ body { min-height: 100dvh; }
 .hl-row > i.fa-tag { color: #b8860b; font-size: 0.8rem; flex: 0 0 auto; }
 .hl-list:empty { display: none; }
 @media (max-width: 639px), (pointer: coarse) { .hl-search input, .hl-chip { font-size: 14px; } .hl-search input { font-size: 16px; } }
+
+/* ===== drag to re-order listings ===== */
+#listingList .item-card { position: relative; align-items: stretch; }
+.drag-handle {
+    flex: 0 0 auto; align-self: center;
+    width: 2.4rem; height: 3.2rem; margin: -0.25rem -0.2rem -0.25rem 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 0; border-radius: 0.75rem; background: transparent; color: #9ca3af; font-size: 1.05rem;
+    cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    transition: background 0.15s, color 0.15s;
+}
+.drag-handle:hover, .drag-handle:focus-visible { background: #f3f4f6; color: #8a6508; outline: none; }
+.drag-handle:focus-visible { box-shadow: 0 0 0 2px #c5a059; }
+.item-card.is-dragging { z-index: 20; cursor: grabbing; box-shadow: 0 14px 34px rgba(15, 17, 21, 0.22); border-color: #c5a059; background: #fffdf8; transition: box-shadow 0.15s; }
+.item-card.is-dragging .drag-handle { cursor: grabbing; color: #8a6508; }
+body.is-sorting { cursor: grabbing; -webkit-user-select: none; user-select: none; }

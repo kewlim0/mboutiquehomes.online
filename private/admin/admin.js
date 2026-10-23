@@ -584,7 +584,7 @@ function renderListings() {
     $('listingList').innerHTML = content.properties.length === 0
         ? '<p class="text-sm text-gray-400 sm:col-span-2 py-8 text-center">还没有房源，点击右上角「新增房源」。</p>'
         : content.properties.map(p => `
-            <div class="item-card">
+            <div class="item-card" data-id="${p.id}">
                 <img src="${esc(Store.resolve(p.img))}" alt="" onerror="this.removeAttribute('src')">
                 <div class="min-w-0 flex-1 flex flex-col">
                     <div class="flex items-center gap-2 mb-0.5">
@@ -600,8 +600,123 @@ function renderListings() {
                         <button class="btn-danger !py-1 !px-3" data-delete="${p.id}"><i class="fa-solid fa-trash mr-1"></i>删除</button>
                     </div>
                 </div>
+                <button type="button" class="drag-handle" aria-label="拖动调整顺序（也可以用键盘上下键）" title="按住拖动调整顺序"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></button>
             </div>`).join('');
+    $('listingSortHint').classList.toggle('hidden', content.properties.length < 2);
 }
+
+// ----- drag to re-order the listings (mouse, finger or keyboard) -----
+// Hold the three-line handle on a row and move it up or down; on release the new order is saved and the site follows it.
+(() => {
+    const list = $('listingList');
+    let drag = null;          // { card, base0, pointer0, lastY, raf }
+    let saving = Promise.resolve();
+
+    const orderIds = () => [...list.querySelectorAll('.item-card[data-id]')].map(c => Number(c.dataset.id));
+    const listTop = () => list.getBoundingClientRect().top;
+
+    // move the row that gets out of the way with a short slide instead of a jump
+    function slide(other, move) {
+        const before = other.getBoundingClientRect().top;
+        move();
+        const delta = before - other.getBoundingClientRect().top;
+        if (delta && other.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            other.animate([{ transform: `translateY(${delta}px)` }, { transform: 'translateY(0)' }], { duration: 160, easing: 'ease-out' });
+        }
+    }
+
+    function place() {
+        if (!drag) return;
+        const { card } = drag;
+        const pointer = drag.lastY - listTop();
+        const wanted = drag.base0 + (pointer - drag.pointer0);               // where the dragged row should be, in list coordinates
+        // swap places with a neighbour once the dragged row's middle passes the neighbour's middle
+        for (;;) {
+            const centre = wanted + card.offsetHeight / 2;
+            const prev = card.previousElementSibling;
+            const next = card.nextElementSibling;
+            if (prev && centre < prev.offsetTop + prev.offsetHeight / 2) slide(prev, () => list.insertBefore(card, prev));
+            else if (next && centre > next.offsetTop + next.offsetHeight / 2) slide(next, () => list.insertBefore(next, card));
+            else break;
+        }
+        card.style.transform = `translateY(${wanted - card.offsetTop}px)`;
+    }
+
+    function autoScroll() {
+        if (!drag) return;
+        const edge = 70;
+        const y = drag.lastY;
+        if (y < edge + 60) window.scrollBy(0, -Math.ceil((edge + 60 - y) / 5));              // 60px ~ the sticky header
+        else if (y > innerHeight - edge) window.scrollBy(0, Math.ceil((y - (innerHeight - edge)) / 5));
+        place();
+        drag.raf = requestAnimationFrame(autoScroll);
+    }
+
+    function save(ids, before) {
+        saving = saving.then(async () => {
+            try {
+                await api('PUT', 'admin/properties/order', { ids });
+                const byId = new Map(content.properties.map(p => [p.id, p]));
+                content.properties = ids.map(id => byId.get(id)).filter(Boolean);
+                toast('顺序已保存，前台已同步');
+            } catch (err) {
+                if (!(err instanceof UnauthorizedError)) toast(err.message, true);
+                renderListings();       // put the rows back the way they really are
+            }
+        });
+        return saving;
+    }
+
+    list.addEventListener('pointerdown', (e) => {
+        const handle = e.target.closest('.drag-handle');
+        if (!handle || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        const card = handle.closest('.item-card');
+        e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+        drag = { card, handle, id: e.pointerId, base0: card.offsetTop, pointer0: e.clientY - listTop(), lastY: e.clientY, before: orderIds().join(), raf: 0 };
+        card.classList.add('is-dragging');
+        document.body.classList.add('is-sorting');
+        drag.raf = requestAnimationFrame(autoScroll);
+    });
+
+    list.addEventListener('pointermove', (e) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        drag.lastY = e.clientY;
+        place();
+    });
+
+    const finish = (e, cancelled) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const { card, before } = drag;
+        cancelAnimationFrame(drag.raf);
+        drag = null;
+        card.classList.remove('is-dragging');
+        document.body.classList.remove('is-sorting');
+        card.style.transition = 'transform 0.18s ease';
+        card.style.transform = 'translateY(0)';
+        setTimeout(() => { card.style.transition = ''; card.style.transform = ''; }, 200);
+        if (cancelled) { renderListings(); return; }
+        const ids = orderIds();
+        if (ids.join() !== before) save(ids);
+    };
+    list.addEventListener('pointerup', (e) => finish(e, false));
+    list.addEventListener('pointercancel', (e) => finish(e, true));
+
+    // keyboard: focus the handle, then arrow up / down moves the row one place
+    let keyTimer = 0;
+    list.addEventListener('keydown', (e) => {
+        const handle = e.target.closest('.drag-handle');
+        if (!handle || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+        e.preventDefault();
+        const card = handle.closest('.item-card');
+        const sibling = e.key === 'ArrowUp' ? card.previousElementSibling : card.nextElementSibling;
+        if (!sibling) return;
+        if (e.key === 'ArrowUp') list.insertBefore(card, sibling); else list.insertBefore(sibling, card);
+        handle.focus();
+        clearTimeout(keyTimer);
+        keyTimer = setTimeout(() => save(orderIds()), 500);
+    });
+})();
 
 // Bedrooms / bathrooms: two dropdowns. The Chinese and English texts shown on the site are generated from them.
 const BEDROOM_OPTIONS = [
