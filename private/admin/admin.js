@@ -1092,6 +1092,7 @@ function applyMe(info) {
     $('meName').textContent = me.name;
     $('meRole').textContent = me.owner ? '所有者' : '管理员';
     $('ownerAdmins').classList.toggle('hidden', !me.owner);
+    $('dbLink').classList.toggle('hidden', !me.owner);
 }
 
 // ---------- admins ----------

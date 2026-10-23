@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#171A1F">
+    <title>数据库状态 | m.boutiquehomes</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/db/app/db.css">
+</head>
+<body>
+    <header class="top">
+        <a class="icon-btn" href="/admin/dashboard" aria-label="回到后台"><i class="fa-solid fa-chevron-left"></i></a>
+        <div class="top-title">
+            <h1>数据库状态</h1>
+            <p>m.boutiquehomes · VPS MySQL</p>
+        </div>
+        <button id="refreshBtn" class="icon-btn" type="button" aria-label="立即刷新"><i class="fa-solid fa-rotate-right"></i></button>
+    </header>
+
+    <main class="page">
+        <!-- big status card -->
+        <section id="hero" class="hero is-loading" aria-live="polite">
+            <div class="hero-top">
+                <span class="pulse" id="pulse"></span>
+                <div>
+                    <p class="hero-label" id="heroLabel">正在检查…</p>
+                    <p class="hero-sub" id="heroSub">&nbsp;</p>
+                </div>
+                <div class="hero-ms"><b id="heroMs">–</b><small>ms</small></div>
+            </div>
+            <div class="spark" aria-hidden="true"><svg id="spark" viewBox="0 0 300 56" preserveAspectRatio="none"></svg></div>
+            <p class="hero-foot"><span>响应时间（最近 <span id="sparkN">0</span> 次）</span><span id="heroTime">–</span></p>
+        </section>
+
+        <!-- quick health checks -->
+        <section class="checks" id="checks" aria-label="健康检查"></section>
+
+        <!-- numbers -->
+        <section class="grid2" id="metrics"></section>
+
+        <!-- site content -->
+        <section class="card">
+            <h2><i class="fa-solid fa-house-chimney"></i>网站内容</h2>
+            <div class="tiles" id="content"></div>
+        </section>
+
+        <!-- tables -->
+        <section class="card">
+            <div class="card-head">
+                <h2><i class="fa-solid fa-table"></i>数据表</h2>
+                <span class="pill" id="tablesTotal">–</span>
+            </div>
+            <div class="tables" id="tables"></div>
+        </section>
+
+        <!-- server details -->
+        <section class="card">
+            <h2><i class="fa-solid fa-server"></i>服务器详情</h2>
+            <dl class="kv" id="details"></dl>
+        </section>
+
+        <footer class="foot">
+            <label class="live"><input type="checkbox" id="liveToggle" checked><span class="switch" aria-hidden="true"></span><span>每 10 秒自动更新</span></label>
+            <p id="footTime">&nbsp;</p>
+        </footer>
+    </main>
+
+    <div id="toast" class="toast" role="status"></div>
+    <script src="/db/app/db.js"></script>
+</body>
+</html>

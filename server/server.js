@@ -62,6 +62,8 @@ const requireAdmin = wrap(async (req, res, next) => {
   next();
 });
 
+const dbStatus = require('./db-status');
+
 const requireOwner = (req, res, next) => (
   req.admin && req.admin.owner ? next() : res.status(403).json({ error: '只有所有者可以管理其他管理员' })
 );
@@ -254,6 +256,12 @@ admin.delete('/properties/:id', wrap(async (req, res) => {
   (await repo.deleteProperty(idParam(req))) ? res.json({ ok: true }) : notFound(res);
 }));
 
+// health report for the /db page (owner only, read-only)
+admin.get('/db-status', requireOwner, wrap(async (req, res) => {
+  noStore(res);
+  res.json(await dbStatus.collect(require('./db'), { uploadDir: repo.UPLOAD_DIR, remoteDb: REMOTE_DB }));
+}));
+
 admin.post('/team', wrap(async (req, res) => {
   res.status(201).json({ id: await repo.createTeamMember(v.teamMember(req.body)) });
 }));
@@ -405,6 +413,24 @@ app.use(
   '/admin/app',
   wrap(async (req, res, next) => ((await currentAdmin(req)) ? next() : res.status(401).type('text/plain').send('请先登录'))),
   express.static(PRIVATE_ADMIN_DIR, { index: false, setHeaders: (res) => noStore(res) })
+);
+
+// /db: database status dashboard. Owner only; anybody else is sent to the login page.
+const PRIVATE_DB_DIR = path.join(__dirname, '..', 'private', 'db');
+app.get('/db', wrap(async (req, res) => {
+  noStore(res);
+  const who = await currentAdmin(req);
+  if (!who) return res.redirect('/admin/');
+  if (!who.owner) return res.status(403).type('text/plain').send('只有所有者可以查看数据库状态');
+  res.sendFile(path.join(PRIVATE_DB_DIR, 'index.html'));
+}));
+app.use(
+  '/db/app',
+  wrap(async (req, res, next) => {
+    const who = await currentAdmin(req);
+    return who && who.owner ? next() : res.status(401).type('text/plain').send('请先登录');
+  }),
+  express.static(PRIVATE_DB_DIR, { index: false, setHeaders: (res) => noStore(res) })
 );
 
 // ---------- static site ----------

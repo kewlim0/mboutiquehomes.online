@@ -70,6 +70,8 @@ check "面板对未登录访客不可见 (跳转到登录页)"   "[ \"\$(curl -s
 check "面板脚本不对外公开 (未登录 401)"         "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/admin/app/admin.js')\" = 401 ]"
 check "旧的公开 admin.js 已删除 (404)"           "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/admin/admin.js')\" = 404 ]"
 check "弹窗动画代码已更新 (hideModal)"          "curl -s --max-time 20 '$URL/script.js' | grep -q hideModal"
+check "数据库状态页对未登录访客不可见 (/db 跳转)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/db')\" = 302 ]"
+check "数据库状态接口未登录 401"                 "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/api/admin/db-status')\" = 401 ]"
 check "配置文件没有暴露 (/.env = 404)"        "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/.env')\" = 404 ]"
 
 echo
