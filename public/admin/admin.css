@@ -241,6 +241,23 @@ body {
     opacity: 0.6;
 }
 
+/* right passcode: boxes turn green one after another (see showSuccess in login.js) */
+.passcode-box.is-ok,
+.passcode-box.is-ok:disabled {
+    opacity: 1;
+    color: #15803d;
+    border-color: #16a34a;
+    background-color: #ecfdf3;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+    animation: passcode-ok 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes passcode-ok {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
 @keyframes passcode-shake {
     0%, 100% { transform: translateX(0); }
     20% { transform: translateX(-8px); }
@@ -263,6 +280,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
     .shake { animation: none; }
+    .passcode-box.is-ok { animation: none; }
 }
 
 /* Dashboard: stay hidden until the first data load has finished, so empty counts never flash */

@@ -11,6 +11,14 @@ function clearPasscode() {
     passBoxes[0].focus();
 }
 
+// Right passcode: turn the boxes green from left to right, then let the page go on. Resolves when the animation is done.
+function showSuccess() {
+    const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const step = calm ? 0 : 110;
+    passBoxes.forEach((b, i) => setTimeout(() => b.classList.add('is-ok'), i * step));
+    return new Promise((resolve) => setTimeout(resolve, (passBoxes.length - 1) * step + (calm ? 250 : 520)));
+}
+
 async function submitPasscode() {
     const passcode = getPasscode();
     if (loggingIn) return;
@@ -32,6 +40,7 @@ async function submitPasscode() {
         const data = await res.json().catch(() => ({}));
         if (res.ok) {
             signedIn = true;
+            await showSuccess();                            // the six boxes light up green, one after the other
             window.location.replace('/admin/dashboard'); // replace: the login page is not left in the back button history
             return;
         }
