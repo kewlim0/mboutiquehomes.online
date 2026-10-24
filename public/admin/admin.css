@@ -904,3 +904,18 @@ body { min-height: 100dvh; }
 .item-card.is-dragging { z-index: 20; cursor: grabbing; box-shadow: 0 14px 34px rgba(15, 17, 21, 0.22); border-color: #c5a059; background: #fffdf8; transition: box-shadow 0.15s; }
 .item-card.is-dragging .drag-handle { cursor: grabbing; color: #8a6508; }
 body.is-sorting { cursor: grabbing; -webkit-user-select: none; user-select: none; }
+
+/* ===== slide between the login page and the dashboard (see slide.js) ===== */
+html.is-sliding { overflow-x: hidden; background: #14171c; }
+html.slide-hold body { opacity: 0; }
+html.slide-in-right body  { animation: slide-in-right 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+html.slide-in-left body   { animation: slide-in-left 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+html.slide-out-left body  { animation: slide-out-left 0.24s ease-in both; }
+html.slide-out-right body { animation: slide-out-right 0.24s ease-in both; }
+@keyframes slide-in-right  { from { transform: translateX(100%); opacity: 0.4; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slide-in-left   { from { transform: translateX(-35%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slide-out-left  { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-35%); opacity: 0; } }
+@keyframes slide-out-right { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0.4; } }
+@media (prefers-reduced-motion: reduce) {
+    html.slide-in-right body, html.slide-in-left body, html.slide-out-left body, html.slide-out-right body { animation: none; }
+}

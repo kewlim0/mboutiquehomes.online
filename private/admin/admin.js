@@ -151,12 +151,12 @@ function bindImageField(id, maxWidth) {
 // ---------- sign-in state ----------
 // This page is only served to a signed-in admin. If the session ends while it is open (12h), go back to the login page.
 function showLogin() {
-    window.location.replace('/admin/');
+    window.adminSlide ? window.adminSlide.go('/admin/', 'back') : window.location.replace('/admin/');
 }
 
 $('logoutBtn').addEventListener('click', async () => {
     try { await api('POST', 'admin/logout'); } catch (err) { /* already signed out */ }
-    window.location.replace('/admin/');
+    showLogin();
 });
 
 // ---------- tabs ----------

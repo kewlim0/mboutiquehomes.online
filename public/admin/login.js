@@ -41,7 +41,7 @@ async function submitPasscode() {
         if (res.ok) {
             signedIn = true;
             await showSuccess();                            // the six boxes light up green, one after the other
-            window.location.replace('/admin/dashboard'); // replace: the login page is not left in the back button history
+            window.adminSlide.go('/admin/dashboard', 'forward'); // slides left; replace: the login page is not left in the back button history
             return;
         }
         $('loginError').textContent = data.error || '登录失败，请稍后再试';
