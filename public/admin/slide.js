@@ -18,26 +18,17 @@
     try { dir = sessionStorage.getItem(KEY); sessionStorage.removeItem(KEY); } catch (e) { /* storage blocked: no animation */ }
     if (!calm && (dir === 'forward' || dir === 'back')) {
         var cls = dir === 'forward' ? 'slide-in-right' : 'slide-in-left';
+        var played = false;
         var play = function () {
+            if (played) return;
+            played = true;
             root.classList.remove('slide-hold');
             root.classList.add('is-sliding', cls);
             setTimeout(clear, 600);
         };
-        root.classList.add('slide-hold');                     // keep the page invisible until it is ready to slide
-        if (root.hasAttribute('data-slide-wait')) {
-            // the dashboard hides itself until its first data has loaded (is-booting): slide in when that is over
-            document.addEventListener('DOMContentLoaded', function () {
-                var body = document.body;
-                if (!body.classList.contains('is-booting')) { play(); return; }
-                var done = false;
-                var go = function () { if (!done) { done = true; obs.disconnect(); play(); } };
-                var obs = new MutationObserver(function () { if (!body.classList.contains('is-booting')) go(); });
-                obs.observe(body, { attributes: true, attributeFilter: ['class'] });
-                setTimeout(go, 2500);                          // never wait longer than this
-            });
-        } else {
-            document.addEventListener('DOMContentLoaded', play);
-        }
+        root.classList.add('slide-hold');                     // invisible only until the page structure is there (a moment), then it slides in
+        document.addEventListener('DOMContentLoaded', play);
+        setTimeout(play, 1200);                               // safety: never leave the page hidden
     }
 
     // ---- leaving: play the "out" half, then go ----
