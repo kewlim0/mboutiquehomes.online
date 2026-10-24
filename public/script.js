@@ -443,6 +443,11 @@ function formatPrice(price, isRent) {
     if (isRent) {
         return `RM ${price.toLocaleString()} ${ui('perMonth')}`;
     }
+    // six-digit sale prices (under 1 million) are shown in thousands: 790000 -> 790K / 790 千
+    if (price >= 100000 && price < 1000000) {
+        const k = Math.floor(price / 100) / 10;
+        return currentLang === 'en' ? `RM ${k}K` : `RM ${k} 千`;
+    }
     if (currentLang === 'en') {
         return `RM ${(price / 1000000).toFixed(2)}M`;
     }

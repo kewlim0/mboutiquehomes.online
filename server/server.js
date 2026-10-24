@@ -322,7 +322,9 @@ function listingPreviewTags(p, origin, lang = 'zh') {
   const en = lang === 'en';
   const price = p.type === 'rent'
     ? `RM ${p.priceRM.toLocaleString('en-US')} ${en ? '/ month' : '/ 月'}`
-    : en ? `RM ${(p.priceRM / 1000000).toFixed(2)}M` : `RM ${(p.priceRM / 10000).toFixed(0)} 万`;
+    : (p.priceRM >= 100000 && p.priceRM < 1000000)                  // six digits: thousands (790000 -> 790K / 790 千)
+      ? (en ? `RM ${Math.floor(p.priceRM / 100) / 10}K` : `RM ${Math.floor(p.priceRM / 100) / 10} 千`)
+      : en ? `RM ${(p.priceRM / 1000000).toFixed(2)}M` : `RM ${(p.priceRM / 10000).toFixed(0)} 万`;
   const name = en ? p.title.en : p.title.zh;
   const title = `${name} | m.boutiquehomes`;
   const description = [price, en ? p.beds.en : p.beds.zh, `${p.areaSqft.toLocaleString('en-US')} sqft`, en ? p.location.en : p.location.zh].filter(Boolean).join(' · ');

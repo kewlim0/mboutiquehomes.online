@@ -576,7 +576,10 @@ $('lf-photo-url-add').addEventListener('click', () => {
 });
 
 function formatPrice(p) {
-    return p.type === 'rent' ? `RM ${Number(p.priceRM).toLocaleString()} / 月` : `RM ${(p.priceRM / 10000).toFixed(0)} 万`;
+    if (p.type === 'rent') return `RM ${Number(p.priceRM).toLocaleString()} / 月`;
+    // six-digit sale prices are shown in thousands (790000 -> 790 千), like the site
+    if (p.priceRM >= 100000 && p.priceRM < 1000000) return `RM ${Math.floor(p.priceRM / 100) / 10} 千`;
+    return `RM ${(p.priceRM / 10000).toFixed(0)} 万`;
 }
 
 function renderListings() {
