@@ -14,7 +14,7 @@ function clearPasscode() {
 // Where to go after signing in: the page you came from (/admin/?next=/tracker/) or the dashboard
 function afterLogin() {
     const next = new URLSearchParams(window.location.search).get('next');
-    return ['/tracker/', '/db', '/temporary/live-update'].includes(next) ? next : '/admin/dashboard';
+    return ['/tracker/', '/db'].includes(next) ? next : '/admin/dashboard';
 }
 
 // Right passcode: turn the boxes green from left to right, then let the page go on. Resolves when the animation is done.

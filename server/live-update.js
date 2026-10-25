@@ -53,7 +53,7 @@ function chartPoints() {
 }
 
 function snapshot(now = Date.now()) {
-  if (!latest) return { empty: true, serverTime: now };
+  if (!latest) return { empty: true, files: [], ts: 0, serverTime: now };
   const { done, total } = totals(latest.files);
   let bytesPerMinute = null;
   const cutoff = samples.filter((s) => now - s.t <= WINDOW_MS);

@@ -409,7 +409,7 @@ const PRIVATE_ADMIN_DIR = path.join(__dirname, '..', 'private', 'admin');
 const noStore = (res) => res.set('Cache-Control', 'no-store');
 
 // pages that send you to the login page first and bring you back after you sign in (/admin/?next=/tracker/)
-const NEXT_PAGES = ['/tracker/', '/db', '/temporary/live-update'];
+const NEXT_PAGES = ['/tracker/', '/db'];
 
 app.get('/admin', wrap(async (req, res) => {
   noStore(res);
@@ -451,7 +451,7 @@ app.use(
 );
 
 // /temporary/live-update: a progress board. The owner's Mac POSTs a snapshot to /temporary/live-update/api with a secret token
-// (LIVE_UPDATE_TOKEN in .env); the page and the GET side need an admin sign-in.
+// (LIVE_UPDATE_TOKEN in .env). Reading the board needs no sign-in (it only holds file names and byte counts); search engines are told to skip it.
 const liveUpdate = require('./live-update');
 const LIVE_UPDATE_TOKEN = process.env.LIVE_UPDATE_TOKEN || '';
 const PRIVATE_LIVE_DIR = path.join(__dirname, '..', 'private', 'live-update');
@@ -471,16 +471,16 @@ app.post('/temporary/live-update/api', liveTokenLimiter, (req, res) => {
   }
   res.json({ ok: true });
 });
-app.get('/temporary/live-update/api', wrap(async (req, res) => {
+app.get('/temporary/live-update/api', (req, res) => {
   noStore(res);
-  if (!(await currentAdmin(req))) return res.status(401).json({ error: '请先登录' });
+  res.set('X-Robots-Tag', 'noindex, nofollow');
   res.json(liveUpdate.snapshot());
-}));
-app.get('/temporary/live-update', wrap(async (req, res) => {
+});
+app.get('/temporary/live-update', (req, res) => {
   noStore(res);
-  if (!(await currentAdmin(req))) return res.redirect('/admin/?next=%2Ftemporary%2Flive-update');
+  res.set('X-Robots-Tag', 'noindex, nofollow');
   res.sendFile(path.join(PRIVATE_LIVE_DIR, 'index.html'));
-}));
+});
 
 // /tracker/: SIM / phone line tracker. Real phone numbers live in the database, so the page and its API need an admin sign-in.
 const PRIVATE_TRACKER_DIR = path.join(__dirname, '..', 'private', 'tracker');
