@@ -409,7 +409,7 @@ const PRIVATE_ADMIN_DIR = path.join(__dirname, '..', 'private', 'admin');
 const noStore = (res) => res.set('Cache-Control', 'no-store');
 
 // pages that send you to the login page first and bring you back after you sign in (/admin/?next=/tracker/)
-const NEXT_PAGES = ['/tracker/', '/db'];
+const NEXT_PAGES = ['/tracker/', '/db', '/temporary/live-update'];
 
 app.get('/admin', wrap(async (req, res) => {
   noStore(res);
@@ -449,6 +449,38 @@ app.use(
   }),
   express.static(PRIVATE_DB_DIR, { index: false, setHeaders: (res) => noStore(res) })
 );
+
+// /temporary/live-update: a progress board. The owner's Mac POSTs a snapshot to /temporary/live-update/api with a secret token
+// (LIVE_UPDATE_TOKEN in .env); the page and the GET side need an admin sign-in.
+const liveUpdate = require('./live-update');
+const LIVE_UPDATE_TOKEN = process.env.LIVE_UPDATE_TOKEN || '';
+const PRIVATE_LIVE_DIR = path.join(__dirname, '..', 'private', 'live-update');
+const liveTokenLimiter = rateLimit({            // wrong tokens only: 30 per 10 minutes per address
+  windowMs: 10 * 60 * 1000, max: 30, skipSuccessfulRequests: true, standardHeaders: true, legacyHeaders: false,
+  message: { error: '请求太频繁，请稍后再试' },
+});
+app.post('/temporary/live-update/api', liveTokenLimiter, (req, res) => {
+  noStore(res);
+  if (!LIVE_UPDATE_TOKEN) return res.status(503).json({ error: 'LIVE_UPDATE_TOKEN is not set on the server' });
+  if (!liveUpdate.tokenMatches(req.get('authorization'), LIVE_UPDATE_TOKEN)) return res.status(401).json({ error: 'bad token' });
+  try {
+    liveUpdate.ingest(req.body);
+  } catch (err) {
+    if (err instanceof liveUpdate.BadSnapshot) return res.status(400).json({ error: err.message });
+    throw err;
+  }
+  res.json({ ok: true });
+});
+app.get('/temporary/live-update/api', wrap(async (req, res) => {
+  noStore(res);
+  if (!(await currentAdmin(req))) return res.status(401).json({ error: '请先登录' });
+  res.json(liveUpdate.snapshot());
+}));
+app.get('/temporary/live-update', wrap(async (req, res) => {
+  noStore(res);
+  if (!(await currentAdmin(req))) return res.redirect('/admin/?next=%2Ftemporary%2Flive-update');
+  res.sendFile(path.join(PRIVATE_LIVE_DIR, 'index.html'));
+}));
 
 // /tracker/: SIM / phone line tracker. Real phone numbers live in the database, so the page and its API need an admin sign-in.
 const PRIVATE_TRACKER_DIR = path.join(__dirname, '..', 'private', 'tracker');

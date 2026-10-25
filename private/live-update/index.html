@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#12151a">
+    <title>即時下載進度</title>
+    <link rel="icon" type="image/x-icon" href="/admin/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/admin/favicon-32x32.png">
+    <link rel="apple-touch-icon" href="/admin/apple-touch-icon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f2ec; --card: #fff; --ink: #14171c; --muted: #8a909b; --line: #ece8dc;
+            --gold: #b8860b; --gold-2: #d4af37; --ok: #16a34a; --ok-soft: #dcfce7; --warn: #d97706; --warn-soft: #fef3c7; --bad: #dc2626; --bad-soft: #fee2e2;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
+        body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', sans-serif; line-height: 1.45; }
+
+        .top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 0.75rem; padding: calc(0.7rem + env(safe-area-inset-top)) 1rem 0.7rem; background: #12151a; color: #fff; }
+        .top h1 { margin: 0; font-size: 1rem; font-weight: 800; letter-spacing: 0.01em; flex: 1; }
+        .top h1 small { display: block; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-2); margin-top: 0.1rem; }
+        .live { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.3rem 0.7rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 800; background: rgba(34, 197, 94, 0.16); color: #4ade80; white-space: nowrap; }
+        .live i { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: currentColor; position: relative; }
+        .live i::after { content: ''; position: absolute; inset: -0.3rem; border-radius: 9999px; background: currentColor; opacity: 0.35; animation: pulse 1.6s ease-out infinite; }
+        .live.is-stale { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+        .live.is-dead { background: rgba(248, 113, 113, 0.18); color: #f87171; }
+        .live.is-dead i::after, .live.is-wait i::after { animation: none; }
+        .live.is-wait { background: rgba(255, 255, 255, 0.12); color: #cbd5e1; }
+        @keyframes pulse { 0% { transform: scale(0.5); opacity: 0.5; } 100% { transform: scale(1.4); opacity: 0; } }
+
+        .page { max-width: 42rem; margin: 0 auto; padding: 1rem 1rem calc(2rem + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 0.9rem; }
+
+        .hero { border-radius: 1.4rem; padding: 1.2rem; color: #fff; background: radial-gradient(120% 140% at 100% 0%, rgba(212, 175, 55, 0.32), transparent 55%), linear-gradient(160deg, #20252e, #12151a); box-shadow: 0 14px 34px rgba(18, 21, 26, 0.26); }
+        .hero-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+        .pct { font-size: 3.4rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--gold-2); }
+        .pct small { font-size: 1.4rem; font-weight: 700; margin-left: 0.1rem; }
+        .hero-side { text-align: right; font-size: 0.72rem; color: rgba(255, 255, 255, 0.62); line-height: 1.6; }
+        .hero-side b { color: #fff; font-size: 0.95rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+        .bar { height: 0.7rem; border-radius: 9999px; background: rgba(255, 255, 255, 0.12); overflow: hidden; margin-top: 1rem; }
+        .bar > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--gold-2), var(--gold)); transition: width 0.8s ease; min-width: 0.4rem; }
+        .hero.is-done .bar > i { background: linear-gradient(90deg, #4ade80, var(--ok)); }
+        .spark { height: 3.2rem; margin: 0.9rem -0.2rem 0; }
+        .spark svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
+        .stat { background: var(--card); border: 1px solid var(--line); border-radius: 1.1rem; padding: 0.85rem 0.95rem; min-width: 0; }
+        .stat span { display: block; font-size: 0.68rem; font-weight: 700; color: var(--muted); }
+        .stat b { display: block; margin-top: 0.15rem; font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .stat b small { font-size: 0.7rem; font-weight: 700; color: var(--muted); margin-left: 0.2rem; }
+        .counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.55rem; }
+        .count { border-radius: 1rem; padding: 0.7rem 0.4rem; text-align: center; background: var(--card); border: 1px solid var(--line); }
+        .count b { display: block; font-size: 1.4rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+        .count span { font-size: 0.66rem; font-weight: 700; color: var(--muted); }
+        .count.done b { color: var(--ok); } .count.run b { color: var(--gold); }
+
+        .card { background: var(--card); border: 1px solid var(--line); border-radius: 1.2rem; padding: 1rem; }
+        .card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.7rem; }
+        .card-head h2 { margin: 0; font-size: 0.85rem; font-weight: 800; }
+        .chips { display: flex; gap: 0.35rem; overflow-x: auto; scrollbar-width: none; }
+        .chips::-webkit-scrollbar { display: none; }
+        .chip { border: 0; border-radius: 9999px; padding: 0.3rem 0.7rem; font: inherit; font-size: 0.68rem; font-weight: 700; background: #f0ede3; color: #6b7280; cursor: pointer; white-space: nowrap; }
+        .chip.on { background: var(--ink); color: #fff; }
+
+        .files { display: flex; flex-direction: column; gap: 0.85rem; }
+        .file-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
+        .file-name { font-size: 0.78rem; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+        .file-name i { font-style: normal; font-weight: 500; color: var(--muted); }
+        .file-pct { font-size: 0.74rem; font-weight: 800; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+        .fbar { height: 0.5rem; border-radius: 9999px; background: #f0ede3; overflow: hidden; margin: 0.35rem 0 0.25rem; }
+        .fbar > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--gold-2), var(--gold)); transition: width 0.8s ease; }
+        .file.is-done .fbar > i { background: linear-gradient(90deg, #4ade80, var(--ok)); }
+        .file.is-run .fbar > i { background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.28) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.28) 50%, rgba(255, 255, 255, 0.28) 75%, transparent 75%), linear-gradient(90deg, var(--gold-2), var(--gold)); background-size: 0.9rem 0.9rem, 100% 100%; animation: stripes 0.9s linear infinite; }
+        @keyframes stripes { to { background-position: 0.9rem 0, 0 0; } }
+        .file-sub { display: flex; justify-content: space-between; font-size: 0.66rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .file.is-done .file-pct { color: var(--ok); }
+        .file.is-wait { opacity: 0.6; }
+
+        .empty { text-align: center; padding: 2.2rem 1rem; color: var(--muted); font-size: 0.8rem; }
+        .empty b { display: block; color: var(--ink); font-size: 0.95rem; margin-bottom: 0.3rem; }
+        .foot { text-align: center; font-size: 0.66rem; color: var(--muted); }
+        @media (min-width: 640px) { .counts { grid-template-columns: repeat(3, 1fr); } }
+        @media (prefers-reduced-motion: reduce) { .live i::after, .file.is-run .fbar > i { animation: none; } .bar > i, .fbar > i { transition: none; } }
+    </style>
+</head>
+<body>
+    <header class="top">
+        <h1>即時下載進度<small>Live update</small></h1>
+        <span id="live" class="live is-wait"><i></i><span id="liveText">連線中…</span></span>
+    </header>
+
+    <main class="page">
+        <section id="empty" class="card empty" hidden>
+            <b>還沒有收到資料</b>
+            下載那邊每 5 秒送來一次進度，收到第一筆就會出現在這裡。
+        </section>
+
+        <div id="board" hidden>
+            <section id="hero" class="hero">
+                <div class="hero-row">
+                    <div class="pct"><span id="pct">0</span><small>%</small></div>
+                    <div class="hero-side">已下載<br><b id="doneTxt">–</b><br>總大小 <b id="totalTxt">–</b></div>
+                </div>
+                <div class="bar"><i id="bar" style="width:0%"></i></div>
+                <div class="spark" aria-hidden="true"><svg id="spark" viewBox="0 0 300 52" preserveAspectRatio="none"></svg></div>
+            </section>
+
+            <div style="height:0.9rem"></div>
+            <section class="grid">
+                <div class="stat"><span>下載速度</span><b id="speed">–</b></div>
+                <div class="stat"><span>預計剩餘時間</span><b id="eta">–</b></div>
+            </section>
+
+            <div style="height:0.9rem"></div>
+            <section class="counts">
+                <div class="count done"><b id="nDone">0</b><span>已完成</span></div>
+                <div class="count run"><b id="nRun">0</b><span>進行中</span></div>
+                <div class="count"><b id="nWait">0</b><span>等待中</span></div>
+            </section>
+
+            <div style="height:0.9rem"></div>
+            <section class="card">
+                <div class="card-head">
+                    <h2>各檔案進度</h2>
+                    <div class="chips" id="chips">
+                        <button class="chip on" data-f="all">全部</button>
+                        <button class="chip" data-f="run">進行中</button>
+                        <button class="chip" data-f="done">已完成</button>
+                        <button class="chip" data-f="wait">等待中</button>
+                    </div>
+                </div>
+                <div class="files" id="files"></div>
+            </section>
+        </div>
+
+        <p class="foot" id="foot">每 5 秒自動更新</p>
+    </main>
+
+    <script>
+        const $ = (id) => document.getElementById(id);
+        const POLL_MS = 5000;
+        let filter = 'all';
+        let last = null;          // last snapshot received
+        let timer = 0;
+        let busy = false;
+
+        const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        function size(n) {
+            if (n == null || Number.isNaN(n)) return '–';
+            const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let i = 0, v = Number(n);
+            while (v >= 1024 && i < u.length - 1) { v /= 1024; i += 1; }
+            return `${v >= 100 || i === 0 ? Math.round(v) : v.toFixed(i >= 3 ? 2 : 1)} ${u[i]}`;
+        }
+        function span(sec) {
+            if (!Number.isFinite(sec) || sec < 0) return '–';
+            if (sec < 60) return `${Math.round(sec)} 秒`;
+            const m = Math.round(sec / 60);
+            if (m < 60) return `${m} 分鐘`;
+            const h = Math.floor(m / 60);
+            return h >= 48 ? `${Math.round(h / 24)} 天` : `${h} 小時 ${m % 60} 分`;
+        }
+        const clock = (ms) => new Date(ms).toLocaleTimeString('zh-TW', { hour12: false });
+        const state = (f) => (f[2] > 0 && f[1] >= f[2] ? 'done' : f[1] > 0 ? 'run' : 'wait');
+
+        function drawSpark(points) {
+            const svg = $('spark');
+            if (!points || points.length < 2) { svg.innerHTML = ''; return; }
+            const W = 300, H = 52, pad = 5;
+            const t0 = points[0].t, t1 = points[points.length - 1].t || 1;
+            const lo = Math.min(...points.map(p => p.done)), hi = Math.max(...points.map(p => p.done), lo + 1);
+            const pts = points.map(p => [((p.t - t0) / Math.max(1, t1 - t0)) * W, H - pad - ((p.done - lo) / (hi - lo)) * (H - pad * 2)]);
+            const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+            svg.innerHTML = `<defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4af37" stop-opacity=".45"/><stop offset="1" stop-color="#d4af37" stop-opacity="0"/></linearGradient></defs>
+                <path d="${line} L${W} ${H} L0 ${H} Z" fill="url(#sg)"/>
+                <path d="${line}" fill="none" stroke="#d4af37" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+        }
+
+        function renderLive(d) {
+            const el = $('live');
+            el.className = 'live';
+            if (!d || d.empty) { el.classList.add('is-wait'); $('liveText').textContent = '等待資料'; return; }
+            const age = (Date.now() - d.receivedAt - (d.clockOffset || 0)) / 1000;
+            if (age <= 30) { $('liveText').textContent = '即時'; }
+            else if (age <= 180) { el.classList.add('is-stale'); $('liveText').textContent = `${Math.round(age)} 秒前`; }
+            else { el.classList.add('is-dead'); $('liveText').textContent = `已停止 ${span(age)}`; }
+        }
+
+        function render(d) {
+            last = d;
+            renderLive(d);
+            const empty = !d || d.empty;
+            $('empty').hidden = !empty;
+            $('board').hidden = empty;
+            if (empty) return;
+
+            const pct = d.total > 0 ? (d.done / d.total) * 100 : 0;
+            $('pct').textContent = pct >= 100 ? '100' : pct.toFixed(1);
+            $('bar').style.width = `${Math.min(100, pct)}%`;
+            $('hero').classList.toggle('is-done', pct >= 100);
+            $('doneTxt').textContent = size(d.done);
+            $('totalTxt').textContent = size(d.total);
+
+            const mbMin = d.bytesPerMinute == null ? null : d.bytesPerMinute / 1048576;
+            $('speed').innerHTML = mbMin == null ? '–' : `${mbMin >= 100 ? Math.round(mbMin) : mbMin.toFixed(1)}<small>MB / 分鐘</small>`;
+            $('eta').textContent = pct >= 100 ? '已完成' : (d.bytesPerMinute > 0 ? span(((d.total - d.done) / d.bytesPerMinute) * 60) : '–');
+
+            const counts = { done: 0, run: 0, wait: 0 };
+            d.files.forEach((f) => { counts[state(f)] += 1; });
+            $('nDone').textContent = counts.done; $('nRun').textContent = counts.run; $('nWait').textContent = counts.wait;
+            drawSpark(d.chart);
+
+            // in progress first, then waiting, then finished
+            const order = { run: 0, wait: 1, done: 2 };
+            const rows = d.files.map((f) => ({ f, s: state(f) })).filter((r) => filter === 'all' || r.s === filter)
+                .sort((a, b) => order[a.s] - order[b.s]);
+            $('files').innerHTML = rows.length ? rows.map(({ f, s }) => {
+                const [name, done, total] = f;
+                const p = total > 0 ? Math.min(100, (done / total) * 100) : 0;
+                const slash = name.lastIndexOf('/');
+                const dir = slash >= 0 ? name.slice(0, slash + 1) : '';
+                return `<div class="file is-${s}">
+                    <div class="file-top"><div class="file-name"><i>${esc(dir)}</i>${esc(name.slice(slash + 1))}</div><div class="file-pct">${s === 'done' ? '完成' : p.toFixed(p >= 99.95 || p === 0 ? 0 : 1) + '%'}</div></div>
+                    <div class="fbar"><i style="width:${s === 'wait' ? 0 : Math.max(p, 1.5)}%"></i></div>
+                    <div class="file-sub"><span>${size(done)} / ${size(total)}</span><span>${s === 'done' ? '' : s === 'wait' ? '等待中' : '剩 ' + size(Math.max(0, total - done))}</span></div>
+                </div>`;
+            }).join('') : '<div class="empty" style="padding:1rem">這個分類沒有檔案</div>';
+
+            $('foot').textContent = `資料時間 ${clock(d.receivedAt)}　·　每 5 秒自動更新`;
+        }
+
+        async function load() {
+            if (busy) return;
+            busy = true;
+            try {
+                const res = await fetch('/temporary/live-update/api', { credentials: 'same-origin', cache: 'no-store' });
+                if (res.status === 401) { location.replace('/admin/?next=%2Ftemporary%2Flive-update'); return; }
+                if (!res.ok) throw new Error(String(res.status));
+                const d = await res.json();
+                d.clockOffset = Date.now() - d.serverTime;      // the phone's clock may differ from the server's
+                render(d);
+            } catch (err) {
+                const el = $('live');
+                el.className = 'live is-dead';
+                $('liveText').textContent = '連不上網站';
+            } finally {
+                busy = false;
+            }
+        }
+
+        $('chips').addEventListener('click', (e) => {
+            const b = e.target.closest('.chip');
+            if (!b) return;
+            filter = b.dataset.f;
+            document.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === b));
+            if (last && !last.empty) render(last);
+        });
+        // keep the "x seconds ago" label moving between polls
+        setInterval(() => { if (last) renderLive(last); }, 1000);
+        timer = setInterval(() => { if (!document.hidden) load(); }, POLL_MS);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+        load();
+    </script>
+</body>
+</html>
