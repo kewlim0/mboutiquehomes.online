@@ -49,6 +49,18 @@
             input, select, textarea { font-size: 16px !important; }
         }
 
+        /* Add / edit form: every field the same height and width. iPhone draws a date field taller and wider than the rest
+           (it spilled over the Tag column), so it gets the same plain look as the dropdowns. */
+        #simForm .grid > div { min-width: 0; }
+        #simForm input:not([type="hidden"]), #simForm select { height: 2.75rem; }
+        #simForm input[type="date"] {
+            -webkit-appearance: none; appearance: none;
+            display: block; width: 100%; min-width: 0; max-width: 100%;
+            text-align: left; line-height: 1.2;
+        }
+        #simForm input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.2em; margin: 0; }
+        #simForm input[type="date"]::-webkit-calendar-picker-indicator { margin: 0; padding: 0 0.1rem; opacity: 0.6; }
+
         /* Smooth scrolling & custom scrollbars */
         body {
             font-family: 'Inter', sans-serif;
