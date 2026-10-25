@@ -33,9 +33,10 @@
 
     // ---- leaving: play the "out" half, then go ----
     window.adminSlide = {
-        go: function (url, direction) {
+        // handoff=false: the next page is not one of the two slide pages (e.g. /tracker/), so nothing is left for it to play
+        go: function (url, direction, handoff) {
             if (calm) { window.location.replace(url); return; }
-            try { sessionStorage.setItem(KEY, direction); } catch (e) { /* ignore */ }
+            if (handoff !== false) { try { sessionStorage.setItem(KEY, direction); } catch (e) { /* ignore */ } }
             root.classList.add('is-sliding', direction === 'forward' ? 'slide-out-left' : 'slide-out-right');
             setTimeout(function () { window.location.replace(url); }, OUT_MS);
         }

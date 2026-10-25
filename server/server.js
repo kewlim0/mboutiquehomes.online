@@ -262,6 +262,17 @@ admin.get('/db-status', requireOwner, wrap(async (req, res) => {
   res.json(await dbStatus.collect(require('./db'), { uploadDir: repo.UPLOAD_DIR, remoteDb: REMOTE_DB }));
 }));
 
+// SIM / phone lines for /tracker/ (any signed-in admin)
+admin.get('/sims', wrap(async (req, res) => { noStore(res); res.json({ sims: await repo.listSims() }); }));
+admin.post('/sims', wrap(async (req, res) => { res.status(201).json({ sim: await repo.createSim(v.sim(req.body)) }); }));
+admin.put('/sims/:id', wrap(async (req, res) => {
+  const sim = await repo.updateSim(idParam(req), v.sim(req.body));
+  sim ? res.json({ sim }) : notFound(res);
+}));
+admin.delete('/sims/:id', wrap(async (req, res) => {
+  (await repo.deleteSim(idParam(req))) ? res.json({ ok: true }) : notFound(res);
+}));
+
 admin.post('/team', wrap(async (req, res) => {
   res.status(201).json({ id: await repo.createTeamMember(v.teamMember(req.body)) });
 }));
@@ -397,11 +408,15 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const PRIVATE_ADMIN_DIR = path.join(__dirname, '..', 'private', 'admin');
 const noStore = (res) => res.set('Cache-Control', 'no-store');
 
+// pages that send you to the login page first and bring you back after you sign in (/admin/?next=/tracker/)
+const NEXT_PAGES = ['/tracker/', '/db'];
+
 app.get('/admin', wrap(async (req, res) => {
   noStore(res);
   // Always use the trailing-slash URL so every relative link on the page resolves the same way
-  if (!req.originalUrl.startsWith('/admin/')) return res.redirect(301, '/admin/');
-  if (await currentAdmin(req)) return res.redirect('/admin/dashboard');
+  if (!req.originalUrl.startsWith('/admin/')) return res.redirect(301, '/admin/' + (req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : ''));
+  const next = typeof req.query.next === 'string' && NEXT_PAGES.includes(req.query.next) ? req.query.next : null;
+  if (await currentAdmin(req)) return res.redirect(next || '/admin/dashboard');
   res.sendFile(path.join(PUBLIC_DIR, 'admin', 'index.html'));
 }));
 
@@ -422,7 +437,7 @@ const PRIVATE_DB_DIR = path.join(__dirname, '..', 'private', 'db');
 app.get('/db', wrap(async (req, res) => {
   noStore(res);
   const who = await currentAdmin(req);
-  if (!who) return res.redirect('/admin/');
+  if (!who) return res.redirect('/admin/?next=%2Fdb');
   if (!who.owner) return res.status(403).type('text/plain').send('只有所有者可以查看数据库状态');
   res.sendFile(path.join(PRIVATE_DB_DIR, 'index.html'));
 }));
@@ -434,6 +449,15 @@ app.use(
   }),
   express.static(PRIVATE_DB_DIR, { index: false, setHeaders: (res) => noStore(res) })
 );
+
+// /tracker/: SIM / phone line tracker. Real phone numbers live in the database, so the page and its API need an admin sign-in.
+const PRIVATE_TRACKER_DIR = path.join(__dirname, '..', 'private', 'tracker');
+app.get('/tracker', wrap(async (req, res) => {
+  noStore(res);
+  if (!req.originalUrl.startsWith('/tracker/')) return res.redirect(301, '/tracker/');
+  if (!(await currentAdmin(req))) return res.redirect('/admin/?next=%2Ftracker%2F');
+  res.sendFile(path.join(PRIVATE_TRACKER_DIR, 'index.html'));
+}));
 
 // ---------- static site ----------
 app.use('/uploads', express.static(repo.UPLOAD_DIR, { maxAge: '30d', immutable: true, index: false }));
@@ -457,6 +481,7 @@ app.use((err, req, res, next) => {
 repo.ensurePropertyPhotos().catch((err) => console.warn('⚠ 照片表暂时无法准备（数据库连不上？）：', err.message));
 repo.ensurePropertyColumns().catch((err) => console.warn('⚠ 房型字段暂时无法准备（数据库连不上？）：', err.message));
 repo.ensureHeroBanners().catch((err) => console.warn('⚠ 横幅表暂时无法准备（数据库连不上？）：', err.message));
+repo.ensureSims().catch((err) => console.warn('⚠ SIM 表暂时无法准备（数据库连不上？）：', err.message));
 repo.ensureAdmins().catch((err) => console.warn('⚠ 管理员表暂时无法准备（数据库连不上？）：', err.message));
 
 app.listen(PORT, () => {

@@ -126,6 +126,28 @@ function property(body) {
   };
 }
 
+// SIM / phone line (the /tracker/ page). The lists are the same ones the page offers in its dropdowns.
+const SIM_TELCOS = ['Maxis', 'CelcomDigi', 'U Mobile', 'YES 5G', 'Unifi', 'Singtel', 'Other'];
+const SIM_TAGS = ['Personal', 'Work', '2FA / OTP', 'Marketing', 'Backup'];
+
+function sim(body) {
+  const b = body && typeof body === 'object' ? body : {};
+  const expDate = typeof b.expDate === 'string' ? b.expDate.trim() : '';
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(expDate) ? new Date(`${expDate}T00:00:00Z`) : null;
+  if (!d || Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== expDate) throw new HttpError(400, '到期日期无效');
+  if (!SIM_TELCOS.includes(b.telco)) throw new HttpError(400, '电信商无效');
+  const tag = b.tag === undefined || b.tag === '' ? 'Personal' : b.tag;
+  if (!SIM_TAGS.includes(tag)) throw new HttpError(400, '标签无效');
+  return {
+    phone: str(b.phone, '电话号码', 40, { required: true }),
+    telco: b.telco,
+    alias: str(b.alias, '别名', 120, { required: true }),
+    expDate,
+    tag,
+    notes: str(b.notes, '备注', 1000),
+  };
+}
+
 function teamMember(body) {
   const b = body && typeof body === 'object' ? body : {};
   return {
@@ -192,4 +214,4 @@ function heroBanner(body) {
 module.exports = {
   BEDROOMS, BATHROOMS, bedsText, parseBeds,
   heroBanner,
-  weakPasscodeReason, passcode, adminName, HttpError, AREAS, image, property, teamMember };
+  weakPasscodeReason, passcode, adminName, HttpError, AREAS, image, property, sim, teamMember };

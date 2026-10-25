@@ -79,3 +79,17 @@ CREATE TABLE IF NOT EXISTS property_photos (
   KEY idx_property_photos (property_id, sort_order),
   CONSTRAINT fk_property_photos_property FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- SIM / phone line tracker (/tracker/)
+CREATE TABLE IF NOT EXISTS sims (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  phone      VARCHAR(40)  NOT NULL,
+  telco      VARCHAR(30)  NOT NULL,
+  alias      VARCHAR(120) NOT NULL,
+  exp_date   DATE         NOT NULL,
+  tag        VARCHAR(30)  NOT NULL DEFAULT 'Personal',
+  notes      VARCHAR(1000) NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_sims_exp (exp_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

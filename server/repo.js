@@ -287,6 +287,64 @@ async function deleteProperty(id) {
 // ---------- team ----------
 const teamValues = (t) => [t.name, t.role.zh, t.role.en, t.meta.zh, t.meta.en, t.img];
 
+// ---------- SIM / phone lines (/tracker/) ----------
+let simsReady = null;
+function ensureSims() {
+  if (!simsReady) {
+    simsReady = pool.query(`CREATE TABLE IF NOT EXISTS sims (
+      id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      phone      VARCHAR(40)  NOT NULL,
+      telco      VARCHAR(30)  NOT NULL,
+      alias      VARCHAR(120) NOT NULL,
+      exp_date   DATE         NOT NULL,
+      tag        VARCHAR(30)  NOT NULL DEFAULT 'Personal',
+      notes      VARCHAR(1000) NOT NULL DEFAULT '',
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_sims_exp (exp_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`).catch((err) => { simsReady = null; throw err; });
+  }
+  return simsReady;
+}
+
+const SIM_COLUMNS = "id, phone, telco, alias, DATE_FORMAT(exp_date, '%Y-%m-%d') AS expDate, tag, notes";
+
+async function listSims() {
+  await ensureSims();
+  const [rows] = await pool.query(`SELECT ${SIM_COLUMNS} FROM sims ORDER BY exp_date ASC, id ASC`);
+  return rows;
+}
+
+async function createSim(s) {
+  await ensureSims();
+  const [res] = await pool.query(
+    'INSERT INTO sims (phone, telco, alias, exp_date, tag, notes) VALUES (?,?,?,?,?,?)',
+    [s.phone, s.telco, s.alias, s.expDate, s.tag, s.notes]
+  );
+  const [[row]] = await pool.query(`SELECT ${SIM_COLUMNS} FROM sims WHERE id = ?`, [res.insertId]);
+  return row;
+}
+
+async function updateSim(id, s) {
+  await ensureSims();
+  const [res] = await pool.query(
+    'UPDATE sims SET phone=?, telco=?, alias=?, exp_date=?, tag=?, notes=? WHERE id = ?',
+    [s.phone, s.telco, s.alias, s.expDate, s.tag, s.notes, id]
+  );
+  if (!res.affectedRows) {
+    const [[exists]] = await pool.query('SELECT COUNT(*) AS n FROM sims WHERE id = ?', [id]);
+    if (!exists.n) return null;
+  }
+  const [[row]] = await pool.query(`SELECT ${SIM_COLUMNS} FROM sims WHERE id = ?`, [id]);
+  return row;
+}
+
+async function deleteSim(id) {
+  await ensureSims();
+  const [res] = await pool.query('DELETE FROM sims WHERE id = ?', [id]);
+  return res.affectedRows > 0;
+}
+
 async function createTeamMember(t) {
   const [[{ next }]] = await pool.query('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM team');
   const [res] = await pool.query(
@@ -527,7 +585,7 @@ async function seedDefaults() {
 }
 
 module.exports = {
-  UPLOAD_DIR, getContent, getPropertyById, getPropertyByCode, setPropertyOrder, createProperty, updateProperty, deleteProperty,
+  UPLOAD_DIR, getContent, getPropertyById, getPropertyByCode, setPropertyOrder, ensureSims, listSims, createSim, updateSim, deleteSim, createProperty, updateProperty, deleteProperty,
   createTeamMember, updateTeamMember, deleteTeamMember, setHero, seedDefaults,
   ensureAdmins, listAdmins, getAdmin, getAdminsWithHash, createAdmin, updateAdmin, setAdminPasscode, deleteAdmin,
   touchAdminLogin, setOwnerPasscode,

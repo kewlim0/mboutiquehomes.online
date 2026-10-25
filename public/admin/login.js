@@ -11,6 +11,12 @@ function clearPasscode() {
     passBoxes[0].focus();
 }
 
+// Where to go after signing in: the page you came from (/admin/?next=/tracker/) or the dashboard
+function afterLogin() {
+    const next = new URLSearchParams(window.location.search).get('next');
+    return ['/tracker/', '/db'].includes(next) ? next : '/admin/dashboard';
+}
+
 // Right passcode: turn the boxes green from left to right, then let the page go on. Resolves when the animation is done.
 function showSuccess() {
     const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -41,7 +47,8 @@ async function submitPasscode() {
         if (res.ok) {
             signedIn = true;
             await showSuccess();                            // the six boxes light up green, one after the other
-            window.adminSlide.go('/admin/dashboard', 'forward'); // slides left; replace: the login page is not left in the back button history
+            const target = afterLogin();
+            window.adminSlide.go(target, 'forward', target === '/admin/dashboard'); // slides left; replace: the login page is not left in the back button history
             return;
         }
         $('loginError').textContent = data.error || '登录失败，请稍后再试';
