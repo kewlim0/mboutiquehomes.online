@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/x-icon" href="/admin/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/admin/favicon-32x32.png">
@@ -41,6 +41,14 @@
         }
     </script>
     <style>
+        /* No zooming by accident: a double tap must not zoom the page, and a field must not make the phone zoom in on focus
+           (iOS zooms into any field whose text is smaller than 16px). */
+        html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+        button, a, label, select { touch-action: manipulation; }
+        @media (max-width: 767px), (pointer: coarse) {
+            input, select, textarea { font-size: 16px !important; }
+        }
+
         /* Smooth scrolling & custom scrollbars */
         body {
             font-family: 'Inter', sans-serif;
@@ -402,6 +410,55 @@
             renderApp();
         };
 
+        // ---------- search ----------
+        // Other names people use for a carrier, so "hotlink", "umobile" or "unifi mobile" all find the right lines.
+        const TELCO_ALIASES = {
+            'Maxis': 'maxis hotlink',
+            'CelcomDigi': 'celcomdigi celcom digi',
+            'U Mobile': 'u mobile umobile',
+            'YES 5G': 'yes 5g yes5g',
+            'Unifi': 'unifi mobile',
+            'Singtel': 'singtel',
+            'Other': 'other global'
+        };
+        const squash = (t) => String(t).toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
+
+        // How a search works:
+        //  1) The whole phrase is tried first ("u mobile", "monna 2", "+60 12-884"): spaces, dashes and the + are ignored,
+        //     and a number also matches the way it is dialled locally ("012884...").
+        //  2) If nothing matches as a phrase, every word you typed has to match somewhere on the line (number, name,
+        //     carrier, tag, note or date). One- and two-letter words only match the start of a name/tag word or of a number,
+        //     so a lone "2" does not match every date that has a 2 in it.
+        function simText(item) {
+            const digits = String(item.phone).replace(/\D/g, '');
+            const local = digits.startsWith('60') ? '0' + digits.slice(2) : digits;
+            const text = [item.phone, item.alias, item.telco, TELCO_ALIASES[item.telco] || '', item.tag, item.notes, item.expDate].join(' ').toLowerCase();
+            const words = [item.alias, item.telco, TELCO_ALIASES[item.telco] || '', item.tag, item.notes].join(' ').toLowerCase()
+                .split(/[^a-z0-9\u4e00-\u9fff]+/).filter(Boolean);
+            return { digits, local, text, squashed: squash(text) + ' ' + digits + ' ' + local, words };
+        }
+
+        function searchSims(list, query) {
+            const info = new Map(list.map((item) => [item, simText(item)]));
+            const phrase = squash(query);
+            if (phrase) {
+                const hits = list.filter((item) => info.get(item).squashed.includes(phrase));
+                if (hits.length) return hits;
+            }
+            const words = query.split(/\s+/).filter(Boolean);
+            return list.filter((item) => {
+                const t = info.get(item);
+                return words.every((word) => {
+                    const w = squash(word);
+                    if (!w) return t.text.includes(word);
+                    if (w.length <= 2) {
+                        return t.words.some((x) => x.startsWith(w)) || (/^\d+$/.test(w) && (t.digits.startsWith(w) || t.local.startsWith(w)));
+                    }
+                    return t.text.includes(word) || t.squashed.includes(w);
+                });
+            });
+        }
+
         // Render Dashboard UI
         function renderApp() {
             const cardsContainer = document.getElementById('cardsList');
@@ -409,21 +466,13 @@
             const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
 
             // Filter logic
-            let filtered = sims.filter(item => {
+            const searched = searchVal ? searchSims(sims, searchVal) : sims;
+            let filtered = searched.filter(item => {
                 const days = getDaysRemaining(item.expDate);
                 // Filter tabs
                 if (currentFilter === 'urgent' && (days < 0 || days > 7)) return false;
                 if (currentFilter === 'active' && days < 0) return false;
                 if (currentFilter === 'expired' && days >= 0) return false;
-
-                // Search term
-                if (searchVal) {
-                    const matchPhone = item.phone.toLowerCase().includes(searchVal);
-                    const matchAlias = item.alias.toLowerCase().includes(searchVal);
-                    const matchTelco = item.telco.toLowerCase().includes(searchVal);
-                    const matchTag = item.tag.toLowerCase().includes(searchVal);
-                    return matchPhone || matchAlias || matchTelco || matchTag;
-                }
 
                 return true;
             });
@@ -437,6 +486,9 @@
 
             // Update Counts in UI
             updateCounters();
+            document.getElementById('sortLabel').textContent = searchVal
+                ? `${filtered.length} ${filtered.length === 1 ? 'line' : 'lines'} found`
+                : 'Sorted by: Expiration Date';
 
             // Render Cards
             if (loading) {
