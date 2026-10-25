@@ -102,7 +102,25 @@
         #cardsList.is-grid .sim-card { padding: 0.7rem; display: flex; flex-direction: column; min-width: 0; }
         #cardsList.is-grid .sim-head { flex-direction: column; align-items: flex-start; gap: 0.4rem; }
         #cardsList.is-grid .sim-head > div:first-child { flex-wrap: wrap; gap: 0.3rem; }
-        #cardsList.is-grid .sim-status { font-size: 10px; padding: 0.2rem 0.5rem; max-width: 100%; }
+        /* carrier: a small soft-tinted chip with a colour dot instead of a big solid block */
+        #cardsList.is-grid .sim-telco {
+            display: inline-flex; align-items: center; gap: 0.3rem;
+            padding: 0.18rem 0.5rem 0.18rem 0.4rem; border-radius: 9999px;
+            font-size: 9.5px; font-weight: 800; letter-spacing: 0.04em; line-height: 1.2;
+            color: var(--c); background: rgba(var(--rgb), 0.12); border: 1px solid rgba(var(--rgb), 0.28); box-shadow: none;
+        }
+        #cardsList.is-grid .sim-telco::before {
+            content: ''; width: 0.4rem; height: 0.4rem; border-radius: 9999px; background: var(--c); flex: 0 0 auto;
+            box-shadow: 0 0 0 2px rgba(var(--rgb), 0.2);
+        }
+        /* tag: quiet grey text with a # in front */
+        #cardsList.is-grid .sim-tag {
+            padding: 0.1rem 0.15rem; border: 0; background: transparent; border-radius: 0;
+            font-size: 9.5px; font-weight: 700; color: #94a3b8; letter-spacing: 0.01em;
+        }
+        #cardsList.is-grid .sim-tag::before { content: '#'; margin-right: 1px; color: #cbd5e1; }
+        #cardsList.is-grid .sim-status { font-size: 9.5px; padding: 0.18rem 0.5rem; gap: 0.3rem; max-width: 100%; line-height: 1.2; }
+        #cardsList.is-grid .sim-status i { font-size: 9px; }
         #cardsList.is-grid .sim-status span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         #cardsList.is-grid .sim-phone { font-size: 0.82rem; gap: 0.35rem; flex-wrap: wrap; }
         #cardsList.is-grid .sim-body { flex: 1; min-width: 0; }
@@ -435,13 +453,14 @@
 
         // Telco Badge Styling Helper
         function getTelcoStyle(telco) {
+            // bg/text: the solid pill of the one-per-row cards. c: accent colour used by the compact chip of the two-per-row cards.
             switch(telco) {
-                case 'Maxis': return { bg: 'bg-green-500', text: 'text-white', label: 'Maxis' };
-                case 'CelcomDigi': return { bg: 'bg-cyan-500', text: 'text-white', label: 'CelcomDigi' };
-                case 'U Mobile': return { bg: 'bg-orange-500', text: 'text-white', label: 'U Mobile' };
-                case 'YES 5G': return { bg: 'bg-rose-500', text: 'text-white', label: 'YES 5G' };
-                case 'Singtel': return { bg: 'bg-red-600', text: 'text-white', label: 'Singtel' };
-                default: return { bg: 'bg-indigo-600', text: 'text-white', label: telco };
+                case 'Maxis': return { bg: 'bg-green-500', text: 'text-white', label: 'Maxis', c: '#16a34a', rgb: '34,197,94' };
+                case 'CelcomDigi': return { bg: 'bg-cyan-500', text: 'text-white', label: 'CelcomDigi', c: '#0891b2', rgb: '6,182,212' };
+                case 'U Mobile': return { bg: 'bg-orange-500', text: 'text-white', label: 'U Mobile', c: '#ea580c', rgb: '249,115,22' };
+                case 'YES 5G': return { bg: 'bg-rose-500', text: 'text-white', label: 'YES 5G', c: '#e11d48', rgb: '244,63,94' };
+                case 'Singtel': return { bg: 'bg-red-600', text: 'text-white', label: 'Singtel', c: '#dc2626', rgb: '220,38,38' };
+                default: return { bg: 'bg-indigo-600', text: 'text-white', label: telco, c: '#4f46e5', rgb: '79,70,229' };
             }
         }
 
@@ -483,11 +502,11 @@
                     <div class="sim-head flex items-start justify-between gap-2">
                         <div class="flex items-center gap-2">
                             <!-- Operator Pill -->
-                            <span class="${telcoStyle.bg} ${telcoStyle.text} text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider shadow-sm">
+                            <span class="sim-telco ${telcoStyle.bg} ${telcoStyle.text} text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider shadow-sm" style="--c:${telcoStyle.c};--rgb:${telcoStyle.rgb}">
                                 ${esc(telcoStyle.label)}
                             </span>
                             <!-- Custom Tag Pill -->
-                            <span class="bg-slate-100 text-slate-600 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-200">
+                            <span class="sim-tag bg-slate-100 text-slate-600 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-200">
                                 ${esc(item.tag)}
                             </span>
                         </div>
