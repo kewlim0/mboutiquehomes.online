@@ -730,10 +730,10 @@ function renderProperties() {
             <div class="relative h-28 w-full overflow-hidden skeleton">
                 <img src="${esc(Store.resolve(item.img))}" alt="${esc(item.title[L])}" loading="lazy" onload="this.classList.add('loaded')" class="img-fade w-full h-full object-cover group-hover:scale-105 transition duration-500" onerror="this.src='https://placehold.co/600x400/1e293b/ffffff?text=Luxe+Property'">
                 ${item.closed ? `<div class="absolute inset-0 bg-black/45 flex items-center justify-center pointer-events-none"><span class="px-3 py-1 rounded-full bg-white/95 text-charcoal-900 text-[11px] font-extrabold uppercase tracking-wider shadow-md">${esc(closedLabel(item))}</span></div>` : ''}
+                ${!item.closed && availableText(item, true) ? `<div class="absolute inset-0 bg-black/45 flex items-center justify-center pointer-events-none"><span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 text-gold-700 text-[11px] font-extrabold shadow-md"><i class="fa-regular fa-calendar-check text-[11px]"></i>${esc(availableText(item, true))}</span></div>` : ''}
                 <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[9px] font-bold text-white uppercase tracking-wide ${item.type === 'rent' ? 'bg-gold-500' : 'bg-charcoal-900'} shadow-md">
                     ${ui(item.type)}
                 </span>
-                ${availableText(item, true) ? `<span class="absolute top-[30px] left-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-white/95 text-gold-700 shadow-md"><i class="fa-regular fa-calendar-check text-[9px]"></i>${esc(availableText(item, true))}</span>` : ''}
                 <button onclick="toggleFavorite(${item.id}, event)" aria-label="${ui('favorite')}" aria-pressed="${isFav}" class="absolute top-1.5 right-1.5 w-8 h-8 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center text-sm shadow-sm active:scale-90 ${isFav ? 'text-red-500' : 'text-gray-500 hover:text-red-500'} transition">
                     <i class="fa-${isFav ? 'solid' : 'regular'} fa-heart"></i>
                 </button>
