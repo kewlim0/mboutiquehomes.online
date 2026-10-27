@@ -919,3 +919,22 @@ html.slide-out-right body { animation: slide-out-right 0.24s ease-in both; }
 @media (prefers-reduced-motion: reduce) {
     html.slide-in-right body, html.slide-in-left body, html.slide-out-left body, html.slide-out-right body { animation: none; }
 }
+
+/* ===== "available from" date in the listing editor ===== */
+.ed-avail { border: 1px solid #ece7da; border-radius: 1rem; padding: 0.85rem; background: linear-gradient(180deg, #fffdf8, #fff); }
+.ed-avail-head { display: flex; gap: 0.7rem; align-items: flex-start; }
+.ed-avail-head > i { color: #b8860b; font-size: 1.1rem; margin-top: 0.15rem; }
+.ed-avail-head b { display: block; font-size: 0.82rem; color: #171A1F; }
+.ed-avail-head small { display: block; margin-top: 0.1rem; font-size: 0.68rem; color: #9ca3af; line-height: 1.5; }
+.ed-avail-row { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.65rem; }
+.ed-avail-row input[type="date"] {
+    flex: 1; min-width: 0; height: 2.75rem; padding: 0 0.75rem; font: inherit; font-size: 0.85rem;
+    border: 1px dashed #d1d5db; border-radius: 0.6rem; background: #fff; outline: none; text-align: left;
+    -webkit-appearance: none; appearance: none;
+}
+.ed-avail-row input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.2em; margin: 0; }
+.ed-avail-row input[type="date"]:focus { border-style: solid; border-color: #b8860b; box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.12); }
+.ed-avail-row .btn-ghost { height: 2.75rem; flex: 0 0 auto; }
+.ed-avail-note { margin: 0.5rem 0 0; font-size: 0.7rem; color: #9ca3af; line-height: 1.5; }
+.ed-avail-note.is-on { color: #8a6508; font-weight: 600; }
+@media (max-width: 639px), (pointer: coarse) { .ed-avail-row input[type="date"] { font-size: 16px; } }

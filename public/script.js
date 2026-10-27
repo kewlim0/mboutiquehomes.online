@@ -634,6 +634,16 @@ async function loadContent() {
     openFromUrl();
 }
 
+// "Available from" (a home that is not free yet): shown only while that day is still in the future (Malaysia time, GMT+8)
+const todayMY = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' });
+const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function availableText(item, short = false) {
+    if (item.closed || !item.availableFrom || item.availableFrom <= todayMY()) return '';
+    const [y, m, d] = item.availableFrom.split('-').map(Number);
+    if (currentLang === 'en') return short ? `From ${d} ${MONTHS_EN[m - 1]} ${y}` : `Available from ${d} ${MONTHS_EN[m - 1]} ${y}`;
+    return short ? `${m}月${d}日起可入住` : `${y}年${m}月${d}日起可入住`;
+}
+
 // "Sold" for a sale listing, "Rented" for a rental one (only when the admin marked it as closed)
 const closedLabel = (item) => (item.closed ? ui(item.type === 'rent' ? 'rented' : 'sold') : '');
 
@@ -723,6 +733,7 @@ function renderProperties() {
                 <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[9px] font-bold text-white uppercase tracking-wide ${item.type === 'rent' ? 'bg-gold-500' : 'bg-charcoal-900'} shadow-md">
                     ${ui(item.type)}
                 </span>
+                ${availableText(item, true) ? `<span class="absolute top-[30px] left-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-white/95 text-gold-700 shadow-md"><i class="fa-regular fa-calendar-check text-[9px]"></i>${esc(availableText(item, true))}</span>` : ''}
                 <button onclick="toggleFavorite(${item.id}, event)" aria-label="${ui('favorite')}" aria-pressed="${isFav}" class="absolute top-1.5 right-1.5 w-8 h-8 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center text-sm shadow-sm active:scale-90 ${isFav ? 'text-red-500' : 'text-gray-500 hover:text-red-500'} transition">
                     <i class="fa-${isFav ? 'solid' : 'regular'} fa-heart"></i>
                 </button>
@@ -859,6 +870,11 @@ function openDetailModal(item, instant = false) {
     document.getElementById('modalDesc').innerText = item.desc[L];
 
     renderHighlights(item, L);
+
+    // a notice when the home is only free from a later date
+    const avail = availableText(item);
+    document.getElementById('modalAvailable').classList.toggle('hidden', !avail);
+    document.getElementById('modalAvailableText').textContent = avail;
 
     // sold / rented: say so clearly and stop the "book a viewing" button
     const closedBadge = document.getElementById('modalClosedBadge');

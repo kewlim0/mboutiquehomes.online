@@ -49,6 +49,7 @@ function mapProperty(r, photos) {
     address: r.address,
     highlights: parseHighlights(r.highlights),
     closed: !!r.is_closed,   // sold (sale) / rented (rent): shown as such on the site
+    availableFrom: r.available_from_str || null,   // 'YYYY-MM-DD': the home can be moved into from this day (shown while it is still in the future)
     img: r.img,
     photos: photos && photos.length ? photos : [r.img],
     status: pair(r.status_zh, r.status_en),
@@ -115,6 +116,7 @@ function ensurePropertyColumns() {
       await pool.query('UPDATE properties SET highlights = ?', [JSON.stringify(DEFAULT_HIGHLIGHTS)]);
     }
     if (!have.has('is_closed')) await pool.query('ALTER TABLE properties ADD COLUMN is_closed TINYINT(1) NOT NULL DEFAULT 0');
+    if (!have.has('available_from')) await pool.query('ALTER TABLE properties ADD COLUMN available_from DATE NULL');
     await pool.query("UPDATE properties SET area = 'Outskirt' WHERE area = 'Suburb'");
     const [missing] = await pool.query('SELECT id FROM properties WHERE code IS NULL');
     for (const row of missing) await pool.query('UPDATE properties SET code = ? WHERE id = ?', [newCode(), row.id]);
@@ -139,7 +141,7 @@ async function getPropertyByCode(code) { return getOneProperty('code', code); }
 async function getOneProperty(column, value) {
   await ensurePropertyColumns();
   await ensurePropertyPhotos();
-  const [rows] = await pool.query(`SELECT * FROM properties WHERE ${column === 'code' ? 'code' : 'id'} = ?`, [value]);
+  const [rows] = await pool.query(`SELECT *, DATE_FORMAT(available_from, '%Y-%m-%d') AS available_from_str FROM properties WHERE ${column === 'code' ? 'code' : 'id'} = ?`, [value]);
   if (!rows.length) return null;
   const id = rows[0].id;
   const [photos] = await pool.query('SELECT img FROM property_photos WHERE property_id = ? ORDER BY sort_order, id', [id]);
@@ -148,7 +150,7 @@ async function getOneProperty(column, value) {
 
 async function getContent() {
   await ensurePropertyColumns();
-  const [props] = await pool.query('SELECT * FROM properties ORDER BY sort_order ASC, id DESC');
+  const [props] = await pool.query("SELECT *, DATE_FORMAT(available_from, '%Y-%m-%d') AS available_from_str FROM properties ORDER BY sort_order ASC, id DESC");
   const photoMap = await photosByProperty();
   const [team] = await pool.query('SELECT * FROM team ORDER BY sort_order ASC, id ASC');
   // `img` is the default banner; `banners` are the active scheduled ones (the page picks one by date and day/night)
@@ -185,6 +187,7 @@ const propertyValues = (p) => [
 async function writeExtras(conn, id, p) {
   if (p.highlights !== undefined) await conn.query('UPDATE properties SET highlights = ? WHERE id = ?', [JSON.stringify(p.highlights), id]);
   if (p.closed !== undefined) await conn.query('UPDATE properties SET is_closed = ? WHERE id = ?', [p.closed ? 1 : 0, id]);
+  if (p.availableFrom !== undefined) await conn.query('UPDATE properties SET available_from = ? WHERE id = ?', [p.availableFrom, id]);
 }
 
 async function writePhotos(conn, propertyId, photos) {

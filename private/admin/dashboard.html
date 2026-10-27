@@ -391,6 +391,18 @@
                             </div>
                         </div>
 
+                        <div class="ed-avail">
+                            <div class="ed-avail-head">
+                                <i class="fa-regular fa-calendar-check" aria-hidden="true"></i>
+                                <div><b>可入住日期</b><small>还没空出来的房源：选好日期，前台会显示「某月某日起可入住」。留空 = 现在就可以。</small></div>
+                            </div>
+                            <div class="ed-avail-row">
+                                <input id="lf-avail" type="date" aria-label="可入住日期">
+                                <button type="button" id="lf-avail-clear" class="btn-ghost">清除</button>
+                            </div>
+                            <p id="lf-avail-note" class="ed-avail-note"></p>
+                        </div>
+
                         <label class="switch-row ed-closed">
                             <span><b id="lf-closed-title">标记为已售出</b><small id="lf-closed-sub">打开后，前台这个房源会显示「已售出」，并且不能再预约看房。</small></span>
                             <input type="checkbox" id="lf-closed" class="switch">

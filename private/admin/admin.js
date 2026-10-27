@@ -575,6 +575,10 @@ $('lf-photo-url-add').addEventListener('click', () => {
     renderLfPhotos();
 });
 
+// today in Malaysia time (GMT+8), as YYYY-MM-DD: "from this day on" is judged by it
+const todayMY = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' });
+const isFutureDate = (d) => !!d && d > todayMY();
+
 function formatPrice(p) {
     if (p.type === 'rent') return `RM ${Number(p.priceRM).toLocaleString()} / 月`;
     // six-digit sale prices are shown in thousands (790000 -> 790 千), like the site
@@ -592,6 +596,7 @@ function renderListings() {
                 <div class="min-w-0 flex-1 flex flex-col">
                     <div class="flex items-center gap-2 mb-0.5">
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${p.type === 'rent' ? 'bg-gold-500' : 'bg-charcoal-900'}">${p.type === 'rent' ? '出租' : '出售'}</span>
+                        ${isFutureDate(p.availableFrom) && !p.closed ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800"><i class="fa-regular fa-calendar-check mr-0.5"></i>${esc(p.availableFrom.slice(5).replace('-', '/'))} 起可入住</span>` : ''}
                         ${p.closed ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">${p.type === 'rent' ? '已出租' : '已售出'}</span>` : ''}
                         <span class="text-[11px] text-gray-400 truncate">${esc(p.location.zh)}</span>
                         ${(p.photos || []).length > 1 ? `<span class="text-[11px] text-gray-400 flex-shrink-0"><i class="fa-regular fa-images mr-0.5"></i>${p.photos.length}</span>` : ''}
@@ -887,6 +892,8 @@ function openListingForm(p) {
     lfHlFilter = '';
     $('lf-hl-search').value = '';
     $('lf-closed').checked = !!v.closed;
+    $('lf-avail').value = v.availableFrom || '';
+    updateAvailNote();
     $('lf-desc-zh').value = v.desc.zh || '';
     $('lf-desc-en').value = v.desc.en || '';
     lfPhotos = p ? [...(p.photos && p.photos.length ? p.photos : [p.img])] : [];
@@ -899,6 +906,23 @@ function openListingForm(p) {
     showSheet('listingSheet');
     $('listingForm').scrollTop = 0;
 }
+
+// the little note under the date picker: what the site will show
+function updateAvailNote() {
+    const d = $('lf-avail').value;
+    const note = $('lf-avail-note');
+    if (!d) { note.textContent = '前台不显示日期，视为现在就可以入住。'; note.className = 'ed-avail-note'; return; }
+    if (isFutureDate(d)) {
+        const [y, m, day] = d.split('-').map(Number);
+        note.textContent = `前台会显示：${y}年${m}月${day}日起可入住（到了这一天，标签会自己消失）`;
+        note.className = 'ed-avail-note is-on';
+    } else {
+        note.textContent = '这个日期已经到了或过了，前台不会显示，视为现在就可以入住。';
+        note.className = 'ed-avail-note';
+    }
+}
+$('lf-avail').addEventListener('input', updateAvailNote);
+$('lf-avail-clear').addEventListener('click', () => { $('lf-avail').value = ''; updateAvailNote(); });
 
 function closeListingForm() {
     hideSheet('listingSheet');
@@ -982,6 +1006,7 @@ $('listingForm').addEventListener('submit', async (e) => {
         status: selectedRenovation(),
         highlights: lfHighlights.filter(h => h.zh.trim() || h.en.trim()),
         closed: $('lf-closed').checked,
+        availableFrom: $('lf-avail').value || null,
         desc: { zh: $('lf-desc-zh').value, en: $('lf-desc-en').value }
     };
 

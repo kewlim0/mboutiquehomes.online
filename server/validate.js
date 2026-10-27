@@ -105,6 +105,18 @@ function highlights(value) {
   return list;
 }
 
+// "Available from" date: empty / null = available now. undefined = the client did not send it: leave as stored.
+function availableFrom(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const s = typeof value === 'string' ? value.trim() : '';
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T00:00:00Z`) : null;
+  if (!d || Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== s || s < '2000-01-01' || s > '2100-12-31') {
+    throw new HttpError(400, '可入住日期无效');
+  }
+  return s;
+}
+
 function property(body) {
   const b = body && typeof body === 'object' ? body : {};
   if (!['rent', 'sale'].includes(b.type)) throw new HttpError(400, '类型必须是出租或出售');
@@ -123,6 +135,7 @@ function property(body) {
     desc: bilingual(b.desc, '描述', 5000),
     highlights: highlights(b.highlights),
     closed: b.closed === undefined ? undefined : b.closed === true,
+    availableFrom: availableFrom(b.availableFrom),
   };
 }
 
