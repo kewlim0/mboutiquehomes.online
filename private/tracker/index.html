@@ -550,10 +550,10 @@
         function renderSimRow(item) {
             const daysLeft = getDaysRemaining(item.expDate);
             const telcoStyle = getTelcoStyle(item.telco);
-            let cls = '', pill = 'background:#dcfce7;color:#15803d', text = `Active · ${daysLeft}d`;
+            let cls = '', pill = 'background:#dcfce7;color:#15803d', text = `${daysLeft} days left`;
             if (daysLeft < 0) { cls = 'is-expired'; pill = 'background:#fee2e2;color:#b91c1c'; text = `Expired · ${Math.abs(daysLeft)}d ago`; }
-            else if (daysLeft <= 3) { cls = 'is-urgent'; pill = 'background:#fee2e2;color:#dc2626'; text = `Urgent · ${daysLeft}d`; }
-            else if (daysLeft <= 7) { cls = 'is-soon'; pill = 'background:#fef3c7;color:#b45309'; text = `${daysLeft}d left`; }
+            else if (daysLeft <= 3) { cls = 'is-urgent'; pill = 'background:#fee2e2;color:#dc2626'; text = `Urgent · ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left`; }
+            else if (daysLeft <= 7) { cls = 'is-soon'; pill = 'background:#fef3c7;color:#b45309'; text = `${daysLeft} days left`; }
             return `
                 <div class="sim-row">
                     <div class="sim-row-title"><span>${esc(item.alias)}</span>${item.tag ? `<small>#${esc(item.tag)}</small>` : ''}</div>
@@ -567,7 +567,7 @@
                         <div class="sim-row-side">
                             <span class="sim-row-exp">Top up ${esc(item.topupDate)}</span>
                             <div class="sim-row-btns">
-                                <button onclick="quickRenew('${item.id}')" title="Topped up today (restart 60 days)" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0"><i class="fa-solid fa-bolt text-[9px]"></i>Top up</button>
+                                <button onclick="quickRenew('${item.id}')" title="Topped up today (restart the 60-day countdown)" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0"><i class="fa-solid fa-bolt text-[9px]"></i>Top up</button>
                                 <button onclick="editSim('${item.id}')" title="Edit SIM" style="background:#f1f5f9;color:#475569"><i class="fa-solid fa-pen-to-square"></i></button>
                                 <button onclick="deleteSim('${item.id}')" title="Delete SIM" style="background:#fef2f2;color:#dc2626"><i class="fa-solid fa-trash-can"></i></button>
                             </div>
@@ -660,7 +660,7 @@
 
                         <div class="sim-actions flex items-center gap-1.5">
                             <!-- Topped up today Quick Button -->
-                            <button onclick="quickRenew('${item.id}')" title="Topped up today (restart 60 days)" class="sim-renew px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 transition flex items-center gap-1">
+                            <button onclick="quickRenew('${item.id}')" title="Topped up today (restart the 60-day countdown)" class="sim-renew px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 transition flex items-center gap-1">
                                 <i class="fa-solid fa-bolt text-[10px]"></i>
                                 <span>Top up</span>
                             </button>
@@ -734,7 +734,7 @@
                 const saved = (await api('PUT', 'sims/' + sim.id, { ...sim, topupDate: todayStr() })).sim;
                 sims = sims.map(s => (s.id === saved.id ? saved : s));
                 renderApp();
-                showToast('Topped up today: 60 days again!', 'fa-bolt', 'text-amber-400');
+                showToast('Topped up today: 59 days left!', 'fa-bolt', 'text-amber-400');
             } catch (err) {
                 showToast(err.message, 'fa-circle-exclamation', 'text-red-400');
             }

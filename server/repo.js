@@ -306,10 +306,12 @@ function ensureSims() {
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       KEY idx_sims_exp (exp_date)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`).then(async () => {
-      // last top-up date; the expiry (exp_date) is always top-up + 60 days. Existing lines keep their countdown.
+      // last top-up date; the expiry (exp_date) is always top-up + 59 days (60 days counting the top-up day).
       const [cols] = await pool.query("SHOW COLUMNS FROM sims LIKE 'topup_date'");
       if (!cols.length) await pool.query('ALTER TABLE sims ADD COLUMN topup_date DATE NULL AFTER exp_date');
-      await pool.query('UPDATE sims SET topup_date = DATE_SUB(exp_date, INTERVAL 60 DAY) WHERE topup_date IS NULL');
+      await pool.query('UPDATE sims SET topup_date = DATE_SUB(exp_date, INTERVAL 59 DAY) WHERE topup_date IS NULL');
+      // lines saved while the rule was "top-up + 60 days" move to the final rule (top-up day counts as day 1: + 59)
+      await pool.query('UPDATE sims SET exp_date = DATE_ADD(topup_date, INTERVAL 59 DAY) WHERE DATEDIFF(exp_date, topup_date) = 60');
     }).catch((err) => { simsReady = null; throw err; });
   }
   return simsReady;

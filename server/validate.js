@@ -141,7 +141,8 @@ function property(body) {
 
 // SIM / phone line (the /tracker/ page). The lists are the same ones the page offers in its dropdowns.
 const SIM_TELCOS = ['Maxis', 'CelcomDigi', 'U Mobile', 'YES 5G', 'Unifi', 'Singtel', 'Other'];
-const SIM_VALID_DAYS = 60;
+// 60 days counting the top-up day itself as day 1: topped up today = 59 days left, the 60th day is the last one
+const SIM_VALID_DAYS = 59;
 const SIM_TAGS = ['Personal', 'Work', '2FA / OTP', 'Marketing', 'Backup'];
 
 function sim(body) {
