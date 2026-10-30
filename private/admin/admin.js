@@ -3,6 +3,7 @@
 const $ = (id) => document.getElementById(id);
 const API = Store.ROOT + 'api/';
 let content = { hero: { img: '' }, properties: [], team: [] };
+let ownerPhones = {};   // listing id -> owner's phone (admin only; the public content never carries it)
 
 const AREA_LABELS = {
     'KLCC': { zh: 'KLCC 核心区', en: 'KLCC Core' },
@@ -505,8 +506,28 @@ $('lf-photos-wrap').innerHTML = `
             <input id="lf-photo-url" type="url" placeholder="或粘贴图片链接，再点「添加」" class="flex-1 min-w-0 text-xs px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-gold-500">
             <button type="button" id="lf-photo-url-add" class="btn-ghost flex-shrink-0">添加</button>
         </div>
-        <p class="text-[11px] text-gray-400 leading-relaxed">第一张是封面（显示在房源卡片上）。用 ‹ › 调整顺序，★ 设为封面。可以一次选多张。</p>
+        <div class="owner-card">
+            <div class="owner-card-head">
+                <span class="owner-card-icon"><i class="fa-solid fa-user-lock"></i></span>
+                <div class="min-w-0 flex-1">
+                    <div class="owner-card-title">屋主手机号</div>
+                    <div class="owner-card-sub">只有后台看得到，前台不会显示</div>
+                </div>
+                <span class="owner-card-badge"><i class="fa-solid fa-eye-slash"></i>仅后台</span>
+            </div>
+            <label class="owner-card-field">
+                <i class="fa-solid fa-phone"></i>
+                <input id="lf-owner-phone" type="tel" inputmode="tel" autocomplete="off" maxlength="30" placeholder="例如 +60 12-345 6789">
+                <button type="button" id="lf-owner-clear" class="owner-card-clear hidden" aria-label="清除"><i class="fa-solid fa-xmark"></i></button>
+            </label>
+        </div>
     </div>`;
+
+function syncOwnerClear() {
+    $('lf-owner-clear').classList.toggle('hidden', !$('lf-owner-phone').value);
+}
+$('lf-owner-phone').addEventListener('input', syncOwnerClear);
+$('lf-owner-clear').addEventListener('click', () => { $('lf-owner-phone').value = ''; syncOwnerClear(); $('lf-owner-phone').focus(); });
 
 function renderLfPhotos() {
     const total = lfPhotos.length;
@@ -596,13 +617,14 @@ function renderListings() {
                 <div class="min-w-0 flex-1 flex flex-col">
                     <div class="flex items-center gap-2 mb-0.5">
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${p.type === 'rent' ? 'bg-gold-500' : 'bg-charcoal-900'}">${p.type === 'rent' ? '出租' : '出售'}</span>
-                        ${isFutureDate(p.availableFrom) && !p.closed ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800"><i class="fa-regular fa-calendar-check mr-0.5"></i>${esc(p.availableFrom.slice(5).replace('-', '/'))} 起可入住</span>` : ''}
+                        ${isFutureDate(p.availableFrom) && !p.closed ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800"><i class="fa-regular fa-calendar-check mr-0.5"></i>${esc(p.availableFrom.slice(5).replace('-', '/'))}</span>` : ''}
                         ${p.closed ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">${p.type === 'rent' ? '已出租' : '已售出'}</span>` : ''}
                         <span class="text-[11px] text-gray-400 truncate">${esc(p.location.zh)}</span>
                         ${(p.photos || []).length > 1 ? `<span class="text-[11px] text-gray-400 flex-shrink-0"><i class="fa-regular fa-images mr-0.5"></i>${p.photos.length}</span>` : ''}
                     </div>
                     <h3 class="text-sm font-bold leading-snug line-clamp-2">${esc(p.title.zh)}</h3>
                     <p class="text-xs font-bold text-gold-700 mt-0.5">${formatPrice(p)}</p>
+                    ${ownerPhones[p.id] ? `<a href="tel:${esc(ownerPhones[p.id].replace(/[^\d+]/g, ''))}" class="owner-phone-chip" title="屋主手机号（仅后台可见）"><i class="fa-solid fa-phone"></i>${esc(ownerPhones[p.id])}</a>` : ''}
                     <div class="mt-auto pt-2 flex justify-end gap-2">
                         <button class="btn-ghost !py-1 !px-3" data-edit="${p.id}"><i class="fa-solid fa-pen mr-1"></i>编辑</button>
                         <button class="btn-danger !py-1 !px-3" data-delete="${p.id}"><i class="fa-solid fa-trash mr-1"></i>删除</button>
@@ -894,6 +916,8 @@ function openListingForm(p) {
     $('lf-closed').checked = !!v.closed;
     $('lf-avail').value = v.availableFrom || '';
     updateAvailNote();
+    $('lf-owner-phone').value = (p && ownerPhones[p.id]) || '';
+    syncOwnerClear();
     $('lf-desc-zh').value = v.desc.zh || '';
     $('lf-desc-en').value = v.desc.en || '';
     lfPhotos = p ? [...(p.photos && p.photos.length ? p.photos : [p.img])] : [];
@@ -1007,6 +1031,7 @@ $('listingForm').addEventListener('submit', async (e) => {
         highlights: lfHighlights.filter(h => h.zh.trim() || h.en.trim()),
         closed: $('lf-closed').checked,
         availableFrom: $('lf-avail').value || null,
+        ownerPhone: $('lf-owner-phone').value.trim(),
         desc: { zh: $('lf-desc-zh').value, en: $('lf-desc-en').value }
     };
 
@@ -1258,6 +1283,7 @@ $('myPasscodeForm').addEventListener('submit', async (e) => {
 // ---------- load & init ----------
 async function refresh() {
     content = await Store.load();
+    ownerPhones = (await api('GET', 'admin/owner-phones')).phones;
     setImageField('hero-img', content.hero.img);
     banners = (await api('GET', 'admin/hero-banners')).banners;
     renderHeroPanel();

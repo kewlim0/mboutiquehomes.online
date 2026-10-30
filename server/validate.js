@@ -117,6 +117,15 @@ function availableFrom(value) {
   return s;
 }
 
+// Owner's phone number: only the admins ever see it. undefined = not sent: leave as stored; '' = clear it.
+function ownerPhone(value) {
+  if (value === undefined) return undefined;
+  const s = typeof value === 'string' ? value.trim() : '';
+  if (!s) return '';
+  if (s.length > 30 || !/^[+\d][\d\s\-().]*$/.test(s) || s.replace(/\D/g, '').length < 7) throw new HttpError(400, '屋主手机号格式不对');
+  return s;
+}
+
 function property(body) {
   const b = body && typeof body === 'object' ? body : {};
   if (!['rent', 'sale'].includes(b.type)) throw new HttpError(400, '类型必须是出租或出售');
@@ -136,6 +145,7 @@ function property(body) {
     highlights: highlights(b.highlights),
     closed: b.closed === undefined ? undefined : b.closed === true,
     availableFrom: availableFrom(b.availableFrom),
+    ownerPhone: ownerPhone(b.ownerPhone),
   };
 }
 

@@ -238,6 +238,11 @@ admin.put('/hero', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+admin.get('/owner-phones', wrap(async (req, res) => {
+  noStore(res);
+  res.json({ phones: await repo.getOwnerPhones() });
+}));
+
 admin.post('/properties', wrap(async (req, res) => {
   res.status(201).json({ id: await repo.createProperty(v.property(req.body)) });
 }));

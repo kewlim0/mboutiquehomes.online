@@ -117,6 +117,8 @@ function ensurePropertyColumns() {
     }
     if (!have.has('is_closed')) await pool.query('ALTER TABLE properties ADD COLUMN is_closed TINYINT(1) NOT NULL DEFAULT 0');
     if (!have.has('available_from')) await pool.query('ALTER TABLE properties ADD COLUMN available_from DATE NULL');
+    // the owner's phone number: admin-only, never part of mapProperty() / the public content
+    if (!have.has('owner_phone')) await pool.query("ALTER TABLE properties ADD COLUMN owner_phone VARCHAR(30) NOT NULL DEFAULT ''");
     await pool.query("UPDATE properties SET area = 'Outskirt' WHERE area = 'Suburb'");
     const [missing] = await pool.query('SELECT id FROM properties WHERE code IS NULL');
     for (const row of missing) await pool.query('UPDATE properties SET code = ? WHERE id = ?', [newCode(), row.id]);
@@ -188,6 +190,13 @@ async function writeExtras(conn, id, p) {
   if (p.highlights !== undefined) await conn.query('UPDATE properties SET highlights = ? WHERE id = ?', [JSON.stringify(p.highlights), id]);
   if (p.closed !== undefined) await conn.query('UPDATE properties SET is_closed = ? WHERE id = ?', [p.closed ? 1 : 0, id]);
   if (p.availableFrom !== undefined) await conn.query('UPDATE properties SET available_from = ? WHERE id = ?', [p.availableFrom, id]);
+  if (p.ownerPhone !== undefined) await conn.query('UPDATE properties SET owner_phone = ? WHERE id = ?', [p.ownerPhone, id]);
+}
+
+// { listingId: phone } for the dashboard only (route is behind requireAdmin)
+async function getOwnerPhones() {
+  const [rows] = await pool.query("SELECT id, owner_phone FROM properties WHERE owner_phone <> ''");
+  return Object.fromEntries(rows.map((r) => [r.id, r.owner_phone]));
 }
 
 async function writePhotos(conn, propertyId, photos) {
@@ -597,7 +606,7 @@ async function seedDefaults() {
 }
 
 module.exports = {
-  UPLOAD_DIR, getContent, getPropertyById, getPropertyByCode, setPropertyOrder, ensureSims, listSims, createSim, updateSim, deleteSim, createProperty, updateProperty, deleteProperty,
+  UPLOAD_DIR, getOwnerPhones, getContent, getPropertyById, getPropertyByCode, setPropertyOrder, ensureSims, listSims, createSim, updateSim, deleteSim, createProperty, updateProperty, deleteProperty,
   createTeamMember, updateTeamMember, deleteTeamMember, setHero, seedDefaults,
   ensureAdmins, listAdmins, getAdmin, getAdminsWithHash, createAdmin, updateAdmin, setAdminPasscode, deleteAdmin,
   touchAdminLogin, setOwnerPasscode,
