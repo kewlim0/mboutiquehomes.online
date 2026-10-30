@@ -568,9 +568,11 @@
 
         // Render Individual Card HTML
         // WhatsApp status indicator: green dot when active, grey when inactive
-        function waPill(item) {
+        // compact = icon and dot only (the number bars are narrow); the full word is in the tooltip
+        function waPill(item, compact) {
             const on = item.whatsapp === 'active';
-            return `<span class="status-pill"><i class="fa-brands fa-whatsapp"></i><span class="dot ${on ? 'active' : ''}"></span><span>${on ? 'active' : 'inactive'}</span></span>`;
+            const word = on ? 'active' : 'inactive';
+            return `<span class="status-pill" title="WhatsApp ${word}" aria-label="WhatsApp ${word}"><i class="fa-brands fa-whatsapp"></i><span class="dot ${on ? 'active' : ''}"></span>${compact ? '' : `<span>${word}</span>`}</span>`;
         }
 
         // Tapping a number opens its edit sheet (the little buttons keep their own job)
@@ -584,14 +586,14 @@
             const telcoStyle = getTelcoStyle(item.telco);
             let cls = '', pill = 'background:#dcfce7;color:#15803d', text = daysLeftText(daysLeft);
             if (daysLeft < 0) { cls = 'is-expired'; pill = 'background:#fee2e2;color:#b91c1c'; text = daysLeftText(daysLeft); }
-            else if (daysLeft <= 3) { cls = 'is-urgent'; pill = 'background:#fee2e2;color:#dc2626'; text = `Urgent · ${daysLeftText(daysLeft)}`; }
+            else if (daysLeft <= 3) { cls = 'is-urgent'; pill = 'background:#fee2e2;color:#dc2626'; text = daysLeftText(daysLeft); }
             else if (daysLeft <= 7) { cls = 'is-soon'; pill = 'background:#fef3c7;color:#b45309'; }
             return `
                 <div class="sim-row">
                     <div class="sim-row-title"><span>${esc(item.alias)}</span>${item.tag ? `<small>#${esc(item.tag)}</small>` : ''}</div>
                     <div class="sim-row-bar ${cls}" onclick="rowTap(event, '${item.id}')">
                         <div class="sim-row-main">
-                            <div class="sim-row-meta"><span style="color:${telcoStyle.c}">${esc(telcoStyle.label)}</span><span class="sim-row-pill" style="${pill}">${text}</span>${waPill(item)}</div>
+                            <div class="sim-row-meta"><span style="color:${telcoStyle.c}">${esc(telcoStyle.label)}</span><span class="sim-row-pill" style="${pill}">${text}</span>${waPill(item, true)}</div>
                             <div class="sim-row-phone"><span>${esc(item.phone)}</span>
                                 <button data-phone="${esc(item.phone)}" onclick="copyToClipboard(this.dataset.phone)" title="Copy Number" class="text-slate-300 hover:text-blue-600 text-[11px] transition"><i class="fa-regular fa-copy"></i></button>
                             </div>
