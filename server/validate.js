@@ -160,6 +160,8 @@ function sim(body) {
   const topupDate = top.toISOString().slice(0, 10);
   const expDate = shift(top, SIM_VALID_DAYS);
   if (!SIM_TELCOS.includes(b.telco)) throw new HttpError(400, '电信商无效');
+  const whatsapp = b.whatsapp === undefined || b.whatsapp === '' ? 'inactive' : b.whatsapp;
+  if (!['active', 'inactive'].includes(whatsapp)) throw new HttpError(400, 'WhatsApp 状态无效');
   const tag = b.tag === undefined || b.tag === '' ? 'Personal' : b.tag;
   if (!SIM_TAGS.includes(tag)) throw new HttpError(400, '标签无效');
   return {
@@ -168,6 +170,7 @@ function sim(body) {
     alias: str(b.alias, '别名', 120, { required: true }),
     topupDate,
     expDate,
+    whatsapp,
     tag,
     notes: str(b.notes, '备注', 1000),
   };

@@ -124,13 +124,20 @@
         .sim-row-bar.is-urgent { border-color: #f87171; }
         .sim-row-bar.is-expired { border-color: #fca5a5; background: #fffafa; }
         .sim-row-main { min-width: 0; flex: 1; }
-        .sim-row-meta { display: flex; align-items: center; gap: 0.35rem; font-size: 10.5px; font-weight: 600; color: #94a3b8; line-height: 1.3; }
+        .sim-row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.35rem; font-size: 10.5px; font-weight: 600; color: #94a3b8; line-height: 1.3; }
         .sim-row-pill { font-size: 9.5px; font-weight: 800; padding: 0.04rem 0.4rem; border-radius: 999px; line-height: 1.4; white-space: nowrap; }
         .sim-row-phone { display: flex; align-items: center; gap: 0.4rem; font-size: 0.92rem; font-weight: 600; color: #334155; margin-top: 0.05rem; }
         .sim-row-side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; flex-shrink: 0; }
         .sim-row-exp { font-size: 10px; font-weight: 600; color: #94a3b8; white-space: nowrap; }
         .sim-row-btns { display: flex; gap: 0.3rem; }
         .sim-row-btns button { height: 1.55rem; min-width: 1.55rem; padding: 0 0.4rem; border-radius: 0.5rem; font-size: 10.5px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 0.2rem; border: 1px solid transparent; }
+        .sim-row-bar { cursor: pointer; }
+        .sim-row-bar:active { background: #f8fafc; }
+        .status-pill { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 9.5px; font-weight: 800; color: #94a3b8; padding: 0.04rem 0.4rem; border-radius: 999px; background: #f1f5f9; line-height: 1.4; white-space: nowrap; }
+        .status-pill i { font-size: 10px; }
+        .status-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: #cbd5e1; }
+        .status-pill .dot.active { background: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,0.2); }
+        .status-pill:has(.dot.active) { background: #dcfce7; color: #15803d; }
         .sim-row-note { font-size: 10.5px; color: #94a3b8; margin: 0.25rem 0.15rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* Two-per-row layout (the button next to "Add SIM"): the same cards, squeezed to half width */
@@ -362,6 +369,14 @@
                     </div>
 
                     <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">WhatsApp</label>
+                        <select id="whatsapp" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="active">active</option>
+                            <option value="inactive">inactive</option>
+                        </select>
+                    </div>
+
+                    <div>
                         <label class="block text-xs font-bold text-slate-600 mb-1">Notes / Plan Remarks</label>
                         <textarea id="notes" rows="2" placeholder="e.g. Monthly RM30 plan renewal needed before 12 PM"
                                   class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
@@ -552,6 +567,18 @@
         }
 
         // Render Individual Card HTML
+        // WhatsApp status indicator: green dot when active, grey when inactive
+        function waPill(item) {
+            const on = item.whatsapp === 'active';
+            return `<span class="status-pill"><i class="fa-brands fa-whatsapp"></i><span class="dot ${on ? 'active' : ''}"></span><span>${on ? 'active' : 'inactive'}</span></span>`;
+        }
+
+        // Tapping a number opens its edit sheet (the little buttons keep their own job)
+        function rowTap(ev, id) {
+            if (ev.target.closest('button')) return;
+            editSim(id);
+        }
+
         function renderSimRow(item) {
             const daysLeft = getDaysRemaining(item.expDate);
             const telcoStyle = getTelcoStyle(item.telco);
@@ -562,9 +589,9 @@
             return `
                 <div class="sim-row">
                     <div class="sim-row-title"><span>${esc(item.alias)}</span>${item.tag ? `<small>#${esc(item.tag)}</small>` : ''}</div>
-                    <div class="sim-row-bar ${cls}">
+                    <div class="sim-row-bar ${cls}" onclick="rowTap(event, '${item.id}')">
                         <div class="sim-row-main">
-                            <div class="sim-row-meta"><span style="color:${telcoStyle.c}">${esc(telcoStyle.label)}</span><span class="sim-row-pill" style="${pill}">${text}</span></div>
+                            <div class="sim-row-meta"><span style="color:${telcoStyle.c}">${esc(telcoStyle.label)}</span><span class="sim-row-pill" style="${pill}">${text}</span>${waPill(item)}</div>
                             <div class="sim-row-phone"><span>${esc(item.phone)}</span>
                                 <button data-phone="${esc(item.phone)}" onclick="copyToClipboard(this.dataset.phone)" title="Copy Number" class="text-slate-300 hover:text-blue-600 text-[11px] transition"><i class="fa-regular fa-copy"></i></button>
                             </div>
@@ -615,7 +642,7 @@
             }
 
             return `
-                <div class="sim-card bg-white rounded-2xl p-4 border-2 ${borderHighlight} shadow-soft-lg hover:shadow-md transition duration-200 relative group">
+                <div onclick="rowTap(event, '${item.id}')" class="sim-card cursor-pointer bg-white rounded-2xl p-4 border-2 ${borderHighlight} shadow-soft-lg hover:shadow-md transition duration-200 relative group">
                     <!-- Top Info Header -->
                     <div class="sim-head flex items-start justify-between gap-2">
                         <div class="flex items-center gap-2">
@@ -629,6 +656,7 @@
                             </span>
                         </div>
 
+                        ${waPill(item)}
                         <!-- Status Badge -->
                         <div class="sim-status flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeBg}">
                             <i class="${badgeIcon}"></i>
@@ -839,6 +867,7 @@
             document.getElementById('telco').value = sim.telco;
             document.getElementById('alias').value = sim.alias;
             document.getElementById('topupDate').value = sim.topupDate;
+            document.getElementById('whatsapp').value = sim.whatsapp === 'active' ? 'active' : 'inactive';
             document.getElementById('tag').value = sim.tag;
             document.getElementById('notes').value = sim.notes || '';
 
@@ -892,6 +921,7 @@
                 telco: document.getElementById('telco').value,
                 alias: document.getElementById('alias').value.trim(),
                 topupDate: document.getElementById('topupDate').value,
+                whatsapp: document.getElementById('whatsapp').value,
                 tag: document.getElementById('tag').value,
                 notes: document.getElementById('notes').value.trim()
             };

@@ -309,6 +309,8 @@ function ensureSims() {
       // last top-up date; the expiry (exp_date) is always top-up + 59 days (60 days counting the top-up day).
       const [cols] = await pool.query("SHOW COLUMNS FROM sims LIKE 'topup_date'");
       if (!cols.length) await pool.query('ALTER TABLE sims ADD COLUMN topup_date DATE NULL AFTER exp_date');
+      const [wa] = await pool.query("SHOW COLUMNS FROM sims LIKE 'whatsapp'");
+      if (!wa.length) await pool.query("ALTER TABLE sims ADD COLUMN whatsapp VARCHAR(10) NOT NULL DEFAULT 'inactive' AFTER topup_date");
       await pool.query('UPDATE sims SET topup_date = DATE_SUB(exp_date, INTERVAL 59 DAY) WHERE topup_date IS NULL');
       // lines saved while the rule was "top-up + 60 days" move to the final rule (top-up day counts as day 1: + 59)
       await pool.query('UPDATE sims SET exp_date = DATE_ADD(topup_date, INTERVAL 59 DAY) WHERE DATEDIFF(exp_date, topup_date) = 60');
@@ -317,7 +319,7 @@ function ensureSims() {
   return simsReady;
 }
 
-const SIM_COLUMNS = "id, phone, telco, alias, DATE_FORMAT(exp_date, '%Y-%m-%d') AS expDate, DATE_FORMAT(topup_date, '%Y-%m-%d') AS topupDate, tag, notes";
+const SIM_COLUMNS = "id, phone, telco, alias, DATE_FORMAT(exp_date, '%Y-%m-%d') AS expDate, DATE_FORMAT(topup_date, '%Y-%m-%d') AS topupDate, whatsapp, tag, notes";
 
 async function listSims() {
   await ensureSims();
@@ -328,8 +330,8 @@ async function listSims() {
 async function createSim(s) {
   await ensureSims();
   const [res] = await pool.query(
-    'INSERT INTO sims (phone, telco, alias, topup_date, exp_date, tag, notes) VALUES (?,?,?,?,?,?,?)',
-    [s.phone, s.telco, s.alias, s.topupDate, s.expDate, s.tag, s.notes]
+    'INSERT INTO sims (phone, telco, alias, topup_date, exp_date, whatsapp, tag, notes) VALUES (?,?,?,?,?,?,?,?)',
+    [s.phone, s.telco, s.alias, s.topupDate, s.expDate, s.whatsapp, s.tag, s.notes]
   );
   const [[row]] = await pool.query(`SELECT ${SIM_COLUMNS} FROM sims WHERE id = ?`, [res.insertId]);
   return row;
@@ -338,8 +340,8 @@ async function createSim(s) {
 async function updateSim(id, s) {
   await ensureSims();
   const [res] = await pool.query(
-    'UPDATE sims SET phone=?, telco=?, alias=?, topup_date=?, exp_date=?, tag=?, notes=? WHERE id = ?',
-    [s.phone, s.telco, s.alias, s.topupDate, s.expDate, s.tag, s.notes, id]
+    'UPDATE sims SET phone=?, telco=?, alias=?, topup_date=?, exp_date=?, whatsapp=?, tag=?, notes=? WHERE id = ?',
+    [s.phone, s.telco, s.alias, s.topupDate, s.expDate, s.whatsapp, s.tag, s.notes, id]
   );
   if (!res.affectedRows) {
     const [[exists]] = await pool.query('SELECT COUNT(*) AS n FROM sims WHERE id = ?', [id]);
