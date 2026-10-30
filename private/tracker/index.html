@@ -395,6 +395,11 @@
             return d.toISOString().split('T')[0];
         }
 
+        // "59 days left", "1 day left", "-2 days left" (a negative number = already past the 60 days)
+        function daysLeftText(n) {
+            return `${n} ${Math.abs(n) === 1 ? 'day' : 'days'} left`;
+        }
+
         // Calculate days remaining
         function getDaysRemaining(expDateStr) {
             const today = new Date();
@@ -550,10 +555,10 @@
         function renderSimRow(item) {
             const daysLeft = getDaysRemaining(item.expDate);
             const telcoStyle = getTelcoStyle(item.telco);
-            let cls = '', pill = 'background:#dcfce7;color:#15803d', text = `${daysLeft} days left`;
-            if (daysLeft < 0) { cls = 'is-expired'; pill = 'background:#fee2e2;color:#b91c1c'; text = `Expired · ${Math.abs(daysLeft)}d ago`; }
-            else if (daysLeft <= 3) { cls = 'is-urgent'; pill = 'background:#fee2e2;color:#dc2626'; text = `Urgent · ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left`; }
-            else if (daysLeft <= 7) { cls = 'is-soon'; pill = 'background:#fef3c7;color:#b45309'; text = `${daysLeft} days left`; }
+            let cls = '', pill = 'background:#dcfce7;color:#15803d', text = daysLeftText(daysLeft);
+            if (daysLeft < 0) { cls = 'is-expired'; pill = 'background:#fee2e2;color:#b91c1c'; text = daysLeftText(daysLeft); }
+            else if (daysLeft <= 3) { cls = 'is-urgent'; pill = 'background:#fee2e2;color:#dc2626'; text = `Urgent · ${daysLeftText(daysLeft)}`; }
+            else if (daysLeft <= 7) { cls = 'is-soon'; pill = 'background:#fef3c7;color:#b45309'; }
             return `
                 <div class="sim-row">
                     <div class="sim-row-title"><span>${esc(item.alias)}</span>${item.tag ? `<small>#${esc(item.tag)}</small>` : ''}</div>
@@ -590,22 +595,22 @@
 
             if (daysLeft < 0) {
                 badgeBg = 'bg-red-100 text-red-700 border-red-200';
-                badgeText = `Expired (${Math.abs(daysLeft)} days ago)`;
+                badgeText = `Expired (${daysLeftText(daysLeft)})`;
                 badgeIcon = 'fa-solid fa-circle-xmark';
                 borderHighlight = 'border-red-300 shadow-red-500/10';
             } else if (daysLeft <= 3) {
                 badgeBg = 'bg-red-50 text-red-600 border-red-200 animate-pulse';
-                badgeText = `Urgent: ${daysLeft} days left`;
+                badgeText = `Urgent: ${daysLeftText(daysLeft)}`;
                 badgeIcon = 'fa-solid fa-triangle-exclamation';
                 borderHighlight = 'border-red-400 shadow-red-500/15';
             } else if (daysLeft <= 7) {
                 badgeBg = 'bg-amber-100 text-amber-700 border-amber-300';
-                badgeText = `${daysLeft} days left`;
+                badgeText = daysLeftText(daysLeft);
                 badgeIcon = 'fa-solid fa-clock';
                 borderHighlight = 'border-amber-300';
             } else {
                 badgeBg = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                badgeText = `Active (${daysLeft} days left)`;
+                badgeText = `Active (${daysLeftText(daysLeft)})`;
                 badgeIcon = 'fa-solid fa-shield-check';
             }
 
