@@ -651,7 +651,7 @@ function renderListings() {
         ? `<div class="listing-search-empty"><i class="fa-regular fa-face-frown-open"></i><b>没有找到「${esc(listingQuery.trim())}」</b><span>换个关键词试试，例如名称、地段或价格</span></div>`
         : shown.map(p => `
             <div class="item-card" data-id="${p.id}">
-                <img src="${esc(Store.resolve(p.img))}" alt="" onerror="this.removeAttribute('src')">
+                <img src="${esc(Store.resolve(p.img))}" alt="" data-edit="${p.id}" title="点击编辑" onerror="this.removeAttribute('src')">
                 <div class="min-w-0 flex-1 flex flex-col">
                     <div class="flex items-center gap-2 mb-0.5">
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white whitespace-nowrap flex-shrink-0 ${p.type === 'rent' ? 'bg-gold-500' : 'bg-charcoal-900'}">${p.type === 'rent' ? '出租' : '出售'}</span>

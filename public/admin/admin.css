@@ -970,3 +970,9 @@ html.slide-out-right body { animation: slide-out-right 0.24s ease-in both; }
 .listing-search-empty i { font-size: 1.6rem; color: #d6c58a; }
 .listing-search-empty b { color: #4b5563; font-size: 0.9rem; word-break: break-all; }
 #listingList.is-filtering .drag-handle { display: none; }
+
+/* listing rows: the photo is a full-height rectangle on the left edge of the card, and tapping it opens the editor */
+#listingList .item-card { padding: 0 0.4rem 0 0; overflow: hidden; gap: 0.75rem; }
+#listingList .item-card > img { width: 6.5rem; height: auto; min-height: 7rem; align-self: stretch; border-radius: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: filter 0.15s; }
+#listingList .item-card > img:active { filter: brightness(0.85); }
+#listingList .item-card > .min-w-0 { padding: 0.75rem 0; }
