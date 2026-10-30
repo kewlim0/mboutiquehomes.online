@@ -654,9 +654,9 @@ function renderListings() {
                 <img src="${esc(Store.resolve(p.img))}" alt="" onerror="this.removeAttribute('src')">
                 <div class="min-w-0 flex-1 flex flex-col">
                     <div class="flex items-center gap-2 mb-0.5">
-                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${p.type === 'rent' ? 'bg-gold-500' : 'bg-charcoal-900'}">${p.type === 'rent' ? '出租' : '出售'}</span>
-                        ${isFutureDate(p.availableFrom) && !p.closed ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800"><i class="fa-regular fa-calendar-check mr-0.5"></i>${esc(p.availableFrom.slice(5).replace('-', '/'))}</span>` : ''}
-                        ${p.closed ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">${p.type === 'rent' ? '已出租' : '已售出'}</span>` : ''}
+                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white whitespace-nowrap flex-shrink-0 ${p.type === 'rent' ? 'bg-gold-500' : 'bg-charcoal-900'}">${p.type === 'rent' ? '出租' : '出售'}</span>
+                        ${isFutureDate(p.availableFrom) && !p.closed ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 whitespace-nowrap flex-shrink-0"><i class="fa-regular fa-calendar-check mr-0.5"></i>${esc(p.availableFrom.slice(5).replace('-', '/'))}</span>` : ''}
+                        ${p.closed ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 whitespace-nowrap flex-shrink-0">${p.type === 'rent' ? '已出租' : '已售出'}</span>` : ''}
                         <span class="text-[11px] text-gray-400 truncate">${esc(p.location.zh)}</span>
                         ${(p.photos || []).length > 1 ? `<span class="text-[11px] text-gray-400 flex-shrink-0"><i class="fa-regular fa-images mr-0.5"></i>${p.photos.length}</span>` : ''}
                     </div>
@@ -675,6 +675,41 @@ function renderListings() {
 $('listingSearch').addEventListener('input', (e) => { listingQuery = e.target.value; renderListings(); });
 $('listingSearch').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('listingSearchClear').click(); });
 $('listingSearchClear').addEventListener('click', () => { $('listingSearch').value = ''; listingQuery = ''; renderListings(); $('listingSearch').focus(); });
+
+// The placeholder types a hint, waits, deletes it and types the next one. It stops while the box is focused or has text,
+// and stays plain ("搜索房源…") for people who asked their phone for less motion.
+(() => {
+    const input = $('listingSearch');
+    const BASE = '搜索房源';
+    const HINTS = ['名称，例如 Sunway Belfield', '编号，例如 mwc3xmvdu2', '地段，例如 KLCC', '价格，例如 3500', '屋主电话，例如 012-345', '出租 / 出售 / 已出租'];
+    const still = () => { input.placeholder = `${BASE}…`; };
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return still();
+
+    let timer = null, hint = 0, shown = 0, phase = 'type';
+    const paused = () => document.hidden || document.activeElement === input || input.value !== '';
+    const draw = () => { input.placeholder = `${BASE}：${HINTS[hint].slice(0, shown)}`; };
+    function tick() {
+        if (paused()) { timer = null; return still(); }
+        let wait = 70;
+        if (phase === 'type') {
+            shown++; draw();
+            if (shown >= HINTS[hint].length) { phase = 'hold'; wait = 1500; }
+        } else if (phase === 'hold') {
+            phase = 'erase'; wait = 40;
+        } else {
+            shown--; draw(); wait = 30;
+            if (shown <= 0) { phase = 'type'; hint = (hint + 1) % HINTS.length; wait = 350; still(); }
+        }
+        timer = setTimeout(tick, wait);
+    }
+    const start = () => { if (!timer && !paused()) { shown = 0; phase = 'type'; timer = setTimeout(tick, 500); } };
+    const stop = () => { clearTimeout(timer); timer = null; still(); };
+    input.addEventListener('focus', stop);
+    input.addEventListener('blur', start);
+    input.addEventListener('input', () => { if (input.value) stop(); else start(); });
+    document.addEventListener('visibilitychange', () => { document.hidden ? stop() : start(); });
+    start();
+})();
 
 // ----- drag to re-order the listings (mouse, finger or keyboard) -----
 // Hold the three-line handle on a row and move it up or down; on release the new order is saved and the site follows it.
