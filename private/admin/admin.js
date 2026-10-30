@@ -607,11 +607,49 @@ function formatPrice(p) {
     return `RM ${(p.priceRM / 10000).toFixed(0)} 万`;
 }
 
+// ----- listing search -----
+// Every word typed has to be found somewhere on the listing: name (both languages), code, area, address, price,
+// rent / sale / sold words, the available-from date and the owner's phone (digits only, so "0123456789" finds "+60 12-345 6789").
+let listingQuery = '';
+
+function listingHaystack(p) {
+    const text = [
+        p.title.zh, p.title.en, p.code, p.area, p.location.zh, p.location.en, p.address,
+        p.type === 'rent' ? '出租 rent rental' : '出售 sale sell buy', p.closed ? (p.type === 'rent' ? '已出租 rented' : '已售出 sold') : '',
+        p.priceRM, Number(p.priceRM).toLocaleString('en-US'), p.bedrooms && `${p.bedrooms}房 ${p.bedrooms}bed`, p.bathrooms && `${p.bathrooms}卫 ${p.bathrooms}bath`,
+        p.availableFrom && `${p.availableFrom} ${p.availableFrom.slice(5).replace('-', '/')}`, ownerPhones[p.id]
+    ].filter(Boolean).join(' ').toLowerCase();
+    const digits = ((ownerPhones[p.id] || '') + ' ' + p.priceRM).replace(/[^\d ]/g, '');
+    const phone = (ownerPhones[p.id] || '').replace(/\D/g, '');
+    const local = phone.startsWith('60') ? '0' + phone.slice(2) : phone;
+    return `${text} ${digits} ${phone} ${local}`;
+}
+
+function matchListings(list, query) {
+    const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return list;
+    return list.filter(p => {
+        const hay = listingHaystack(p);
+        return words.every(w => hay.includes(w) || (/^[+\d\s\-()]+$/.test(w) && w.replace(/\D/g, '').length >= 2 && hay.includes(w.replace(/\D/g, ''))));
+    });
+}
+
 function renderListings() {
-    $('listingCount').textContent = content.properties.length;
-    $('listingList').innerHTML = content.properties.length === 0
+    const all = content.properties;
+    const shown = matchListings(all, listingQuery);
+    const searching = !!listingQuery.trim();
+    $('listingCount').textContent = all.length;
+    $('listingSearchWrap').classList.toggle('hidden', all.length < 2);
+    $('listingSearchCount').textContent = `${shown.length} / ${all.length}`;
+    $('listingSearchCount').classList.toggle('hidden', !searching);
+    $('listingSearchClear').classList.toggle('hidden', !listingQuery);
+    // while a search narrows the list the drag handles are hidden: re-ordering only part of the list would be confusing
+    $('listingList').classList.toggle('is-filtering', searching);
+    $('listingList').innerHTML = all.length === 0
         ? '<p class="text-sm text-gray-400 sm:col-span-2 py-8 text-center">还没有房源，点击右上角「新增房源」。</p>'
-        : content.properties.map(p => `
+        : shown.length === 0
+        ? `<div class="listing-search-empty"><i class="fa-regular fa-face-frown-open"></i><b>没有找到「${esc(listingQuery.trim())}」</b><span>换个关键词试试，例如名称、地段或价格</span></div>`
+        : shown.map(p => `
             <div class="item-card" data-id="${p.id}">
                 <img src="${esc(Store.resolve(p.img))}" alt="" onerror="this.removeAttribute('src')">
                 <div class="min-w-0 flex-1 flex flex-col">
@@ -632,8 +670,11 @@ function renderListings() {
                 </div>
                 <button type="button" class="drag-handle" aria-label="拖动调整顺序（也可以用键盘上下键）" title="按住拖动调整顺序"><i class="fa-solid fa-grip-lines" aria-hidden="true"></i></button>
             </div>`).join('');
-    $('listingSortHint').classList.toggle('hidden', content.properties.length < 2);
 }
+
+$('listingSearch').addEventListener('input', (e) => { listingQuery = e.target.value; renderListings(); });
+$('listingSearch').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('listingSearchClear').click(); });
+$('listingSearchClear').addEventListener('click', () => { $('listingSearch').value = ''; listingQuery = ''; renderListings(); $('listingSearch').focus(); });
 
 // ----- drag to re-order the listings (mouse, finger or keyboard) -----
 // Hold the three-line handle on a row and move it up or down; on release the new order is saved and the site follows it.

@@ -954,3 +954,19 @@ html.slide-out-right body { animation: slide-out-right 0.24s ease-in both; }
 .owner-card-clear { width: 1.5rem; height: 1.5rem; border-radius: 999px; background: #f3f4f6; color: #6b7280; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; }
 .owner-phone-chip { display: inline-flex; align-items: center; gap: 0.35rem; align-self: flex-start; margin-top: 0.3rem; font-size: 0.7rem; font-weight: 700; color: #92400e; background: #fffbeb; border: 1px solid #f1e3b8; padding: 0.15rem 0.55rem; border-radius: 999px; }
 .owner-phone-chip i { font-size: 0.6rem; color: #b8860b; }
+
+/* listing search bar (replaces the old drag hint) */
+.listing-search { margin: -0.15rem 0 0.85rem; }
+.listing-search-box { display: flex; align-items: center; gap: 0.6rem; background: #fff; border: 1.5px solid #ece7da; border-radius: 1rem; padding: 0 0.75rem 0 0.9rem; box-shadow: 0 6px 18px -10px rgba(31, 41, 55, 0.25); transition: border-color 0.15s, box-shadow 0.15s; cursor: text; }
+.listing-search-box:focus-within { border-color: #b8860b; box-shadow: 0 0 0 4px rgba(184, 134, 11, 0.13), 0 8px 22px -10px rgba(184, 134, 11, 0.35); }
+.listing-search-icon { color: #b8860b; font-size: 0.85rem; flex-shrink: 0; }
+.listing-search-box input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; padding: 0.85rem 0; font-size: 0.9rem; font-weight: 600; color: #111827; -webkit-appearance: none; appearance: none; }
+.listing-search-box input::placeholder { color: #b0a98f; font-weight: 500; }
+.listing-search-box input::-webkit-search-cancel-button { display: none; }
+.listing-search-count { font-size: 0.68rem; font-weight: 800; color: #92400e; background: #fef3c7; padding: 0.2rem 0.55rem; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
+.listing-search-clear { width: 1.6rem; height: 1.6rem; border-radius: 999px; background: #f3f4f6; color: #6b7280; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.listing-search-clear:active { background: #e5e7eb; }
+.listing-search-empty { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; text-align: center; padding: 2.2rem 1rem; color: #9ca3af; font-size: 0.78rem; }
+.listing-search-empty i { font-size: 1.6rem; color: #d6c58a; }
+.listing-search-empty b { color: #4b5563; font-size: 0.9rem; word-break: break-all; }
+#listingList.is-filtering .drag-handle { display: none; }
