@@ -278,7 +278,7 @@
                 <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                     <i class="fa-solid fa-layer-group text-blue-500"></i> Phone Numbers Directory
                 </h2>
-                <span id="sortLabel" class="text-[11px] font-semibold text-slate-400">Sorted by: Expiration Date</span>
+                <span id="sortLabel" class="text-[11px] font-semibold text-slate-400">Sorted by: Days left</span>
             </div>
 
             <!-- Dynamic Phone Number Cards Container -->
@@ -345,8 +345,8 @@
 
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">Expiration Date *</label>
-                            <input type="date" id="expDate" required
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Last Top Up Date *</label>
+                            <input type="date" id="topupDate" required
                                    class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                         <div>
@@ -462,7 +462,7 @@
         function simText(item) {
             const digits = String(item.phone).replace(/\D/g, '');
             const local = digits.startsWith('60') ? '0' + digits.slice(2) : digits;
-            const text = [item.phone, item.alias, item.telco, TELCO_ALIASES[item.telco] || '', item.tag, item.notes, item.expDate].join(' ').toLowerCase();
+            const text = [item.phone, item.alias, item.telco, TELCO_ALIASES[item.telco] || '', item.tag, item.notes, item.topupDate, item.expDate].join(' ').toLowerCase();
             const words = [item.alias, item.telco, TELCO_ALIASES[item.telco] || '', item.tag, item.notes].join(' ').toLowerCase()
                 .split(/[^a-z0-9\u4e00-\u9fff]+/).filter(Boolean);
             return { digits, local, text, squashed: squash(text) + ' ' + digits + ' ' + local, words };
@@ -518,7 +518,7 @@
             updateCounters();
             document.getElementById('sortLabel').textContent = searchVal
                 ? `${filtered.length} ${filtered.length === 1 ? 'line' : 'lines'} found`
-                : 'Sorted by: Expiration Date';
+                : 'Sorted by: Days left';
 
             // Render Cards
             if (loading) {
@@ -565,9 +565,9 @@
                             </div>
                         </div>
                         <div class="sim-row-side">
-                            <span class="sim-row-exp">Exp ${esc(item.expDate)}</span>
+                            <span class="sim-row-exp">Top up ${esc(item.topupDate)}</span>
                             <div class="sim-row-btns">
-                                <button onclick="quickRenew('${item.id}')" title="Extend +30 Days" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0"><i class="fa-solid fa-bolt text-[9px]"></i>30</button>
+                                <button onclick="quickRenew('${item.id}')" title="Topped up today (restart 60 days)" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0"><i class="fa-solid fa-bolt text-[9px]"></i>Top up</button>
                                 <button onclick="editSim('${item.id}')" title="Edit SIM" style="background:#f1f5f9;color:#475569"><i class="fa-solid fa-pen-to-square"></i></button>
                                 <button onclick="deleteSim('${item.id}')" title="Delete SIM" style="background:#fef2f2;color:#dc2626"><i class="fa-solid fa-trash-can"></i></button>
                             </div>
@@ -655,14 +655,14 @@
                     <!-- Footer Action Bar -->
                     <div class="sim-foot mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between">
                         <span class="text-[11px] font-medium text-slate-400">
-                            Expires: <strong class="text-slate-700">${esc(item.expDate)}</strong>
+                            Last top up: <strong class="text-slate-700">${esc(item.topupDate)}</strong>
                         </span>
 
                         <div class="sim-actions flex items-center gap-1.5">
-                            <!-- Renew +30 Days Quick Button -->
-                            <button onclick="quickRenew('${item.id}')" title="Extend +30 Days" class="sim-renew px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 transition flex items-center gap-1">
+                            <!-- Topped up today Quick Button -->
+                            <button onclick="quickRenew('${item.id}')" title="Topped up today (restart 60 days)" class="sim-renew px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 transition flex items-center gap-1">
                                 <i class="fa-solid fa-bolt text-[10px]"></i>
-                                <span>+30 Days</span>
+                                <span>Top up</span>
                             </button>
 
                             <!-- Edit Button -->
@@ -719,23 +719,22 @@
             document.body.removeChild(tempInput);
         }
 
-        // Quick Top Up / Renew (+30 days)
+        // Today's date in this phone's own time zone (YYYY-MM-DD)
+        function todayStr() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        // "Topped up today": the last top-up date becomes today, so the 60-day countdown starts again
         async function quickRenew(id) {
             const sim = sims.find(s => String(s.id) === String(id));
             if (!sim) return;
-            const currExp = new Date(sim.expDate);
-            const today = new Date();
-
-            // If already expired, extend 30 days from today; else extend 30 days from current exp date
-            const baseDate = currExp < today ? today : currExp;
-            baseDate.setDate(baseDate.getDate() + 30);
-            const expDate = baseDate.toISOString().split('T')[0];
 
             try {
-                const saved = (await api('PUT', 'sims/' + sim.id, { ...sim, expDate })).sim;
+                const saved = (await api('PUT', 'sims/' + sim.id, { ...sim, topupDate: todayStr() })).sim;
                 sims = sims.map(s => (s.id === saved.id ? saved : s));
                 renderApp();
-                showToast(`Validity extended by +30 days!`, 'fa-bolt', 'text-amber-400');
+                showToast('Topped up today: 60 days again!', 'fa-bolt', 'text-amber-400');
             } catch (err) {
                 showToast(err.message, 'fa-circle-exclamation', 'text-red-400');
             }
@@ -822,7 +821,7 @@
             document.getElementById('simForm').reset();
             document.getElementById('editId').value = '';
             document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-mobile-screen text-blue-500"></i> Add New Mobile Line';
-            document.getElementById('expDate').value = getFutureDateStr(30);
+            document.getElementById('topupDate').value = todayStr();
             showModal();
         }
 
@@ -834,7 +833,7 @@
             document.getElementById('phoneNum').value = sim.phone;
             document.getElementById('telco').value = sim.telco;
             document.getElementById('alias').value = sim.alias;
-            document.getElementById('expDate').value = sim.expDate;
+            document.getElementById('topupDate').value = sim.topupDate;
             document.getElementById('tag').value = sim.tag;
             document.getElementById('notes').value = sim.notes || '';
 
@@ -887,7 +886,7 @@
                 phone: document.getElementById('phoneNum').value.trim(),
                 telco: document.getElementById('telco').value,
                 alias: document.getElementById('alias').value.trim(),
-                expDate: document.getElementById('expDate').value,
+                topupDate: document.getElementById('topupDate').value,
                 tag: document.getElementById('tag').value,
                 notes: document.getElementById('notes').value.trim()
             };

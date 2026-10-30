@@ -305,12 +305,17 @@ function ensureSims() {
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       KEY idx_sims_exp (exp_date)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`).catch((err) => { simsReady = null; throw err; });
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`).then(async () => {
+      // last top-up date; the expiry (exp_date) is always top-up + 60 days. Existing lines keep their countdown.
+      const [cols] = await pool.query("SHOW COLUMNS FROM sims LIKE 'topup_date'");
+      if (!cols.length) await pool.query('ALTER TABLE sims ADD COLUMN topup_date DATE NULL AFTER exp_date');
+      await pool.query('UPDATE sims SET topup_date = DATE_SUB(exp_date, INTERVAL 60 DAY) WHERE topup_date IS NULL');
+    }).catch((err) => { simsReady = null; throw err; });
   }
   return simsReady;
 }
 
-const SIM_COLUMNS = "id, phone, telco, alias, DATE_FORMAT(exp_date, '%Y-%m-%d') AS expDate, tag, notes";
+const SIM_COLUMNS = "id, phone, telco, alias, DATE_FORMAT(exp_date, '%Y-%m-%d') AS expDate, DATE_FORMAT(topup_date, '%Y-%m-%d') AS topupDate, tag, notes";
 
 async function listSims() {
   await ensureSims();
@@ -321,8 +326,8 @@ async function listSims() {
 async function createSim(s) {
   await ensureSims();
   const [res] = await pool.query(
-    'INSERT INTO sims (phone, telco, alias, exp_date, tag, notes) VALUES (?,?,?,?,?,?)',
-    [s.phone, s.telco, s.alias, s.expDate, s.tag, s.notes]
+    'INSERT INTO sims (phone, telco, alias, topup_date, exp_date, tag, notes) VALUES (?,?,?,?,?,?,?)',
+    [s.phone, s.telco, s.alias, s.topupDate, s.expDate, s.tag, s.notes]
   );
   const [[row]] = await pool.query(`SELECT ${SIM_COLUMNS} FROM sims WHERE id = ?`, [res.insertId]);
   return row;
@@ -331,8 +336,8 @@ async function createSim(s) {
 async function updateSim(id, s) {
   await ensureSims();
   const [res] = await pool.query(
-    'UPDATE sims SET phone=?, telco=?, alias=?, exp_date=?, tag=?, notes=? WHERE id = ?',
-    [s.phone, s.telco, s.alias, s.expDate, s.tag, s.notes, id]
+    'UPDATE sims SET phone=?, telco=?, alias=?, topup_date=?, exp_date=?, tag=?, notes=? WHERE id = ?',
+    [s.phone, s.telco, s.alias, s.topupDate, s.expDate, s.tag, s.notes, id]
   );
   if (!res.affectedRows) {
     const [[exists]] = await pool.query('SELECT COUNT(*) AS n FROM sims WHERE id = ?', [id]);

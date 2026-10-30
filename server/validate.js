@@ -141,13 +141,23 @@ function property(body) {
 
 // SIM / phone line (the /tracker/ page). The lists are the same ones the page offers in its dropdowns.
 const SIM_TELCOS = ['Maxis', 'CelcomDigi', 'U Mobile', 'YES 5G', 'Unifi', 'Singtel', 'Other'];
+const SIM_VALID_DAYS = 60;
 const SIM_TAGS = ['Personal', 'Work', '2FA / OTP', 'Marketing', 'Backup'];
 
 function sim(body) {
   const b = body && typeof body === 'object' ? body : {};
-  const expDate = typeof b.expDate === 'string' ? b.expDate.trim() : '';
-  const d = /^\d{4}-\d{2}-\d{2}$/.test(expDate) ? new Date(`${expDate}T00:00:00Z`) : null;
-  if (!d || Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== expDate) throw new HttpError(400, '到期日期无效');
+  // The line is valid for SIM_VALID_DAYS after its last top-up; the expiry date is worked out from it.
+  // (An older open page may still send only expDate: that is read back as the top-up date.)
+  const day = (v) => {
+    const t = typeof v === 'string' ? v.trim() : '';
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(t) ? new Date(`${t}T00:00:00Z`) : null;
+    return d && !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === t ? d : null;
+  };
+  const shift = (d, n) => new Date(d.getTime() + n * 86400000).toISOString().slice(0, 10);
+  const top = day(b.topupDate) || (b.topupDate === undefined || b.topupDate === '' ? (day(b.expDate) && new Date(day(b.expDate).getTime() - SIM_VALID_DAYS * 86400000)) : null);
+  if (!top) throw new HttpError(400, '最后充值日期无效');
+  const topupDate = top.toISOString().slice(0, 10);
+  const expDate = shift(top, SIM_VALID_DAYS);
   if (!SIM_TELCOS.includes(b.telco)) throw new HttpError(400, '电信商无效');
   const tag = b.tag === undefined || b.tag === '' ? 'Personal' : b.tag;
   if (!SIM_TAGS.includes(tag)) throw new HttpError(400, '标签无效');
@@ -155,6 +165,7 @@ function sim(body) {
     phone: str(b.phone, '电话号码', 40, { required: true }),
     telco: b.telco,
     alias: str(b.alias, '别名', 120, { required: true }),
+    topupDate,
     expDate,
     tag,
     notes: str(b.notes, '备注', 1000),
