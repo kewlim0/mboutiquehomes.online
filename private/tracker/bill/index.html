@@ -18,6 +18,12 @@
         body { font-family: 'Inter', 'PingFang SC', 'Noto Sans SC', sans-serif; background: #f1f5f9; color: #1e293b; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
         input, select, textarea { font-size: 16px !important; } /* no zoom when a field is focused on iPhone */
         .field { width: 100%; padding: 0.6rem 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-weight: 600; outline: none; }
+        /* iPhone draws a date field wider and taller than the rest and will not shrink it to its column (it spilled over the
+           next field and off the screen). Same plain look as the other fields, and grid cells may shrink. */
+        .grid > * { min-width: 0; }
+        input.field[type="date"] { -webkit-appearance: none; appearance: none; display: block; width: 100%; min-width: 0; max-width: 100%; height: 2.75rem; text-align: left; line-height: 1.2; }
+        input.field[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.2em; margin: 0; }
+        input.field[type="date"]::-webkit-calendar-picker-indicator { margin: 0; padding: 0 0.1rem; opacity: 0.6; }
         .field:focus { border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15); background: #fff; }
         .lbl { display: block; font-size: 11px; font-weight: 800; color: #64748b; margin: 0 0 0.25rem 0.1rem; }
         .chip { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 10.5px; font-weight: 800; padding: 0.18rem 0.55rem; border-radius: 999px; white-space: nowrap; }
@@ -274,7 +280,7 @@ function renderBill() {
     const st = stats([b]);
     $('bBody').innerHTML = `
         <div class="card p-3.5"><div class="grid grid-cols-2 gap-3"><div><label class="lbl">账单日期</label><input class="field" type="date" value="${esc(b.billDate)}" onchange="editing.billDate=this.value;renderBill()"></div>
-            <div><label class="lbl">租客已付款</label><button onclick="editing.received=!editing.received;renderBill()" class="w-full py-2.5 rounded-xl text-[12px] font-extrabold border-[1.5px] ${b.received ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-white text-slate-500 border-slate-200'}"><i class="fa-solid ${b.received ? 'fa-circle-check' : 'fa-circle'} mr-1"></i>${b.received ? 'Received' : 'Not received'}</button></div></div></div>
+            <div><label class="lbl">租客已付款</label><button onclick="editing.received=!editing.received;renderBill()" class="w-full h-11 rounded-xl text-[12px] font-extrabold border-[1.5px] ${b.received ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-white text-slate-500 border-slate-200'}"><i class="fa-solid ${b.received ? 'fa-circle-check' : 'fa-circle'} mr-1"></i>${b.received ? 'Received' : 'Not received'}</button></div></div></div>
         ${st.unpaid.length ? `<div class="rounded-2xl px-4 py-3 text-[12px] font-extrabold bg-red-50 text-red-700 border border-red-200"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${st.unpaid.length} unpaid · ${money(st.owe)}</div>` : ''}
         ${groups}
         <div class="card p-3.5"><label class="lbl">备注</label><textarea class="field" rows="2" maxlength="1000" oninput="editing.notes=this.value">${esc(b.notes)}</textarea></div>
