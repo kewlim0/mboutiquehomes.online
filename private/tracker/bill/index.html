@@ -314,17 +314,12 @@ function renderBill() {
         ${b.id ? '<button onclick="deleteBill()" class="btn btn-red w-full"><i class="fa-solid fa-trash-can"></i>Delete this bill</button>' : ''}`;
     $('billSheet').scrollTop = keep;
 }
-// The account number that belongs to an item, from the unit's own details (WiFi for the internet bills, TNB for electricity, ...)
+// Only the monthly internet bill (网络月费) shows an account row: the unit's WiFi account number
 function accountFor(it) {
+    if (!/网络月费/.test(String(it.name || ''))) return null;
     const u = data.units.find((x) => x.id === editing.unitId); if (!u) return null;
-    const n = String(it.name || '');
-    let label = '', value = '';
-    if (/网络|宽带|wifi|unifi|time/i.test(n)) { label = 'WiFi 账号'; value = u.wifiNo; }
-    else if (/污水/.test(n)) { label = 'Indah Water 账号'; value = u.waterNo; }
-    else if (/电费|电/.test(n)) { label = 'TNB 账号'; value = u.tnbNo; }
-    else if (/水费|水/.test(n)) { label = 'Syabas 账号'; value = u.syabasNo; }
-    value = String(value || '').trim();
-    return value && value !== '-' ? { label, value } : null;
+    const value = String(u.wifiNo || '').trim();
+    return value && value !== '-' ? { label: 'WiFi 账号', value } : null;
 }
 // "TM - 7028206386" copies as 7028206386; a field with several numbers is copied as written
 function copyValue(v) { const runs = v.match(/\d{6,}/g); return runs && runs.length === 1 ? runs[0] : v; }
