@@ -99,13 +99,13 @@
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div><label class="lbl">月租 (RM)</label><input class="field" id="u-rent" inputmode="decimal"></div>
-                <div><label class="lbl">付租方式</label><input class="field" id="u-mode" maxlength="80" placeholder="Monthly"></div>
+                <div><label class="lbl">付租方式</label><select class="field" id="u-mode" style="height:2.75rem"><option value="Monthly">Monthly</option><option value="Quarterly">Quarterly</option><option value="6 Months">6 Months</option><option value="12 Months">12 Months</option></select></div>
                 <div><label class="lbl">租期开始</label><input class="field" type="date" id="u-start"></div>
                 <div><label class="lbl">租期结束</label><input class="field" type="date" id="u-end"></div>
             </div>
-            <div><label class="lbl">收租日</label><textarea class="field" id="u-due" rows="2" maxlength="500" placeholder="每个月1号"></textarea></div>
-            <div><label class="lbl">屋主户口</label><textarea class="field" id="u-acc" rows="3" maxlength="4000"></textarea></div>
-            <div><label class="lbl">备注</label><textarea class="field" id="u-notes" rows="2" maxlength="4000"></textarea></div>
+            <div><label class="lbl">收租日</label><textarea class="field" id="u-due" rows="6" maxlength="500" placeholder="每个月1号"></textarea></div>
+            <div><label class="lbl">屋主户口</label><textarea class="field" id="u-acc" rows="9" maxlength="4000"></textarea></div>
+            <div><label class="lbl">备注</label><textarea class="field" id="u-notes" rows="6" maxlength="4000"></textarea></div>
             <button id="uDelete" type="button" onclick="deleteUnit()" class="btn btn-red w-full hidden"><i class="fa-solid fa-trash-can"></i>删除这个单位（连账单一起删除）</button>
         </form>
     </div>
@@ -130,6 +130,16 @@ const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = (n) => 'RM ' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const CATS = [['utility', '水电费', 'fa-bolt'], ['rent', '租金', 'fa-house'], ['misc', '杂费', 'fa-screwdriver-wrench'], ['stamp', '租约盖章费', 'fa-stamp']];
+// How often the rent is paid. Older entries were free text ("Every 3 months (Quarter)"), so they are mapped onto the four choices.
+const RENT_MODES = ['Monthly', 'Quarterly', '6 Months', '12 Months'];
+function rentMode(v) {
+    const t = String(v || '').toLowerCase().trim(); if (!t) return '';
+    if (/quarter|3\s*month|每\s*3|三个月|季/.test(t)) return 'Quarterly';
+    if (/(^|\D)6\s*month|half|半年|6\s*个月/.test(t)) return '6 Months';
+    if (/12\s*month|year|annual|一年|年付|12\s*个月/.test(t)) return '12 Months';
+    if (/month/.test(t)) return 'Monthly';
+    return String(v).trim();
+}
 const STATUS = { paid: 'Paid', pending: 'Pending', unpaid: 'Unpaid' };
 
 let data = { units: [], tenants: [], bills: [] };
@@ -205,7 +215,7 @@ function renderUnits() {
         ].join('');
         return `<button onclick="openUnitView(${u.id})" class="card ${cls} tap w-full text-left p-4 block">
             <div class="flex items-start justify-between gap-2"><div class="min-w-0"><div class="font-extrabold text-[15px] truncate">${esc(u.name)}</div><div class="text-[11.5px] text-slate-500 font-semibold truncate">${esc(u.clientName) || '&nbsp;'}</div></div>
-            <div class="text-right flex-shrink-0">${u.rentRm ? `<div class="text-[13px] font-extrabold text-slate-700">${money(u.rentRm).replace('.00', '')}</div><div class="text-[10px] font-bold text-slate-400">${esc(u.rentMode) || 'rent'}</div>` : ''}</div></div>
+            <div class="text-right flex-shrink-0">${u.rentRm ? `<div class="text-[13px] font-extrabold text-slate-700">${money(u.rentRm).replace('.00', '')}</div><div class="text-[10px] font-bold text-slate-400">${esc(rentMode(u.rentMode)) || 'rent'}</div>` : ''}</div></div>
             <div class="mt-3 flex flex-wrap gap-1.5 items-center">${chips}${last ? `<span class="text-[10.5px] font-semibold text-slate-400 ml-auto">Latest ${dateLabel(last.billDate)}</span>` : ''}</div></button>`;
     }).join('');
     return banner + `<div class="space-y-3">${cards}</div>`;
@@ -216,7 +226,7 @@ function renderUnit(u) {
     const info = [['TNB', u.tnbNo], ['WiFi', u.wifiNo], ['Indah Water', u.waterNo], ['Syabas', u.syabasNo]].filter((r) => r[1]);
     const head = `<div class="card p-4 mb-4"><div class="flex items-center justify-between gap-2"><div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Unit details</div><button onclick="openUnit(${u.id})" class="chip gray"><i class="fa-solid fa-pen"></i>Edit</button></div>
         ${info.length ? `<div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">${info.map((r) => `<div class="min-w-0"><div class="text-[10px] font-bold text-slate-400">${r[0]}</div><div class="text-[12.5px] font-bold break-words">${esc(r[1])}</div></div>`).join('')}</div>` : '<div class="text-xs text-slate-400 mt-2">No account numbers yet.</div>'}
-        ${u.rentRm ? `<div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs"><span class="font-bold text-slate-500">${esc(u.rentMode) || 'Rent'}${u.rentDue ? ' · ' + esc(u.rentDue.split('\n')[0]) : ''}</span><span class="font-extrabold text-slate-800">${money(u.rentRm).replace('.00', '')}</span></div>` : ''}</div>`;
+        ${u.rentRm ? `<div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs"><span class="font-bold text-slate-500">${esc(rentMode(u.rentMode)) || 'Rent'}${u.rentDue ? ' · ' + esc(u.rentDue.split('\n')[0]) : ''}</span><span class="font-extrabold text-slate-800">${money(u.rentRm).replace('.00', '')}</span></div>` : ''}</div>`;
     if (!bills.length) return head + '<div class="text-center text-slate-400 text-sm py-10">No bills yet. Tap “Bill” to start one.</div>';
     const list = bills.map((b) => {
         const s = stats([b]); const total = sum(b.items);
@@ -418,9 +428,15 @@ function openUnit(id) {
     $('uTitle').textContent = id ? 'Edit unit' : 'New unit';
     const set = (k, v) => { $(k).value = v ?? ''; };
     set('u-name', u.name); set('u-client', u.clientName); set('u-tnb', u.tnbNo); set('u-wifi', u.wifiNo); set('u-water', u.waterNo); set('u-syabas', u.syabasNo);
-    set('u-rent', u.rentRm); set('u-mode', u.rentMode); set('u-start', u.rentalStart); set('u-end', u.rentalEnd); set('u-due', u.rentDue); set('u-acc', u.ownerAcc); set('u-notes', u.notes);
+    set('u-rent', u.rentRm); setMode(u.rentMode); set('u-start', u.rentalStart); set('u-end', u.rentalEnd); set('u-due', u.rentDue); set('u-acc', u.ownerAcc); set('u-notes', u.notes);
     $('uDelete').classList.toggle('hidden', !id);
     $('unitSheet').classList.remove('hidden'); $('unitSheet').scrollTop = 0; document.body.style.overflow = 'hidden';
+}
+function setMode(v) {
+    const sel = $('u-mode'); const m = rentMode(v) || 'Monthly';
+    if (!RENT_MODES.includes(m) && ![...sel.options].some((o) => o.value === m)) sel.add(new Option(m, m)); // an unusual old value is kept, not lost
+    [...sel.options].forEach((o) => { if (!RENT_MODES.includes(o.value) && o.value !== m) o.remove(); });
+    sel.value = m;
 }
 function closeUnit() { $('unitSheet').classList.add('hidden'); document.body.style.overflow = ''; }
 async function saveUnit() {
