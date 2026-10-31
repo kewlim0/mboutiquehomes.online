@@ -60,6 +60,44 @@
     // depth: /tracker/ = 0, /tracker/sim/ (and bill, tenants) = 1
     function depth(path) { var p = path.replace(/\/+$/, '').split('/').filter(Boolean); return p[0] === 'tracker' ? p.length - 1 : -1; }
 
+    // ---- "保存中…" overlay (shared by the Save buttons of the tracker pages) ----
+    //   trkSaving.run(async () => { ...save... })  shows the box with a turning spinner while the work runs, and always hides it again.
+    //   The box stays at least 450 ms, so a very fast save does not just flash.
+    var hud = null;
+    function hudEl() {
+        if (hud) return hud;
+        var bars = '';
+        for (var i = 0; i < 12; i++) bars += '<rect x="22" y="3" width="4" height="11" rx="2" fill="#1e293b" opacity="' + (1 - i * 0.075).toFixed(3) + '" transform="rotate(' + (-i * 30) + ' 24 24)"/>';
+        var st = document.createElement('style');
+        st.textContent =
+            '.trk-hud { position: fixed; inset: 0; z-index: 120; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.38); -webkit-tap-highlight-color: transparent; }' +
+            '.trk-hud.on { display: flex; }' +
+            '.trk-hud-box { min-width: 150px; padding: 22px 26px 18px; border-radius: 22px; background: #fff; text-align: center; box-shadow: 0 30px 60px -18px rgba(15, 23, 42, 0.55); animation: trk-hud-pop 0.2s cubic-bezier(0.22, 1, 0.36, 1) both; }' +
+            '@keyframes trk-hud-pop { from { transform: scale(0.9); opacity: 0; } to { transform: none; opacity: 1; } }' +
+            '.trk-hud-spin { width: 48px; height: 48px; display: block; margin: 0 auto; animation: trk-hud-turn 0.96s steps(12) infinite; }' +
+            '@keyframes trk-hud-turn { to { transform: rotate(360deg); } }' +
+            '.trk-hud-text { margin-top: 12px; font: 700 14px/1.2 Inter, "PingFang SC", "Noto Sans SC", system-ui, sans-serif; color: #334155; letter-spacing: 0.02em; }' +
+            '@media (prefers-reduced-motion: reduce) { .trk-hud-spin { animation-duration: 2.4s; } }';
+        document.head.appendChild(st);
+        hud = document.createElement('div');
+        hud.className = 'trk-hud'; hud.setAttribute('role', 'alertdialog'); hud.setAttribute('aria-live', 'assertive'); hud.setAttribute('aria-label', '保存中');
+        hud.innerHTML = '<div class="trk-hud-box"><svg class="trk-hud-spin" viewBox="0 0 48 48" aria-hidden="true">' + bars + '</svg><div class="trk-hud-text">保存中…</div></div>';
+        document.body.appendChild(hud);
+        return hud;
+    }
+    window.trkSaving = {
+        run: function (work, text) {
+            var el = hudEl(); el.querySelector('.trk-hud-text').textContent = text || '保存中…';
+            el.classList.add('on');
+            var t0 = Date.now();
+            var finish = function () { var wait = Math.max(0, 450 - (Date.now() - t0)); return new Promise(function (r) { setTimeout(function () { el.classList.remove('on'); r(); }, wait); }); };
+            return Promise.resolve().then(work).then(
+                function (v) { return finish().then(function () { return v; }); },
+                function (err) { el.classList.remove('on'); throw err; }   // an error: hide the box at once so the message is seen
+            );
+        }
+    };
+
     document.addEventListener('click', function (e) {
         if (reduce || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         var a = e.target.closest && e.target.closest('a[href]');

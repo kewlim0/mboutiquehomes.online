@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
-    <script src="/tracker-slide.js?v=4"></script>
+    <script src="/tracker-slide.js?v=5"></script>
     <link rel="icon" type="image/x-icon" href="/tracker-icon/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/tracker-icon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/tracker-icon/favicon-16x16.png">
@@ -193,7 +193,7 @@ async function requestCloseForm() {
 function closeForm() { $('sheet').classList.add('hidden'); document.body.style.overflow = ''; }
 async function save() {
     const body = { name: $('f-name').value, fullName: $('f-full').value, unitId: $('f-unit').value || null, passport: $('f-passport').value, phone: $('f-phone').value, email: $('f-email').value, notes: $('f-notes').value };
-    try { current ? await api('PUT', 'rental-tenants/' + current.id, body) : await api('POST', 'rental-tenants', body); await load(); closeForm(); toast('Saved'); } catch (e) { toast(e.message); }
+    try { await trkSaving.run(async () => { current ? await api('PUT', 'rental-tenants/' + current.id, body) : await api('POST', 'rental-tenants', body); await load(); }); closeForm(); toast('Saved'); } catch (e) { toast(e.message); }
 }
 async function removeTenant() {
     if (!current || !confirm(`Delete ${current.name}? This cannot be undone.`)) return;

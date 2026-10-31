@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
-    <script src="/tracker-slide.js?v=4"></script>
+    <script src="/tracker-slide.js?v=5"></script>
     <link rel="icon" type="image/x-icon" href="/tracker-icon/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/tracker-icon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/tracker-icon/favicon-16x16.png">
@@ -423,8 +423,8 @@ async function saveBill(thenCopy) {
     const btn = $('bSave'); btn.disabled = true;
     try {
         const body = cleanBill();
-        const out = editing.id ? await api('PUT', 'rental-bills/' + editing.id, body) : await api('POST', 'rental-bills', body);
-        await reload(); toast('Saved');
+        await trkSaving.run(async () => { editing.id ? await api('PUT', 'rental-bills/' + editing.id, body) : await api('POST', 'rental-bills', body); await reload(); });
+        toast('Saved');
         if (thenCopy) { const uid = editing.unitId; closeBill(); newBill(uid); } else { closeBill(); }
     } catch (e) { toast(e.message); } finally { btn.disabled = false; }
 }
@@ -672,8 +672,9 @@ async function saveUnit() {
     const body = { name: $('u-name').value, clientName: $('u-client').value, tnbNo: $('u-tnb').value, wifiNo: $('u-wifi').value, waterNo: $('u-water').value, syabasNo: $('u-syabas').value,
         rentRm: $('u-rent').value, rentMode: $('u-mode').value, rentDue: $('u-due').value, rentalStart: $('u-start').value, rentalEnd: $('u-end').value, ownerAcc: $('u-acc').value, notes: $('u-notes').value };
     try {
-        const out = editUnit ? await api('PUT', 'rental-units/' + editUnit.id, body) : await api('POST', 'rental-units', body);
-        await reload(); closeUnit(); toast('Saved');
+        let out;
+        await trkSaving.run(async () => { out = editUnit ? await api('PUT', 'rental-units/' + editUnit.id, body) : await api('POST', 'rental-units', body); await reload(); });
+        closeUnit(); toast('Saved');
         if (!editUnit) openUnitView(out.unit.id);
     } catch (e) { toast(e.message); }
 }
