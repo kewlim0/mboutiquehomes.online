@@ -362,6 +362,14 @@ const STMT_PILL = { paid: ['#dcfce7', '#15803d'], pending: ['#fef3c7', '#92400e'
 // the same item name more than once (3 water bills, 2 electricity bills...): shown once, in one merged cell.
 // Same names are put next to each other (first appearance decides the order) so they can merge.
 const stmtTogether = (rows) => { const names = []; rows.forEach((r) => { if (!names.includes(r.name)) names.push(r.name); }); return names.flatMap((n) => rows.filter((r) => r.name === n)); };
+// A long amount (RM 30,000.00, RM 125,000.00) in the narrow 金额 column gets a smaller font so it fits, still centred.
+const stmtMeasure = document.createElement('canvas').getContext('2d');
+function fitSize(text, weight, maxW, base, min) {
+    let size = base;
+    while (size > (min || 9)) { stmtMeasure.font = `${weight} ${size}px "Inter","PingFang SC","Noto Sans SC",system-ui,sans-serif`; if (stmtMeasure.measureText(text).width <= maxW) break; size -= 0.5; }
+    return size;
+}
+const STMT_AMOUNT_W = (STMT_WIDTH - 40) * 17 / 100;   // width of the 金额 column
 // the text of the "费用" cell
 function stmtFee(i) {
     const amt = i.amount == null ? '' : money(i.amount);
@@ -388,7 +396,7 @@ function statementHtml(b) {
             <td style="${td('text-align:center;line-height:1.45')}">${fee(i)}</td>
             ${k === 0 ? `<td rowspan="${list.length}" style="${td('')}"></td>` : ''}
             <td style="${td('text-align:center')}"><span style="display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:800;background:${PILL[i.status][0]};color:${PILL[i.status][1]}">${STATUS[i.status]}</span></td></tr>`).join('');
-        return rows + `<tr><td colspan="3" style="${td('text-align:center;font-weight:800;background:#f8fafc')}">【${SUB[g.key]}】</td><td style="${td('text-align:center;font-weight:800;background:#f8fafc;white-space:nowrap')}">${money(sub)}</td><td style="${td('background:#f8fafc')}"></td></tr>`;
+        return rows + `<tr><td colspan="3" style="${td('text-align:center;font-weight:800;background:#f8fafc')}">【${SUB[g.key]}】</td><td style="${td('text-align:center;font-weight:800;background:#f8fafc;white-space:nowrap;font-size:' + fitSize(money(sub), 800, STMT_AMOUNT_W - 16, 14) + 'px')}">${money(sub)}</td><td style="${td('background:#f8fafc')}"></td></tr>`;
     }).join('');
     const label = groups.length > 1 ? groups.map((g) => LEFT[g.key]).join(' + ') + '总计' : (groups[0] ? SUB[groups[0].key] : '总计');
     return `<div style="width:${STMT_WIDTH}px;background:#fff;padding:22px 20px 20px;box-sizing:border-box;font-family:Inter,'PingFang SC','Noto Sans SC',sans-serif;color:#0f172a;font-size:14px">
@@ -399,7 +407,7 @@ function statementHtml(b) {
             <tr><td colspan="5" style="${td('text-align:center;background:linear-gradient(135deg,#16a34a,#166534);color:#fff;padding:14px 10px')}"><div style="font-size:18px;font-weight:800">${esc(u.name)} ${dateLabel(b.billDate)}费用明细</div><div style="font-size:12px;opacity:0.85;margin-top:7px">租客 Tenant：${esc((ten && (ten.fullName || ten.name)) || u.clientName || '-')} · ${dateLong(b.billDate)}</div></td></tr>
             <tr style="background:#ecfdf5">${['项目', '细项目', '费用', '金额', '状态'].map((h) => `<td style="${td('text-align:center;font-weight:800;color:#14532d')}">${h}</td>`).join('')}</tr>
             ${body}
-            <tr><td colspan="3" style="${td('text-align:center;font-weight:800;background:#f0fdf4;padding:13px 10px')}">【${label}】</td><td style="${td('text-align:center;font-weight:800;font-size:15px;color:#dc2626;background:#f0fdf4;white-space:nowrap')}">${money(sum(b.items))}</td><td style="${td('text-align:center;background:#f0fdf4')}">${b.received ? '<span style="display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:800;background:#166534;color:#fff">Received</span>' : ''}</td></tr>
+            <tr><td colspan="3" style="${td('text-align:center;font-weight:800;background:#f0fdf4;padding:13px 10px')}">【${label}】</td><td style="${td('text-align:center;font-weight:800;color:#dc2626;background:#f0fdf4;white-space:nowrap;font-size:' + fitSize(money(sum(b.items)), 800, STMT_AMOUNT_W - 16, 15) + 'px')}">${money(sum(b.items))}</td><td style="${td('text-align:center;background:#f0fdf4')}">${b.received ? '<span style="display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:800;background:#166534;color:#fff">Received</span>' : ''}</td></tr>
         </table></div>
         ${b.notes ? `<div style="margin-top:12px;font-size:12px;color:#475569;white-space:pre-wrap">${esc(b.notes)}</div>` : ''}
         <div style="margin-top:12px;text-align:center;font-size:11px;color:#94a3b8">Thank you · 谢谢</div></div>`;
@@ -520,14 +528,14 @@ async function statementCanvas(b) {
         y = ry;
         // subtotal row
         cell(TX, y, colX[3], SUB_H, '#f8fafc'); text(`【${STMT_SUB[L.g.key]}】`, TX + colX[3] / 2, y + SUB_H / 2, f(800, 14), '#0f172a');
-        cell(TX + colX[3], y, colW(3), SUB_H, '#f8fafc'); text(money(L.sum), TX + colX[3] + colW(3) / 2, y + SUB_H / 2, f(800, 14), '#0f172a');
+        cell(TX + colX[3], y, colW(3), SUB_H, '#f8fafc'); text(money(L.sum), TX + colX[3] + colW(3) / 2, y + SUB_H / 2, f(800, fitSize(money(L.sum), 800, colW(3) - 16, 14)), '#0f172a');
         cell(TX + colX[4], y, colW(4), SUB_H, '#f8fafc');
         y += SUB_H;
     });
     // grand total
     const grandLabel = groups.length > 1 ? groups.map((g) => STMT_LEFT[g.key]).join(' + ') + '总计' : (groups[0] ? STMT_SUB[groups[0].key] : '总计');
     cell(TX, y, colX[3], GRAND_H, '#f0fdf4'); text(`【${grandLabel}】`, TX + colX[3] / 2, y + GRAND_H / 2, f(800, 14), '#0f172a');
-    cell(TX + colX[3], y, colW(3), GRAND_H, '#f0fdf4'); text(money(sum(b.items)), TX + colX[3] + colW(3) / 2, y + GRAND_H / 2, f(800, 15), '#dc2626');
+    cell(TX + colX[3], y, colW(3), GRAND_H, '#f0fdf4'); text(money(sum(b.items)), TX + colX[3] + colW(3) / 2, y + GRAND_H / 2, f(800, fitSize(money(sum(b.items)), 800, colW(3) - 16, 15)), '#dc2626');
     cell(TX + colX[4], y, colW(4), GRAND_H, '#f0fdf4'); if (b.received) pill('Received', TX + colX[4] + colW(4) / 2, y + GRAND_H / 2, '#166534', '#fff', 12);
     c.restore();
     rr(TX + 0.5, tableTop + 0.5, TW - 1, tableH - 1, 14); c.strokeStyle = BORDER; c.lineWidth = 1; c.stroke();
