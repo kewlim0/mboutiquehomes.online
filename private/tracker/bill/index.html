@@ -12,7 +12,6 @@
     <title>Bill</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body { font-family: 'Inter', 'PingFang SC', 'Noto Sans SC', sans-serif; background: #f1f5f9; color: #1e293b; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
         input, select, textarea { font-size: 16px !important; } /* no zoom when a field is focused on iPhone */
@@ -357,11 +356,21 @@ async function deleteBill() {
 // The statement follows the layout of the Google Sheet: a title row, then 项目 / 细项目 / 费用 / 金额 / 状态,
 // the category cell merged down its rows, a subtotal row per category and one grand-total row at the bottom.
 const STMT_WIDTH = 660;
+const STMT_LEFT = { utility: '水电费', rent: '租金', misc: '各类杂费', stamp: '租约盖章费' };
+const STMT_SUB = { utility: '水电费总计', rent: '房租费总计', misc: '各类杂费总计', stamp: '租约盖章费总计' };
+const STMT_PILL = { paid: ['#dcfce7', '#15803d'], pending: ['#fef3c7', '#92400e'], unpaid: ['#fee2e2', '#b91c1c'] };
+// the same item name more than once (3 water bills, 2 electricity bills...): shown once, in one merged cell.
+// Same names are put next to each other (first appearance decides the order) so they can merge.
+const stmtTogether = (rows) => { const names = []; rows.forEach((r) => { if (!names.includes(r.name)) names.push(r.name); }); return names.flatMap((n) => rows.filter((r) => r.name === n)); };
+// the text of the "费用" cell
+function stmtFee(i) {
+    const amt = i.amount == null ? '' : money(i.amount);
+    if (i.detail && amt) return `* ${i.detail}: ${amt}`;
+    return i.detail || amt || '—';
+}
 function statementHtml(b) {
     const u = data.units.find((x) => x.id === b.unitId); const ten = data.tenants.find((t) => t.unitId === u.id);
-    const LEFT = { utility: '水电费', rent: '租金', misc: '各类杂费', stamp: '租约盖章费' };
-    const SUB = { utility: '水电费总计', rent: '房租费总计', misc: '各类杂费总计', stamp: '租约盖章费总计' };
-    const PILL = { paid: ['#dcfce7', '#15803d'], pending: ['#fef3c7', '#92400e'], unpaid: ['#fee2e2', '#b91c1c'] };
+    const LEFT = STMT_LEFT, SUB = STMT_SUB, PILL = STMT_PILL;
     const bd = '1px solid #cbd5e1'; const td = (extra = '') => `border:${bd};padding:9px 8px;${extra}`;
     const fee = (i) => {
         const amt = i.amount == null ? '' : money(i.amount);
@@ -369,9 +378,7 @@ function statementHtml(b) {
         return esc(i.detail) || amt || '—';
     };
     const groups = CATS.map(([key]) => ({ key, rows: b.items.filter((i) => i.category === key) })).filter((g) => g.rows.length);
-    // the same item name more than once (3 water bills, 2 electricity bills...): shown once, in one merged cell.
-    // Same names are put next to each other (first appearance decides the order) so they can merge.
-    const together = (rows) => { const names = []; rows.forEach((r) => { if (!names.includes(r.name)) names.push(r.name); }); return names.flatMap((n) => rows.filter((r) => r.name === n)); };
+    const together = stmtTogether;
     const body = groups.map((g) => {
         const sub = sum(g.rows);
         const list = together(g.rows);
@@ -414,26 +421,135 @@ function fitStatement() {
 window.addEventListener('resize', fitStatement);
 function closeStatement() { $('stmtSheet').classList.add('hidden'); stmtBill = null; if ($('billSheet').classList.contains('hidden') && $('unitSheet').classList.contains('hidden')) document.body.style.overflow = ''; }
 
+// The statement as a picture. It is drawn straight onto a canvas, with every cell and every line of text placed by us
+// (text centred with textBaseline "middle"), so it looks the same in every browser. (Turning the HTML into a picture
+// with a library put the text at the bottom of its cell on iPhone.)
+const STMT_FONT = '"Inter","PingFang SC","Noto Sans SC",system-ui,sans-serif';
+function loadImage(src) { return new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; }); }
+
+async function statementCanvas(b) {
+    const u = data.units.find((x) => x.id === b.unitId); const ten = data.tenants.find((t) => t.unitId === u.id);
+    try { await Promise.all([document.fonts.load(`500 14px ${STMT_FONT}`), document.fonts.load(`700 14px ${STMT_FONT}`), document.fonts.load(`800 14px ${STMT_FONT}`)]); } catch (e) { /* use whatever is there */ }
+    const logo = await loadImage('/tracker-icon/apple-touch-icon.png');
+
+    const S = 2, W = STMT_WIDTH, PAD = 20, TW = W - PAD * 2, BORDER = '#cbd5e1';
+    const f = (w, size) => `${w} ${size}px ${STMT_FONT}`;
+    const pct = [17, 18, 32, 17, 16]; const colX = [0]; pct.forEach((p, i) => colX.push(colX[i] + TW * p / 100));
+    const colW = (i) => colX[i + 1] - colX[i];
+    const m = document.createElement('canvas').getContext('2d');
+    // break text into lines that fit (at spaces when possible, otherwise between characters)
+    const wrap = (text, maxW, font) => {
+        m.font = font; const out = [];
+        for (const para of String(text).split('\n')) {
+            let line = '';
+            for (const ch of Array.from(para)) {
+                const t = line + ch;
+                if (m.measureText(t).width > maxW && line) {
+                    const sp = line.lastIndexOf(' ');
+                    if (sp > 0 && ch !== ' ') { out.push(line.slice(0, sp)); line = line.slice(sp + 1) + ch; } else { out.push(line); line = ch === ' ' ? '' : ch; }
+                } else line = t;
+            }
+            out.push(line);
+        }
+        return out;
+    };
+
+    // ---- layout: every row gets a height ----
+    const LH = 19;   // line height inside a cell
+    const groups = CATS.map(([key]) => ({ key, rows: b.items.filter((i) => i.category === key) })).filter((g) => g.rows.length);
+    const TITLE_H = 74, HEAD_H = 38, SUB_H = 40, GRAND_H = 52;
+    const layout = groups.map((g) => {
+        const list = stmtTogether(g.rows).map((i) => { const lines = wrap(stmtFee(i), colW(2) - 16, f(500, 14)); return { i, lines, h: Math.max(40, lines.length * LH + 20) }; });
+        return { g, list, sum: sum(g.rows) };
+    });
+    let tableH = TITLE_H + HEAD_H; layout.forEach((L) => { tableH += L.list.reduce((a, r) => a + r.h, 0) + SUB_H; }); tableH += GRAND_H;
+    const noteLines = b.notes ? wrap(b.notes, TW, f(500, 12)) : [];
+    const TOP = 22, LOGO_H = 34, GAP = 12;
+    const tableTop = TOP + LOGO_H + GAP;
+    const H = tableTop + tableH + (noteLines.length ? 12 + noteLines.length * 17 : 0) + 14 + 14 + 20;
+
+    const cv = document.createElement('canvas'); cv.width = W * S; cv.height = Math.round(H * S);
+    const c = cv.getContext('2d'); c.scale(S, S);
+    c.fillStyle = '#fff'; c.fillRect(0, 0, W, H);
+
+    const rr = (x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+    const text = (str, cx, cy, font, color, align = 'center') => { c.font = font; c.fillStyle = color; c.textAlign = align; c.textBaseline = 'middle'; c.fillText(str, cx, cy); };
+    const lines = (arr, cx, cy, font, color) => { const top = cy - (arr.length - 1) * LH / 2; arr.forEach((l, k) => text(l, cx, top + k * LH, font, color)); };
+    const cell = (x, y, w, h, fill) => { if (fill) { c.fillStyle = fill; c.fillRect(x, y, w, h); } c.strokeStyle = BORDER; c.lineWidth = 1; c.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); };
+    const pill = (label, cx, cy, bg, fg, padX) => {
+        c.font = f(800, 12); const w = c.measureText(label).width + padX * 2, h = 22;
+        rr(cx - w / 2, cy - h / 2, w, h, h / 2); c.fillStyle = bg; c.fill(); text(label, cx, cy + 0.5, f(800, 12), fg);
+    };
+
+    // ---- the little header: logo + name ----
+    if (logo) { c.save(); rr(PAD, TOP, LOGO_H, LOGO_H, 9); c.clip(); c.drawImage(logo, PAD, TOP, LOGO_H, LOGO_H); c.restore(); }
+    text('m.boutiquehomes', PAD + LOGO_H + 10, TOP + LOGO_H / 2, f(700, 12), '#64748b', 'left');
+
+    // ---- the table, clipped to rounded corners ----
+    const TX = PAD; let y = tableTop;
+    c.save(); rr(TX, tableTop, TW, tableH, 14); c.clip();
+    // title bar
+    const grad = c.createLinearGradient(TX, y, TX + TW, y + TITLE_H); grad.addColorStop(0, '#16a34a'); grad.addColorStop(1, '#166534');
+    cell(TX, y, TW, TITLE_H, null); c.fillStyle = grad; c.fillRect(TX, y, TW, TITLE_H);
+    text(`${u.name} ${dateLabel(b.billDate)}费用明细`, TX + TW / 2, y + 30, f(800, 18), '#fff');
+    text(`租客 Tenant：${(ten && (ten.fullName || ten.name)) || u.clientName || '-'} · ${dateLong(b.billDate)}`, TX + TW / 2, y + 54, f(500, 12), 'rgba(255,255,255,0.88)');
+    y += TITLE_H;
+    // column titles
+    ['项目', '细项目', '费用', '金额', '状态'].forEach((h, k) => { cell(TX + colX[k], y, colW(k), HEAD_H, '#ecfdf5'); text(h, TX + colX[k] + colW(k) / 2, y + HEAD_H / 2, f(800, 14), '#14532d'); });
+    y += HEAD_H;
+
+    layout.forEach((L) => {
+        const top = y, total = L.list.reduce((a, r) => a + r.h, 0);
+        // merged cells: category (left) and the empty amount column
+        cell(TX + colX[0], top, colW(0), total, '#f0fdf4'); text(`【${STMT_LEFT[L.g.key]}】`, TX + colX[0] + colW(0) / 2, top + total / 2, f(800, 14), '#14532d');
+        cell(TX + colX[3], top, colW(3), total, null);
+        // rows
+        let ry = top;
+        L.list.forEach((r, k) => {
+            cell(TX + colX[2], ry, colW(2), r.h, null); lines(r.lines, TX + colX[2] + colW(2) / 2, ry + r.h / 2, f(500, 14), '#0f172a');
+            cell(TX + colX[4], ry, colW(4), r.h, null);
+            const [bg, fg] = STMT_PILL[r.i.status]; pill(STATUS[r.i.status], TX + colX[4] + colW(4) / 2, ry + r.h / 2, bg, fg, 9);
+            // the item name: one merged cell for a run of the same name
+            if (k === 0 || L.list[k - 1].i.name !== r.i.name) {
+                let run = 0, runH = 0; for (let j = k; j < L.list.length && L.list[j].i.name === r.i.name; j++) { run++; runH += L.list[j].h; }
+                cell(TX + colX[1], ry, colW(1), runH, null);
+                const nm = wrap(r.i.name, colW(1) - 12, f(700, 14)); lines(nm, TX + colX[1] + colW(1) / 2, ry + runH / 2, f(700, 14), '#0f172a');
+            }
+            ry += r.h;
+        });
+        y = ry;
+        // subtotal row
+        cell(TX, y, colX[3], SUB_H, '#f8fafc'); text(`【${STMT_SUB[L.g.key]}】`, TX + colX[3] / 2, y + SUB_H / 2, f(800, 14), '#0f172a');
+        cell(TX + colX[3], y, colW(3), SUB_H, '#f8fafc'); text(money(L.sum), TX + colX[3] + colW(3) / 2, y + SUB_H / 2, f(800, 14), '#0f172a');
+        cell(TX + colX[4], y, colW(4), SUB_H, '#f8fafc');
+        y += SUB_H;
+    });
+    // grand total
+    const grandLabel = groups.length > 1 ? groups.map((g) => STMT_LEFT[g.key]).join(' + ') + '总计' : (groups[0] ? STMT_SUB[groups[0].key] : '总计');
+    cell(TX, y, colX[3], GRAND_H, '#f0fdf4'); text(`【${grandLabel}】`, TX + colX[3] / 2, y + GRAND_H / 2, f(800, 14), '#0f172a');
+    cell(TX + colX[3], y, colW(3), GRAND_H, '#f0fdf4'); text(money(sum(b.items)), TX + colX[3] + colW(3) / 2, y + GRAND_H / 2, f(800, 15), '#dc2626');
+    cell(TX + colX[4], y, colW(4), GRAND_H, '#f0fdf4'); if (b.received) pill('Received', TX + colX[4] + colW(4) / 2, y + GRAND_H / 2, '#166534', '#fff', 12);
+    c.restore();
+    rr(TX + 0.5, tableTop + 0.5, TW - 1, tableH - 1, 14); c.strokeStyle = BORDER; c.lineWidth = 1; c.stroke();
+
+    // notes + thank-you line
+    let ny = tableTop + tableH;
+    if (noteLines.length) { ny += 12; noteLines.forEach((l, k) => text(l, PAD, ny + 8 + k * 17, f(500, 12), '#475569', 'left')); ny += noteLines.length * 17; }
+    text('Thank you · 谢谢', W / 2, ny + 14 + 5, f(500, 11), '#94a3b8');
+    return cv;
+}
+
 // the same statement as a picture (share sheet on a phone, download elsewhere)
 async function statementImage(bill) {
     const b = bill || cleanBill(); const u = data.units.find((x) => x.id === b.unitId);
-    const node = document.createElement('div');
-    node.id = 'stmt-export';
-    node.style.cssText = `position:fixed;left:-9999px;top:0;width:${STMT_WIDTH}px`;
-    // html2canvas puts each line of text at the bottom of its line box, so with the normal (taller) line-height every
-    // cell and pill reads low. A line-height of 1 and a little extra bottom padding on the pills centre them in the picture.
-    node.innerHTML = '<style>#stmt-export td, #stmt-export td div, #stmt-export td span { line-height: 1 !important } #stmt-export td span { padding: 4px 10px 7px !important }</style>' + statementHtml(b);
-    document.body.appendChild(node);
     try {
-        if (document.fonts && document.fonts.ready) await document.fonts.ready;
-        const canvas = await html2canvas(node, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+        const canvas = await statementCanvas(b);
         const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
         const name = `${u.name.replace(/[^\w一-龥-]+/g, '_')}-${b.billDate}.png`;
         const file = new File([blob], name, { type: 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: u.name }); }
         else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Image saved'); }
     } catch (e) { if (e && e.name !== 'AbortError') toast('Could not make the image'); }
-    finally { node.remove(); }
 }
 
 // ---------- unit editor ----------
