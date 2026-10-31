@@ -369,13 +369,17 @@ function statementHtml(b) {
         return esc(i.detail) || amt || '—';
     };
     const groups = CATS.map(([key]) => ({ key, rows: b.items.filter((i) => i.category === key) })).filter((g) => g.rows.length);
+    // the same item name more than once (3 water bills, 2 electricity bills...): shown once, in one merged cell.
+    // Same names are put next to each other (first appearance decides the order) so they can merge.
+    const together = (rows) => { const names = []; rows.forEach((r) => { if (!names.includes(r.name)) names.push(r.name); }); return names.flatMap((n) => rows.filter((r) => r.name === n)); };
     const body = groups.map((g) => {
         const sub = sum(g.rows);
-        const rows = g.rows.map((i, k) => `<tr>
-            ${k === 0 ? `<td rowspan="${g.rows.length}" style="${td('background:#f0fdf4;font-weight:800;color:#14532d;text-align:center;vertical-align:middle;white-space:nowrap')}">【${LEFT[g.key]}】</td>` : ''}
-            <td style="${td('font-weight:700;text-align:center')}">${esc(i.name)}</td>
+        const list = together(g.rows);
+        const rows = list.map((i, k) => `<tr>
+            ${k === 0 ? `<td rowspan="${list.length}" style="${td('background:#f0fdf4;font-weight:800;color:#14532d;text-align:center;vertical-align:middle;white-space:nowrap')}">【${LEFT[g.key]}】</td>` : ''}
+            ${k > 0 && list[k - 1].name === i.name ? '' : `<td rowspan="${list.filter((r) => r.name === i.name).length}" style="${td('font-weight:700;text-align:center;vertical-align:middle')}">${esc(i.name)}</td>`}
             <td style="${td('text-align:center;line-height:1.45')}">${fee(i)}</td>
-            ${k === 0 ? `<td rowspan="${g.rows.length}" style="${td('')}"></td>` : ''}
+            ${k === 0 ? `<td rowspan="${list.length}" style="${td('')}"></td>` : ''}
             <td style="${td('text-align:center')}"><span style="display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:800;background:${PILL[i.status][0]};color:${PILL[i.status][1]}">${STATUS[i.status]}</span></td></tr>`).join('');
         return rows + `<tr><td colspan="3" style="${td('text-align:center;font-weight:800;background:#f8fafc')}">【${SUB[g.key]}】</td><td style="${td('text-align:center;font-weight:800;background:#f8fafc;white-space:nowrap')}">${money(sub)}</td><td style="${td('background:#f8fafc')}"></td></tr>`;
     }).join('');
