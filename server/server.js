@@ -11,6 +11,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const repo = require('./repo');
+const rentals = require('./rentals');
 const v = require('./validate');
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -278,6 +279,35 @@ admin.delete('/sims/:id', wrap(async (req, res) => {
   (await repo.deleteSim(idParam(req))) ? res.json({ ok: true }) : notFound(res);
 }));
 
+// Rental units, tenants and monthly bills for /tracker/bill/ and /tracker/tenants/ (any signed-in admin)
+admin.get('/rentals', wrap(async (req, res) => { noStore(res); res.json(await rentals.listAll()); }));
+admin.post('/rental-units', wrap(async (req, res) => { res.status(201).json({ unit: await rentals.createUnit(rentals.unit(req.body)) }); }));
+admin.put('/rental-units/:id', wrap(async (req, res) => {
+  const unit = await rentals.updateUnit(idParam(req), rentals.unit(req.body));
+  unit ? res.json({ unit }) : notFound(res);
+}));
+admin.delete('/rental-units/:id', wrap(async (req, res) => { (await rentals.deleteUnit(idParam(req))) ? res.json({ ok: true }) : notFound(res); }));
+admin.post('/rental-tenants', wrap(async (req, res) => { res.status(201).json({ tenant: await rentals.createTenant(rentals.tenant(req.body)) }); }));
+admin.put('/rental-tenants/:id', wrap(async (req, res) => {
+  const tenant = await rentals.updateTenant(idParam(req), rentals.tenant(req.body));
+  tenant ? res.json({ tenant }) : notFound(res);
+}));
+admin.delete('/rental-tenants/:id', wrap(async (req, res) => { (await rentals.deleteTenant(idParam(req))) ? res.json({ ok: true }) : notFound(res); }));
+admin.post('/rental-bills', wrap(async (req, res) => { res.status(201).json({ bill: await rentals.createBill(rentals.bill(req.body)) }); }));
+admin.put('/rental-bills/:id', wrap(async (req, res) => {
+  const bill = await rentals.updateBill(idParam(req), rentals.bill(req.body));
+  bill ? res.json({ bill }) : notFound(res);
+}));
+admin.delete('/rental-bills/:id', wrap(async (req, res) => { (await rentals.deleteBill(idParam(req))) ? res.json({ ok: true }) : notFound(res); }));
+admin.put('/rental-bills/:id/received', wrap(async (req, res) => {
+  const bill = await rentals.setBillReceived(idParam(req), !!(req.body && req.body.received));
+  bill ? res.json({ bill }) : notFound(res);
+}));
+admin.put('/rental-items/:id/status', wrap(async (req, res) => {
+  const bill = await rentals.setItemStatus(idParam(req), req.body && req.body.status);
+  bill ? res.json({ bill }) : notFound(res);
+}));
+
 admin.post('/team', wrap(async (req, res) => {
   res.status(201).json({ id: await repo.createTeamMember(v.teamMember(req.body)) });
 }));
@@ -414,7 +444,7 @@ const PRIVATE_ADMIN_DIR = path.join(__dirname, '..', 'private', 'admin');
 const noStore = (res) => res.set('Cache-Control', 'no-store');
 
 // pages that send you to the login page first and bring you back after you sign in (/admin/?next=/tracker/)
-const NEXT_PAGES = ['/tracker/', '/tracker/sim/', '/db'];
+const NEXT_PAGES = ['/tracker/', '/tracker/sim/', '/tracker/bill/', '/tracker/tenants/', '/db'];
 
 app.get('/admin', wrap(async (req, res) => {
   noStore(res);
@@ -503,6 +533,16 @@ app.get('/tracker/sim', wrap(async (req, res) => {
   res.sendFile(path.join(PRIVATE_TRACKER_DIR, 'sim', 'index.html'));
 }));
 
+// /tracker/bill/ and /tracker/tenants/: rental bills and tenant details (same sign-in as the rest of /tracker/)
+for (const page of ['bill', 'tenants']) {
+  app.get('/tracker/' + page, wrap(async (req, res) => {
+    noStore(res);
+    if (!req.originalUrl.startsWith(`/tracker/${page}/`)) return res.redirect(301, `/tracker/${page}/`);
+    if (!(await currentAdmin(req))) return res.redirect(`/admin/?next=%2Ftracker%2F${page}%2F`);
+    res.sendFile(path.join(PRIVATE_TRACKER_DIR, page, 'index.html'));
+  }));
+}
+
 // ---------- static site ----------
 app.use('/uploads', express.static(repo.UPLOAD_DIR, { maxAge: '30d', immutable: true, index: false }));
 app.use(express.static(PUBLIC_DIR));
@@ -525,6 +565,7 @@ app.use((err, req, res, next) => {
 repo.ensurePropertyPhotos().catch((err) => console.warn('⚠ 照片表暂时无法准备（数据库连不上？）：', err.message));
 repo.ensurePropertyColumns().catch((err) => console.warn('⚠ 房型字段暂时无法准备（数据库连不上？）：', err.message));
 repo.ensureHeroBanners().catch((err) => console.warn('⚠ 横幅表暂时无法准备（数据库连不上？）：', err.message));
+rentals.ensureRentals().catch((err) => console.warn('⚠ 租赁账单表暂时无法准备（数据库连不上？）：', err.message));
 repo.ensureSims().catch((err) => console.warn('⚠ SIM 表暂时无法准备（数据库连不上？）：', err.message));
 repo.ensureAdmins().catch((err) => console.warn('⚠ 管理员表暂时无法准备（数据库连不上？）：', err.message));
 

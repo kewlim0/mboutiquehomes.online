@@ -74,6 +74,9 @@ check "数据库状态页对未登录访客不可见 (/db 跳转)" "[ \"\$(curl 
 check "数据库状态接口未登录 401"                 "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/api/admin/db-status')\" = 401 ]"
 check "Tracker 总览页对未登录访客不可见 (/tracker/ 跳转)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/tracker/')\" = 302 ]"
 check "SIM 页对未登录访客不可见 (/tracker/sim/ 跳转)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/tracker/sim/')\" = 302 ]"
+check "Bill 页对未登录访客不可见 (/tracker/bill/ 跳转)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/tracker/bill/')\" = 302 ]"
+check "租客页对未登录访客不可见 (/tracker/tenants/ 跳转)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/tracker/tenants/')\" = 302 ]"
+check "租赁数据接口未登录 401" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/api/admin/rentals')\" = 401 ]"
 check "配置文件没有暴露 (/.env = 404)"        "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/.env')\" = 404 ]"
 
 echo
