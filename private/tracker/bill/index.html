@@ -56,6 +56,15 @@
         .mini-item { text-align: left; border-radius: 0.85rem; border: 1px solid #e2e8f0; border-left-width: 4px; padding: 0.55rem 0.65rem; background: #fff; min-width: 0; }
         .mini-item.paid { border-left-color: #22c55e; } .mini-item.pending { border-left-color: #f59e0b; } .mini-item.unpaid { border-left-color: #ef4444; background: #fff7f7; }
         .mini-item:active { transform: scale(0.97); }
+        /* "save your changes?" dialog */
+        .dlg { position: fixed; inset: 0; z-index: 90; background: rgba(15, 23, 42, 0.55); display: flex; align-items: center; justify-content: center; padding: 1.25rem; }
+        .dlg.hidden { display: none; }
+        .dlg-card { width: 100%; max-width: 360px; background: #fff; border-radius: 1.6rem; padding: 1.5rem 1.2rem 1.1rem; text-align: center; box-shadow: 0 30px 60px -20px rgba(15, 23, 42, 0.5); animation: dlg-pop 0.22s cubic-bezier(0.22, 1, 0.36, 1); }
+        @keyframes dlg-pop { from { transform: translateY(14px) scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
+        .dlg-icon { width: 3.2rem; height: 3.2rem; border-radius: 1.1rem; margin: 0 auto 0.8rem; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; background: #fef3c7; color: #b45309; }
+        .dlg-card h3 { font-size: 1.05rem; font-weight: 800; color: #0f172a; }
+        .dlg-card p { font-size: 0.8rem; font-weight: 600; color: #64748b; margin: 0.35rem 0 1.1rem; line-height: 1.5; }
+        .dlg-card .btn + .btn { margin-top: 0.55rem; }
         .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 800; font-size: 12.5px; padding: 0.7rem 1rem; border-radius: 0.85rem; transition: transform 0.1s; }
         .btn:active { transform: scale(0.97); }
         .btn-green { background: linear-gradient(135deg, #22c55e, #15803d); color: #fff; box-shadow: 0 8px 18px -8px rgba(21, 128, 61, 0.7); }
@@ -86,7 +95,7 @@
 <div id="billSheet" class="sheet hidden">
     <div class="inner w-full max-w-[480px] mx-auto min-h-screen flex flex-col">
         <div class="bg-white/95 backdrop-blur-md px-4 py-3 border-b border-slate-200 sticky top-0 z-10 flex items-center gap-2.5">
-            <button onclick="closeBill()" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center border border-slate-200 text-xs" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="requestCloseBill()" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center border border-slate-200 text-xs" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
             <div class="min-w-0 flex-1"><div id="bTitle" class="font-extrabold text-sm truncate">Bill</div><p id="bSub" class="text-[11px] text-slate-500 truncate">&nbsp;</p></div>
             <button id="bLayout" onclick="toggleBillLayout()" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center border border-slate-200 text-xs flex-shrink-0" aria-label="Change layout" title="Change layout"><i id="bLayoutIcon" class="fa-solid fa-table-cells-large text-sm"></i></button>
             <button id="bSave" onclick="saveBill()" class="btn btn-green !py-2 !px-4"><i class="fa-solid fa-check"></i>Save</button>
@@ -99,7 +108,7 @@
 <div id="unitSheet" class="sheet hidden">
     <div class="inner w-full max-w-[480px] mx-auto min-h-screen flex flex-col">
         <div class="bg-white/95 backdrop-blur-md px-4 py-3 border-b border-slate-200 sticky top-0 z-10 flex items-center gap-2.5">
-            <button onclick="closeUnit()" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center border border-slate-200 text-xs" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="requestCloseUnit()" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center border border-slate-200 text-xs" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
             <div class="min-w-0 flex-1 font-extrabold text-sm truncate" id="uTitle">Unit</div>
             <button onclick="saveUnit()" class="btn btn-green !py-2 !px-4"><i class="fa-solid fa-check"></i>Save</button>
         </div>
@@ -135,6 +144,18 @@
             <button onclick="statementImage(stmtBill)" class="btn btn-green !py-2 !px-3"><i class="fa-solid fa-image"></i>存成图片</button>
         </div>
         <div id="stmtBody" class="rounded-2xl overflow-hidden shadow-2xl bg-white"></div>
+    </div>
+</div>
+
+<!-- unsaved changes -->
+<div id="dlg" class="dlg hidden" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <div class="dlg-card">
+        <div class="dlg-icon"><i class="fa-solid fa-floppy-disk"></i></div>
+        <h3 id="dlgTitle">要保存更改吗？</h3>
+        <p id="dlgText">你修改了内容，还没有保存。</p>
+        <button id="dlgSave" type="button" class="btn btn-green w-full"><i class="fa-solid fa-check"></i>保存</button>
+        <button id="dlgDiscard" type="button" class="btn btn-red w-full"><i class="fa-solid fa-trash-can"></i>不保存，直接关闭</button>
+        <button id="dlgKeep" type="button" class="btn btn-soft w-full">继续编辑</button>
     </div>
 </div>
 
@@ -284,6 +305,29 @@ function openBill(id) { editing = JSON.parse(JSON.stringify(data.bills.find((b) 
 function showBill() {
     const u = data.units.find((x) => x.id === editing.unitId);
     $('bTitle').textContent = u.name; openItem = null; renderBill(); $('billSheet').classList.remove('hidden'); $('billSheet').scrollTop = 0; document.body.style.overflow = 'hidden';
+    billSnap = billState();   // what the editor looked like when it opened: any difference later means unsaved changes
+}
+// ----- unsaved changes: closing with the X asks first -----
+// resolves to 'save', 'discard' or 'keep' (keep editing; also what tapping outside the box or pressing Esc means)
+function askSave(text) {
+    return new Promise((resolve) => {
+        const box = $('dlg'); $('dlgText').textContent = text; box.classList.remove('hidden');
+        const done = (v) => { box.classList.add('hidden'); box.onclick = null; document.removeEventListener('keydown', onKey); resolve(v); };
+        const onKey = (e) => { if (e.key === 'Escape') done('keep'); };
+        $('dlgSave').onclick = () => done('save'); $('dlgDiscard').onclick = () => done('discard'); $('dlgKeep').onclick = () => done('keep');
+        box.onclick = (e) => { if (e.target === box) done('keep'); };
+        document.addEventListener('keydown', onKey);
+        $('dlgSave').focus();
+    });
+}
+
+let billSnap = '';
+const billState = () => JSON.stringify(cleanBill());
+async function requestCloseBill() {
+    if (!editing || billState() === billSnap) return closeBill();
+    const r = await askSave('这张账单你改过了，还没有保存。要保存吗？');
+    if (r === 'save') return saveBill();        // saveBill closes the editor when it worked, and stays open with a message when it did not
+    if (r === 'discard') return closeBill();
 }
 function closeBill() { $('billSheet').classList.add('hidden'); document.body.style.overflow = ''; editing = null; }
 
@@ -593,12 +637,21 @@ function openUnit(id) {
     set('u-rent', u.rentRm); setMode(u.rentMode); set('u-start', u.rentalStart); set('u-end', u.rentalEnd); set('u-due', u.rentDue); set('u-acc', u.ownerAcc); set('u-notes', u.notes);
     $('uDelete').classList.toggle('hidden', !id);
     $('unitSheet').classList.remove('hidden'); $('unitSheet').scrollTop = 0; document.body.style.overflow = 'hidden';
+    unitSnap = unitState();
 }
 function setMode(v) {
     const sel = $('u-mode'); const m = rentMode(v) || 'Monthly';
     if (!RENT_MODES.includes(m) && ![...sel.options].some((o) => o.value === m)) sel.add(new Option(m, m)); // an unusual old value is kept, not lost
     [...sel.options].forEach((o) => { if (!RENT_MODES.includes(o.value) && o.value !== m) o.remove(); });
     sel.value = m;
+}
+let unitSnap = '';
+const unitState = () => JSON.stringify(['u-name', 'u-client', 'u-tnb', 'u-wifi', 'u-water', 'u-syabas', 'u-rent', 'u-mode', 'u-start', 'u-end', 'u-due', 'u-acc', 'u-notes'].map((k) => $(k).value));
+async function requestCloseUnit() {
+    if (unitState() === unitSnap) return closeUnit();
+    const r = await askSave('这个单位的资料你改过了，还没有保存。要保存吗？');
+    if (r === 'save') return saveUnit();
+    if (r === 'discard') return closeUnit();
 }
 function closeUnit() { $('unitSheet').classList.add('hidden'); document.body.style.overflow = ''; }
 async function saveUnit() {
