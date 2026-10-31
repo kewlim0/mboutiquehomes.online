@@ -53,6 +53,15 @@
         .acct-copy:active { transform: scale(0.92); }
         .chip-copy { width: 1.6rem; height: 1.6rem; border-radius: 999px; background: #fffbeb; color: #b45309; border: 1px solid #fde68a; display: inline-flex; align-items: center; justify-content: center; font-size: 0.68rem; flex-shrink: 0; }
         .chip-copy:active { transform: scale(0.9); }
+        @keyframes vs-in-fwd { from { transform: translate3d(100%, 0, 0); opacity: 0.4; } to { transform: none; opacity: 1; } }
+        @keyframes vs-in-back { from { transform: translate3d(-35%, 0, 0); opacity: 0; } to { transform: none; opacity: 1; } }
+        @keyframes vs-out-fwd { from { transform: none; opacity: 1; } to { transform: translate3d(-35%, 0, 0); opacity: 0; } }
+        @keyframes vs-out-back { from { transform: none; opacity: 1; } to { transform: translate3d(100%, 0, 0); opacity: 0.4; } }
+        html.vs-run { overflow-x: hidden; }
+        #view.vs-in-fwd { animation: vs-in-fwd 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        #view.vs-in-back { animation: vs-in-back 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        #view.vs-out-fwd { animation: vs-out-fwd 0.17s ease-in both; }
+        #view.vs-out-back { animation: vs-out-back 0.17s ease-in both; }
         .stmt-btn { display: inline-flex; align-items: center; gap: 0.35rem; flex-shrink: 0; font-size: 11.5px; font-weight: 800; color: #15803d; background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 0.8rem; padding: 0.4rem 0.75rem; }
         .stmt-btn:active { transform: scale(0.95); }
         .mini-item { text-align: left; border-radius: 0.85rem; border: 1px solid #e2e8f0; border-left-width: 4px; padding: 0.55rem 0.65rem; background: #fff; min-width: 0; }
@@ -232,7 +241,8 @@ function render() {
     const u = unitId == null ? null : data.units.find((x) => x.id === unitId);
     if (unitId != null && !u) { unitId = null; return render(); }
     $('backBtn').setAttribute('href', u ? '#' : '/tracker/');
-    $('backBtn').onclick = u ? (e) => { e.preventDefault(); openUnitList(); } : null;
+    // the arrow steps the browser history back (the unit was pushed on it), so the browser's own Back button stays in step with it
+    $('backBtn').onclick = u ? (e) => { e.preventDefault(); if (history.state && history.state.unit) history.back(); else openUnitList(); } : null;
     if (!u) {
         const all = stats(data.bills);
         $('hTitle').textContent = 'Bill';
@@ -292,9 +302,26 @@ function renderUnit(u) {
     return head + `<div class="space-y-3">${list}</div>`;
 }
 
-function openUnitView(id) { unitId = id; history.pushState({ unit: id }, ''); render(); window.scrollTo(0, 0); }
-function openUnitList() { unitId = null; render(); window.scrollTo(0, 0); }
-window.addEventListener('popstate', () => { if (!$('billSheet').classList.contains('hidden')) closeBill(true); unitId = history.state && history.state.unit || null; render(); });
+// Going in and out of a unit slides the content, like the page slide: the old content slides away, the new one comes in
+// (deeper into a unit: in from the right; back to the list: in from the left).
+let sliding = false;
+function slideView(dir, change) {
+    const v = $('view'), root = document.documentElement;
+    if (sliding || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) { change(); return; }
+    sliding = true; root.classList.add('vs-run'); v.classList.add('vs-out-' + dir);
+    setTimeout(() => {
+        change();
+        v.classList.remove('vs-out-' + dir); v.classList.add('vs-in-' + dir);
+        setTimeout(() => { v.classList.remove('vs-in-' + dir); root.classList.remove('vs-run'); sliding = false; }, 440);
+    }, 170);
+}
+function openUnitView(id) { slideView('fwd', () => { unitId = id; history.pushState({ unit: id }, ''); render(); window.scrollTo(0, 0); }); }
+function openUnitList() { slideView('back', () => { unitId = null; render(); window.scrollTo(0, 0); }); }
+window.addEventListener('popstate', () => {
+    if (!$('billSheet').classList.contains('hidden')) closeBill(true);
+    const target = history.state && history.state.unit || null;
+    slideView(target ? 'fwd' : 'back', () => { unitId = target; render(); });
+});
 
 // ---------- bill editor ----------
 const blankItem = (category) => ({ category, name: '', detail: '', amount: '', status: 'pending', link: '', note: '' });
