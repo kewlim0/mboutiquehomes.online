@@ -55,6 +55,16 @@
         .stmt-btn:active { transform: scale(0.95); }
         .mini-item { text-align: left; border-radius: 0.85rem; border: 1px solid #e2e8f0; border-left-width: 4px; padding: 0.55rem 0.65rem; background: #fff; min-width: 0; }
         .mini-item.paid { border-left-color: #22c55e; } .mini-item.pending { border-left-color: #f59e0b; } .mini-item.unpaid { border-left-color: #ef4444; background: #fff7f7; }
+        .mini-wrap { position: relative; min-width: 0; }
+        .mini-wrap > .mini-item { width: 100%; }
+        .mini-del { position: absolute; top: -0.45rem; right: -0.35rem; width: 1.5rem; height: 1.5rem; border-radius: 999px; background: #ef4444; color: #fff; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; box-shadow: 0 3px 8px rgba(239, 68, 68, 0.45); z-index: 2; }
+        .mini-del:active { transform: scale(0.9); }
+        @keyframes mini-wiggle { 0%, 100% { transform: rotate(-0.7deg); } 50% { transform: rotate(0.7deg); } }
+        .mini-wrap.deleting > .mini-item { animation: mini-wiggle 0.32s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) { .mini-wrap.deleting > .mini-item { animation: none; } }
+        .rnd-btn { width: 1.75rem; height: 1.75rem; border-radius: 999px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; transition: background 0.15s, color 0.15s; }
+        .rnd-btn.on { background: #16a34a; color: #fff; border-color: #16a34a; }
+        .rnd-btn:active { transform: scale(0.92); }
         .mini-item:active { transform: scale(0.97); }
         /* "save your changes?" dialog */
         .dlg { position: fixed; inset: 0; z-index: 90; background: rgba(15, 23, 42, 0.55); display: flex; align-items: center; justify-content: center; padding: 1.25rem; }
@@ -185,7 +195,8 @@ let toastTimer = null;
 // bill editor layout: big cards one under the other, or small cards two per row (tap one to open it big)
 let billCompact = false; try { billCompact = localStorage.getItem('bill_layout') === 'compact'; } catch (e) { /* storage blocked */ }
 let openItem = null;
-function toggleBillLayout() { billCompact = !billCompact; openItem = null; try { localStorage.setItem('bill_layout', billCompact ? 'compact' : 'big'); } catch (e) { /* ignore */ } renderBill(); }
+let delMode = {};   // category -> true while its small cards show a delete (x) button
+function toggleBillLayout() { billCompact = !billCompact; openItem = null; delMode = {}; try { localStorage.setItem('bill_layout', billCompact ? 'compact' : 'big'); } catch (e) { /* ignore */ } renderBill(); }
 
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2400); }
 
@@ -304,7 +315,7 @@ function newBill(forUnit) {
 function openBill(id) { editing = JSON.parse(JSON.stringify(data.bills.find((b) => b.id === id))); showBill(); }
 function showBill() {
     const u = data.units.find((x) => x.id === editing.unitId);
-    $('bTitle').textContent = u.name; openItem = null; renderBill(); $('billSheet').classList.remove('hidden'); $('billSheet').scrollTop = 0; document.body.style.overflow = 'hidden';
+    $('bTitle').textContent = u.name; openItem = null; delMode = {}; renderBill(); $('billSheet').classList.remove('hidden'); $('billSheet').scrollTop = 0; document.body.style.overflow = 'hidden';
     billSnap = billState();   // what the editor looked like when it opened: any difference later means unsaved changes
 }
 // ----- unsaved changes: closing with the X asks first -----
@@ -340,9 +351,9 @@ function renderBill() {
         const rows = items.map((it, i) => ({ it, i })).filter((r) => r.it.category === key);
         if (!rows.length && key === 'stamp') return '';
         const sub = sum(rows.map((r) => r.it));
-        return `<section class="card p-3.5"><div class="flex items-center justify-between mb-2"><div class="font-extrabold text-[13px]"><i class="fa-solid ${icon} text-emerald-600 mr-1.5"></i>${label}</div><div class="text-xs font-extrabold text-slate-500">${money(sub)}</div></div>
+        return `<section class="card p-3.5"><div class="flex items-center justify-between mb-2"><div class="font-extrabold text-[13px]"><i class="fa-solid ${icon} text-emerald-600 mr-1.5"></i>${label}</div><div class="flex items-center gap-2"><span class="text-xs font-extrabold text-slate-500">${money(sub)}</span>${billCompact && rows.length ? `<button type="button" class="rnd-btn ${delMode[key] ? 'on' : ''}" onclick="delMode['${key}']=!delMode['${key}'];openItem=null;renderBill()" aria-label="${delMode[key] ? '完成' : '编辑'}" title="${delMode[key] ? '完成' : '编辑 / 删除'}"><i class="fa-solid ${delMode[key] ? 'fa-check' : 'fa-pen'}"></i></button>` : ''}</div></div>
             ${billCompact
-                ? `<div class="grid grid-cols-2 gap-2">${rows.map(({ it, i }) => i === openItem ? `<div class="col-span-2">${itemRow(it, i, true)}</div>` : miniItem(it, i)).join('') || '<div class="text-[11px] text-slate-400 px-1 col-span-2">No items</div>'}</div>`
+                ? `<div class="grid grid-cols-2 gap-2">${rows.map(({ it, i }) => i === openItem ? `<div class="col-span-2">${itemRow(it, i, true)}</div>` : miniItem(it, i, !!delMode[key])).join('') || '<div class="text-[11px] text-slate-400 px-1 col-span-2">No items</div>'}</div>`
                 : `<div class="space-y-2.5">${rows.map(({ it, i }) => itemRow(it, i)).join('') || '<div class="text-[11px] text-slate-400 px-1">No items</div>'}</div>`}
             <button onclick="addItem('${key}')" class="mt-2.5 w-full text-[12px] font-extrabold text-emerald-700 bg-emerald-50 rounded-xl py-2"><i class="fa-solid fa-plus mr-1"></i>Add item</button></section>`;
     }).join('');
@@ -375,13 +386,16 @@ async function copyAccount(btn, value) {
     const icon = btn.querySelector('i'); if (icon) { icon.className = 'fa-solid fa-check'; setTimeout(() => { icon.className = 'fa-regular fa-copy'; }, 1400); }
 }
 
-function miniItem(it, i) {
+function miniItem(it, i, deleting) {
     const hasAmt = it.amount !== '' && it.amount != null;
-    return `<button onclick="openItem=${i};renderBill()" class="mini-item ${it.status}">
+    return `<div class="mini-wrap ${deleting ? 'deleting' : ''}">
+        <button ${deleting ? 'type="button" tabindex="-1"' : `onclick="openItem=${i};renderBill()"`} class="mini-item ${it.status}">
         <div class="flex items-center justify-between gap-1.5"><span class="text-[12.5px] font-extrabold truncate">${esc(it.name) || '—'}</span>${it.link ? '<i class="fa-solid fa-paperclip text-[10px] text-blue-500"></i>' : ''}</div>
         <div class="text-[10.5px] text-slate-400 font-semibold truncate min-h-[1rem]">${esc(it.detail) || '&nbsp;'}</div>
-        <div class="flex items-center justify-between gap-1 mt-1"><span class="text-[13px] font-extrabold">${hasAmt ? money(it.amount) : '—'}</span><span class="chip ${it.status === 'paid' ? 'green' : it.status === 'unpaid' ? 'red' : 'amber'} !text-[9.5px] !px-1.5">${STATUS[it.status]}</span></div></button>`;
+        <div class="flex items-center justify-between gap-1 mt-1"><span class="text-[13px] font-extrabold">${hasAmt ? money(it.amount) : '—'}</span><span class="chip ${it.status === 'paid' ? 'green' : it.status === 'unpaid' ? 'red' : 'amber'} !text-[9.5px] !px-1.5">${STATUS[it.status]}</span></div></button>
+        ${deleting ? `<button type="button" class="mini-del" onclick="removeMini(${i})" aria-label="删除 ${esc(it.name)}"><i class="fa-solid fa-xmark"></i></button>` : ''}</div>`;
 }
+function removeMini(i) { const name = editing.items[i].name; removeItem(i); toast(`已删除「${name || '项目'}」· 按 Save 才会保存`); }
 function itemRow(it, i, closable) {
     return `<div class="rounded-xl border p-2.5 ${it.status === 'unpaid' ? 'bg-red-50/60 border-red-200' : 'border-slate-200'} ${closable ? 'ring-2 ring-emerald-300' : ''}">
         ${closable ? '<div class="flex justify-end -mt-0.5 mb-1"><button onclick="openItem=null;renderBill()" class="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1"><i class="fa-solid fa-chevron-up mr-1"></i>收起</button></div>' : ''}
