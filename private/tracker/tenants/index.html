@@ -19,6 +19,16 @@
         .field { width: 100%; padding: 0.6rem 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-weight: 600; outline: none; }
         .field:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); background: #fff; }
         .lbl { display: block; font-size: 11px; font-weight: 800; color: #64748b; margin: 0 0 0.25rem 0.1rem; }
+
+        /* skeleton shimmer: grey blocks with a light band sweeping across while the data loads */
+        .sk { position: relative; overflow: hidden; background: #e2e8f0; border-radius: 0.5rem; }
+        .sk::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent); animation: sk-shimmer 1.3s ease-in-out infinite; }
+        .sk-dark { background: rgba(255, 255, 255, 0.09); }
+        .sk-dark::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent); }
+        .sk-white { background: rgba(255, 255, 255, 0.28); }
+        .sk-white::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent); }
+        @keyframes sk-shimmer { to { transform: translateX(100%); } }
+        @media (prefers-reduced-motion: reduce) { .sk::after { animation: none; } }
         .card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 1.2rem; box-shadow: 0 4px 14px -8px rgba(15, 23, 42, 0.25); }
         .chip { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 10.5px; font-weight: 800; padding: 0.18rem 0.55rem; border-radius: 999px; white-space: nowrap; background: #eef2ff; color: #4338ca; }
         .row { display: flex; align-items: center; gap: 0.65rem; padding: 0.55rem 0; border-top: 1px solid #f1f5f9; }
@@ -143,7 +153,8 @@ async function removeTenant() {
     try { await api('DELETE', 'rental-tenants/' + current.id); await load(); closeForm(); toast('Deleted'); } catch (e) { toast(e.message); }
 }
 async function load() { data = await api('GET', 'rentals'); render(); }
-$('view').innerHTML = '<div class="text-center text-slate-400 text-xs py-16"><i class="fa-solid fa-circle-notch fa-spin text-lg mb-2 block"></i>Loading…</div>';
+$('sub').innerHTML = '<span class="sk inline-block h-2.5 w-20 align-middle"></span>';
+$('view').innerHTML = Array.from({ length: 3 }, () => '<article class="card p-4"><div class="flex items-center gap-3"><div class="sk w-11 h-11 !rounded-2xl"></div><div class="flex-1"><div class="sk h-4 w-32"></div><div class="sk h-3 w-24 mt-2"></div></div><div class="sk w-8 h-8 !rounded-xl"></div></div><div class="sk h-5 w-28 mt-3 !rounded-full"></div><div class="mt-2 space-y-3 pt-2">' + Array.from({ length: 3 }, () => '<div class="flex items-center gap-3"><div class="sk w-[30px] h-[30px] !rounded-lg"></div><div class="flex-1"><div class="sk h-2 w-12"></div><div class="sk h-3.5 w-40 mt-1.5"></div></div></div>').join('') + '</div></article>').join('');
 load().catch((e) => { $('view').innerHTML = `<div class="text-center text-red-500 text-sm py-16">${esc(e.message)}</div>`; });
 </script>
 </body>

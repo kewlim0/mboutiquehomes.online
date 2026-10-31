@@ -141,6 +141,17 @@
         .status-pill:has(.dot.active) { background: #dcfce7; color: #15803d; }
         .sim-row-note { font-size: 10.5px; color: #94a3b8; margin: 0.25rem 0.15rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+
+        /* skeleton shimmer: grey blocks with a light band sweeping across while the data loads */
+        .sk { position: relative; overflow: hidden; background: #e2e8f0; border-radius: 0.5rem; }
+        .sk::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent); animation: sk-shimmer 1.3s ease-in-out infinite; }
+        .sk-dark { background: rgba(255, 255, 255, 0.09); }
+        .sk-dark::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent); }
+        .sk-white { background: rgba(255, 255, 255, 0.28); }
+        .sk-white::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent); }
+        @keyframes sk-shimmer { to { transform: translateX(100%); } }
+        @media (prefers-reduced-motion: reduce) { .sk::after { animation: none; } }
+
         /* Two-per-row layout (the button next to "Add SIM"): the same cards, squeezed to half width */
         #cardsList.is-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; align-items: stretch; }
         #cardsList.is-grid > * { margin-top: 0 !important; }
@@ -197,10 +208,10 @@
                 <!-- User Profile / Avatar -->
                 <div class="flex items-center gap-2.5">
                     <a href="/tracker/" aria-label="Back to Tracker" title="Back to Tracker" class="w-9 h-9 -ml-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center border border-slate-200 text-xs flex-shrink-0 transition"><i class="fa-solid fa-chevron-left"></i></a>
-                    <img src="/img/logo-black-192.png" alt="m.boutiquehomes" class="w-10 h-10 rounded-full shadow-md flex-shrink-0">
+                    <img src="/img/logo-black-192.png" alt="m.boutiquehomes" class="hidden min-[420px]:block w-10 h-10 rounded-full shadow-md flex-shrink-0">
                     <div>
                         <div class="flex items-center gap-1.5">
-                            <span class="font-bold text-slate-800 text-sm">SIM Tracker</span>
+                            <span class="font-bold text-slate-800 text-sm whitespace-nowrap">SIM Tracker</span>
                             <span class="bg-amber-100 text-amber-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md uppercase border border-amber-300">VIP</span>
                         </div>
                         <p class="text-[11px] text-slate-500 font-medium">Auto-Sync Active</p>
@@ -212,7 +223,7 @@
                     <button id="layoutBtn" onclick="toggleLayout()" title="Show two per row" aria-label="Show two per row" aria-pressed="false" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold border border-slate-200 text-xs transition">
                         <i id="layoutIcon" class="fa-solid fa-table-cells-large text-sm"></i>
                     </button>
-                    <button onclick="openModal()" class="btn-game px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/20 active:translate-y-0.5">
+                    <button onclick="openModal()" class="btn-game whitespace-nowrap px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/20 active:translate-y-0.5">
                         <i class="fa-solid fa-plus text-xs"></i>
                         <span>Add SIM</span>
                     </button>
@@ -545,7 +556,7 @@
             // Render Cards
             if (loading) {
                 emptyState.classList.add('hidden');
-                cardsContainer.innerHTML = '<div class="text-center text-slate-400 text-xs py-10"><i class="fa-solid fa-circle-notch fa-spin text-lg mb-2 block"></i>Loading your SIM lines…</div>';
+                cardsContainer.innerHTML = skeletonRows(gridLayout ? 6 : 5);
             } else if (filtered.length === 0) {
                 cardsContainer.innerHTML = '';
                 emptyState.classList.remove('hidden');
@@ -718,7 +729,22 @@
         }
 
         // Counter Summaries
+        // grey placeholder rows in the same shape as the real ones
+        function skeletonRows(n) {
+            const one = gridLayout
+                ? '<div class="bg-white rounded-2xl p-3 border-2 border-slate-200"><div class="sk h-4 w-20"></div><div class="sk h-4 w-28 mt-2.5"></div><div class="sk h-5 w-full mt-3"></div><div class="sk h-3 w-16 mt-2"></div><div class="sk h-8 w-full mt-4 rounded-xl"></div></div>'
+                : '<div><div class="sk h-3.5 w-28 ml-1 mb-2 mt-3.5"></div><div class="bg-white rounded-2xl border-[1.5px] border-slate-200 px-3 py-2.5 flex items-center justify-between gap-3"><div class="flex-1"><div class="flex gap-2"><div class="sk h-3 w-14"></div><div class="sk h-3 w-20 rounded-full"></div></div><div class="sk h-5 w-40 mt-2"></div></div><div class="flex flex-col items-end gap-1.5"><div class="sk h-3 w-24"></div><div class="flex gap-1.5"><div class="sk h-6 w-14 rounded-lg"></div><div class="sk h-6 w-6 rounded-lg"></div><div class="sk h-6 w-6 rounded-lg"></div></div></div></div></div>';
+            return Array.from({ length: n }, () => one).join('');
+        }
+
         function updateCounters() {
+            if (loading) {
+                const dot = '<span class="sk" style="display:inline-block;width:1.1em;height:0.85em;vertical-align:-0.05em;border-radius:0.25rem"></span>';
+                const dotW = '<span class="sk sk-white" style="display:inline-block;width:1.6rem;height:1.6rem;vertical-align:middle;border-radius:0.4rem"></span>';
+                ['cnt-all', 'cnt-urgent', 'cnt-active', 'cnt-expired'].forEach((id) => { document.getElementById(id).innerHTML = dot; });
+                ['summaryTotal', 'summaryUrgent'].forEach((id) => { document.getElementById(id).innerHTML = dotW; });
+                return;
+            }
             const total = sims.length;
             let urgentCount = 0;
             let activeCount = 0;

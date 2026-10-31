@@ -28,6 +28,16 @@
         .lbl { display: block; font-size: 11px; font-weight: 800; color: #64748b; margin: 0 0 0.25rem 0.1rem; }
         .chip { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 10.5px; font-weight: 800; padding: 0.18rem 0.55rem; border-radius: 999px; white-space: nowrap; }
         .chip.red { background: #fee2e2; color: #b91c1c; } .chip.amber { background: #fef3c7; color: #92400e; } .chip.green { background: #dcfce7; color: #15803d; } .chip.gray { background: #f1f5f9; color: #64748b; } .chip.blue { background: #dbeafe; color: #1d4ed8; }
+
+        /* skeleton shimmer: grey blocks with a light band sweeping across while the data loads */
+        .sk { position: relative; overflow: hidden; background: #e2e8f0; border-radius: 0.5rem; }
+        .sk::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent); animation: sk-shimmer 1.3s ease-in-out infinite; }
+        .sk-dark { background: rgba(255, 255, 255, 0.09); }
+        .sk-dark::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent); }
+        .sk-white { background: rgba(255, 255, 255, 0.28); }
+        .sk-white::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent); }
+        @keyframes sk-shimmer { to { transform: translateX(100%); } }
+        @media (prefers-reduced-motion: reduce) { .sk::after { animation: none; } }
         .card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 1.1rem; box-shadow: 0 4px 14px -8px rgba(15, 23, 42, 0.25); }
         .card.is-red { border-color: #f87171; background: linear-gradient(180deg, #fff 0%, #fff7f7 100%); }
         .card.is-amber { border-color: #fcd34d; }
@@ -455,7 +465,9 @@ async function deleteUnit() {
 
 async function reload() { data = await api('GET', 'rentals'); render(); }
 history.replaceState({ unit: null }, '');
-$('view').innerHTML = '<div class="text-center text-slate-400 text-xs py-16"><i class="fa-solid fa-circle-notch fa-spin text-lg mb-2 block"></i>Loading…</div>';
+// placeholders in the shape of the unit list while it loads
+$('hSub').innerHTML = '<span class="sk inline-block h-2.5 w-28 align-middle"></span>';
+$('view').innerHTML = '<div class="sk h-[104px] w-full !rounded-2xl mb-4"></div><div class="space-y-3">' + Array.from({ length: 4 }, () => '<div class="card p-4"><div class="flex justify-between gap-3"><div class="flex-1"><div class="sk h-4 w-36"></div><div class="sk h-3 w-20 mt-2"></div></div><div><div class="sk h-4 w-16 ml-auto"></div><div class="sk h-2.5 w-12 mt-2 ml-auto"></div></div></div><div class="flex gap-1.5 mt-4"><div class="sk h-5 w-20 !rounded-full"></div><div class="sk h-5 w-16 !rounded-full"></div></div></div>').join('') + '</div>';
 reload().catch((e) => { $('view').innerHTML = `<div class="text-center text-red-500 text-sm py-16">${esc(e.message)}</div>`; });
 </script>
 </body>
