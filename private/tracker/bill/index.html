@@ -4,17 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
-    <script src="/tracker-slide.js?v=3"></script>
+    <script src="/tracker-slide.js?v=4"></script>
     <link rel="icon" type="image/x-icon" href="/tracker-icon/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/tracker-icon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/tracker-icon/favicon-16x16.png">
     <link rel="apple-touch-icon" href="/tracker-icon/apple-touch-icon.png">
     <title>Bill</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'PingFang SC', 'Noto Sans SC', 'sans-serif'] } } } };</script>
     <style>
         body { font-family: 'Inter', 'PingFang SC', 'Noto Sans SC', sans-serif; background: #f1f5f9; color: #1e293b; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
         input, select, textarea { font-size: 16px !important; } /* no zoom when a field is focused on iPhone */
@@ -62,6 +60,8 @@
         #toast { position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 4rem); opacity: 0; z-index: 80; transition: all 0.3s; background: rgba(15, 23, 42, 0.92); color: #fff; font-size: 12px; font-weight: 700; padding: 0.65rem 1.1rem; border-radius: 999px; pointer-events: none; max-width: 90vw; }
         #toast.show { transform: translate(-50%, 0); opacity: 1; }
     </style>
+    <!-- pre-built Tailwind styles: last, so the utilities win over the page styles and the icon font, as they did before -->
+    <link rel="stylesheet" href="/tracker-ui.css?v=1">
 </head>
 <body class="min-h-screen">
 <div class="w-full max-w-[480px] mx-auto min-h-screen flex flex-col">
@@ -318,7 +318,7 @@ function miniItem(it, i) {
         <div class="flex items-center justify-between gap-1 mt-1"><span class="text-[13px] font-extrabold">${hasAmt ? money(it.amount) : '—'}</span><span class="chip ${it.status === 'paid' ? 'green' : it.status === 'unpaid' ? 'red' : 'amber'} !text-[9.5px] !px-1.5">${STATUS[it.status]}</span></div></button>`;
 }
 function itemRow(it, i, closable) {
-    return `<div class="rounded-xl border border-slate-200 p-2.5 ${it.status === 'unpaid' ? 'bg-red-50/60 border-red-200' : ''} ${closable ? 'ring-2 ring-emerald-300' : ''}">
+    return `<div class="rounded-xl border p-2.5 ${it.status === 'unpaid' ? 'bg-red-50/60 border-red-200' : 'border-slate-200'} ${closable ? 'ring-2 ring-emerald-300' : ''}">
         ${closable ? '<div class="flex justify-end -mt-0.5 mb-1"><button onclick="openItem=null;renderBill()" class="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1"><i class="fa-solid fa-chevron-up mr-1"></i>收起</button></div>' : ''}
         <div class="flex items-center gap-2"><input class="field !py-1.5 !text-[13px]" placeholder="项目名称" value="${esc(it.name)}" oninput="editing.items[${i}].name=this.value">
             <button onclick="removeItem(${i})" class="text-slate-300 hover:text-red-500 px-1" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></div>

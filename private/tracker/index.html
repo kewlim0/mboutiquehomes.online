@@ -4,19 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
-    <script src="/tracker-slide.js?v=3"></script>
+    <script src="/tracker-slide.js?v=4"></script>
     <meta name="theme-color" content="#0f172a">
     <link rel="icon" type="image/x-icon" href="/tracker-icon/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/tracker-icon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/tracker-icon/favicon-16x16.png">
     <link rel="apple-touch-icon" href="/tracker-icon/apple-touch-icon.png">
     <title>Tracker</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };
-    </script>
     <style>
         :root { --ink: #0f172a; }
         html { background: #0f172a; }
@@ -81,6 +77,8 @@
         .topbtn { width: 2.4rem; height: 2.4rem; border-radius: 0.85rem; display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 0.85rem; text-decoration: none; transition: background 0.15s; }
         .topbtn:active { background: rgba(255, 255, 255, 0.14); }
     </style>
+    <!-- pre-built Tailwind styles: last, so the utilities win over the page styles and the icon font, as they did before -->
+    <link rel="stylesheet" href="/tracker-ui.css?v=1">
 </head>
 <body>
     <main class="wrap">

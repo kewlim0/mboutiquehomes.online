@@ -4,44 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
-    <script src="/tracker-slide.js?v=3"></script>
+    <script src="/tracker-slide.js?v=4"></script>
     <link rel="icon" type="image/x-icon" href="/tracker-icon/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/tracker-icon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/tracker-icon/favicon-16x16.png">
     <link rel="apple-touch-icon" href="/tracker-icon/apple-touch-icon.png">
     <title>SIM Tracker</title>
     <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#f0f5ff',
-                            100: '#e0ebff',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                        }
-                    },
-                    boxShadow: {
-                        'soft-lg': '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)',
-                        'game-btn': '0 4px 0 0 #2563eb, 0 6px 12px rgba(37, 99, 235, 0.3)',
-                        'card-glow': '0 0 20px rgba(59, 130, 246, 0.15)',
-                    }
-                }
-            }
-        }
-    </script>
     <style>
         /* No zooming by accident: a double tap must not zoom the page, and a field must not make the phone zoom in on focus
            (iOS zooms into any field whose text is smaller than 16px). */
@@ -197,6 +171,8 @@
             box-shadow: 0 2px 0 0 #1d4ed8, 0 3px 6px rgba(37, 99, 235, 0.2);
         }
     </style>
+    <!-- pre-built Tailwind styles: last, so the utilities win over the page styles and the icon font, as they did before -->
+    <link rel="stylesheet" href="/tracker-ui.css?v=1">
 </head>
 <body class="min-h-screen bg-slate-100">
 

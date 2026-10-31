@@ -1,78 +1,60 @@
-// Slide transition between the /tracker/ pages.
-//  1. you tap a button: it turns into a spinner and the current page stays exactly as it is
-//  2. the next page is loaded in a hidden frame in the background, until it has drawn itself (styles, first screen)
-//  3. only then the slide happens:
-//       going deeper (overview -> SIM / Bill / Tenants): the old page slides off to the left, the new one comes in from the right
-//       going back (a page -> overview): the old page slides off to the right, the new one comes in from the left
-// Load it in <head> so the "coming in" animation starts before the first paint. Only links between /tracker/ pages are animated;
-// the browser's own back button / iPhone swipe-back is left alone (it has its own animation).
+// Page slide between the /tracker/ pages, the same way the admin login <-> dashboard slide works (public/admin/slide.js):
+//   going deeper (overview -> SIM / Bill / Tenants): the old page slides out to the left and fades away, the new page slides in from the right
+//   going back (a page -> overview): the old page slides out to the right, the new page slides in from the left
+// The pages are separate documents, so the direction is handed over in sessionStorage and the next page plays the "in" half.
+// The tapped button turns into a spinner straight away. Load this in <head> so the incoming page is never seen before it slides.
+// Only links between /tracker/ pages are animated; the browser's own back button / iPhone swipe-back keeps its own animation.
 (function () {
     var KEY = 'trk_slide';
+    var OUT_MS = 240;
     var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     var root = document.documentElement;
 
     var css = document.createElement('style');
     css.textContent =
-        '@keyframes trk-in-fwd { from { transform: translate3d(100%, 0, 0); } to { transform: translate3d(0, 0, 0); } }' +
-        '@keyframes trk-in-back { from { transform: translate3d(-100%, 0, 0); } to { transform: translate3d(0, 0, 0); } }' +
-        '@keyframes trk-out-fwd { from { transform: translate3d(0, 0, 0); opacity: 1; } to { transform: translate3d(-28%, 0, 0); opacity: 0.35; } }' +
-        '@keyframes trk-out-back { from { transform: translate3d(0, 0, 0); opacity: 1; } to { transform: translate3d(28%, 0, 0); opacity: 0.35; } }' +
+        '@keyframes trk-in-fwd { from { transform: translate3d(100%, 0, 0); opacity: 0.4; } to { transform: translate3d(0, 0, 0); opacity: 1; } }' +
+        '@keyframes trk-in-back { from { transform: translate3d(-35%, 0, 0); opacity: 0; } to { transform: translate3d(0, 0, 0); opacity: 1; } }' +
+        '@keyframes trk-out-fwd { from { transform: translate3d(0, 0, 0); opacity: 1; } to { transform: translate3d(-35%, 0, 0); opacity: 0; } }' +
+        '@keyframes trk-out-back { from { transform: translate3d(0, 0, 0); opacity: 1; } to { transform: translate3d(100%, 0, 0); opacity: 0.4; } }' +
         'html.trk-anim { overflow-x: hidden; }' +
-        // the page waits off screen until it is ready (see below); the slide itself runs on the GPU
-        'html.trk-anim > body { will-change: transform; }' +
-        'html.trk-pre-fwd > body { transform: translate3d(100%, 0, 0); }' +
-        'html.trk-pre-back > body { transform: translate3d(-100%, 0, 0); }' +
-        // blur effects are expensive to move around: switch them off for the half second of the slide
-        'html.trk-anim *, html.trk-anim *::before, html.trk-anim *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }' +
-        'html.trk-in-fwd > body { animation: trk-in-fwd 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }' +
-        'html.trk-in-back > body { animation: trk-in-back 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }' +
-        'html.trk-out-fwd > body { animation: trk-out-fwd 0.2s ease-in both; }' +
-        'html.trk-out-back > body { animation: trk-out-back 0.2s ease-in both; }';
+        // invisible only until the page structure is there (a moment), then it slides in
+        'html.trk-hold > body { opacity: 0; }' +
+        'html.trk-in-fwd > body { animation: trk-in-fwd 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; will-change: transform, opacity; }' +
+        'html.trk-in-back > body { animation: trk-in-back 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; will-change: transform, opacity; }' +
+        'html.trk-out-fwd > body { animation: trk-out-fwd 0.24s ease-in both; will-change: transform, opacity; }' +
+        'html.trk-out-back > body { animation: trk-out-back 0.24s ease-in both; will-change: transform, opacity; }' +
+        // blur effects are expensive to move around: off while sliding
+        'html.trk-anim *, html.trk-anim *::before, html.trk-anim *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }';
     document.head.appendChild(css);
 
-    function clear() { root.classList.remove('trk-anim', 'trk-pre-fwd', 'trk-pre-back', 'trk-in-fwd', 'trk-in-back', 'trk-out-fwd', 'trk-out-back'); }
+    function clear() { root.classList.remove('trk-anim', 'trk-hold', 'trk-in-fwd', 'trk-in-back', 'trk-out-fwd', 'trk-out-back'); }
 
-    // This copy of the page is the hidden preview frame: tell the parent when it has drawn itself, and do nothing else.
-    var isPreview = window.parent !== window && /[?&]trkpreview=1(&|$)/.test(location.search);
-    if (isPreview) {
-        var told = false; // (the page is also given a little time after DOMContentLoaded for the style builder to finish)
-        var tell = function () { if (told) return; told = true; try { parent.postMessage({ trkReady: true }, location.origin); } catch (e) { /* ignore */ } };
-        document.addEventListener('DOMContentLoaded', function () {
-            // let the style builder and the first render finish before saying so
-            setTimeout(function () {
-                requestAnimationFrame(function () { requestAnimationFrame(tell); });
-                setTimeout(tell, 250);   // some browsers hold back frames for a hidden frame: do not depend on them
-            }, 80);
-        });
-        return;
-    }
-
-    // arriving: was the last click an animated one (and recent)?
+    // ---- arriving: play the "in" half ----
+    var dir = null;
     try {
         var raw = sessionStorage.getItem(KEY); sessionStorage.removeItem(KEY);
         var f = raw && JSON.parse(raw);
-        if (f && !reduce && Date.now() - f.t < 4000 && (f.dir === 'fwd' || f.dir === 'back')) {
-            // Do not start sliding while the page is still building itself (styles, first render): that is what made it stutter.
-            // Park it off screen, and slide it in once the document is ready and has had a moment to lay out.
-            var dir = f.dir, started = false;
-            root.classList.add('trk-anim', 'trk-pre-' + dir);
-            var play = function () {
-                if (started) return; started = true;
-                requestAnimationFrame(function () {
-                    root.classList.remove('trk-pre-' + dir);
-                    root.classList.add('trk-in-' + dir);
-                    setTimeout(clear, 450);
-                });
-            };
-            document.addEventListener('DOMContentLoaded', function () { setTimeout(play, 70); });
-            setTimeout(play, 1500);   // never leave the page parked if something is slow
-        }
+        if (f && Date.now() - f.t < 4000 && (f.dir === 'fwd' || f.dir === 'back')) dir = f.dir;
     } catch (e) { /* storage blocked: no animation */ }
+    if (!reduce && dir) {
+        var played = false;
+        var play = function () {
+            if (played) return;
+            played = true;
+            root.classList.remove('trk-hold');
+            root.classList.add('trk-anim', 'trk-in-' + dir);
+            setTimeout(clear, 650);
+        };
+        root.classList.add('trk-anim', 'trk-hold');
+        document.addEventListener('DOMContentLoaded', play);
+        setTimeout(play, 1200);                                // safety: never leave the page hidden
+    }
 
-    // coming back from the browser's back/forward cache: never show a half-finished slide
-    var spun = null;   // { icon, cls } of the button that is showing a spinner
+    // ---- leaving: the tapped button spins, the page plays the "out" half, then we go ----
+    var spun = null, busy = false;       // spun = { icon, cls } of the button that shows a spinner
     function unspin() { if (spun) { spun.icon.className = spun.cls; spun = null; } busy = false; }
-    var busy = false;
+
+    // coming back through the browser's back button (page cache): never show a half-slid page or a stuck spinner
     window.addEventListener('pageshow', function (e) { if (e.persisted) { clear(); unspin(); } });
 
     // depth: /tracker/ = 0, /tracker/sim/ (and bill, tenants) = 1
@@ -87,34 +69,13 @@
         var from = depth(location.pathname), to = depth(url.pathname);
         if (from < 0 || to < 0 || from === to) return;           // only between tracker pages of different depth
         e.preventDefault();
-        if (busy) return;                                         // a second tap while loading does nothing
+        if (busy) return;                                         // a second tap while leaving does nothing
         busy = true;
-        var dir = to > from ? 'fwd' : 'back';
-
-        // 1. the tapped button becomes a spinner
+        var direction = to > from ? 'fwd' : 'back';
         var icon = a.querySelector('.go i, i.fa-chevron-left');
         if (icon) { spun = { icon: icon, cls: icon.className }; icon.className = 'fa-solid fa-circle-notch fa-spin'; }
-
-        // 2. load the next page in a hidden frame; 3. when it says it is ready, slide
-        var started = Date.now(), done = false, frame = document.createElement('iframe');
-        var go = function () {
-            if (done) return; done = true;
-            window.removeEventListener('message', onMsg);
-            if (frame.parentNode) frame.parentNode.removeChild(frame);
-            try { sessionStorage.setItem(KEY, JSON.stringify({ dir: dir, t: Date.now() })); } catch (err) { /* ignore */ }
-            root.classList.add('trk-anim', 'trk-out-' + dir);
-            setTimeout(function () { location.href = url.href; }, 190);
-        };
-        var onMsg = function (m) {
-            if (m.source !== frame.contentWindow || !m.data || !m.data.trkReady) return;
-            // keep the spinner on screen long enough to be seen
-            setTimeout(go, Math.max(0, 260 - (Date.now() - started)));
-        };
-        window.addEventListener('message', onMsg);
-        frame.setAttribute('aria-hidden', 'true'); frame.tabIndex = -1;
-        frame.style.cssText = 'position:fixed;left:-200vw;top:0;width:100vw;height:100vh;border:0;opacity:0;pointer-events:none';
-        frame.src = url.pathname + (url.search ? url.search + '&' : '?') + 'trkpreview=1';
-        document.body.appendChild(frame);
-        setTimeout(go, 4500);                                    // never leave the button spinning if the preview never answers
+        try { sessionStorage.setItem(KEY, JSON.stringify({ dir: direction, t: Date.now() })); } catch (err) { /* ignore */ }
+        root.classList.add('trk-anim', 'trk-out-' + direction);
+        setTimeout(function () { location.href = url.href; }, OUT_MS);
     });
 })();

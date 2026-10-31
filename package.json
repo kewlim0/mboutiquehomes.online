@@ -17,7 +17,8 @@
     "use:local": "node scripts/use-db.js local",
     "tunnel": "node scripts/use-db.js tunnel",
     "db:mode": "node scripts/use-db.js status",
-    "deploy": "bash scripts/deploy.sh"
+    "deploy": "bash scripts/deploy.sh",
+    "build:tracker-css": "npx --yes tailwindcss@3.4.17 -c scripts/tailwind.tracker.config.js -i scripts/tracker-input.css -o public/tracker-ui.css --minify"
   },
   "engines": {
     "node": ">=18"
