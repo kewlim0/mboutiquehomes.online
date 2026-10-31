@@ -32,6 +32,11 @@
         .sheet:not(.hidden) > .inner { animation: slideup 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
         .st { appearance: none; -webkit-appearance: none; border: 0; border-radius: 999px; font-size: 11px !important; font-weight: 800; padding: 0.32rem 1.4rem 0.32rem 0.7rem; background-repeat: no-repeat; background-position: right 0.45rem center; background-size: 0.5rem; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23475569' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E"); }
         .st.paid { background-color: #dcfce7; color: #15803d; } .st.pending { background-color: #fef3c7; color: #92400e; } .st.unpaid { background-color: #fee2e2; color: #b91c1c; }
+        .stmt-btn { display: inline-flex; align-items: center; gap: 0.35rem; flex-shrink: 0; font-size: 11.5px; font-weight: 800; color: #15803d; background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 0.8rem; padding: 0.4rem 0.75rem; }
+        .stmt-btn:active { transform: scale(0.95); }
+        .mini-item { text-align: left; border-radius: 0.85rem; border: 1px solid #e2e8f0; border-left-width: 4px; padding: 0.55rem 0.65rem; background: #fff; min-width: 0; }
+        .mini-item.paid { border-left-color: #22c55e; } .mini-item.pending { border-left-color: #f59e0b; } .mini-item.unpaid { border-left-color: #ef4444; background: #fff7f7; }
+        .mini-item:active { transform: scale(0.97); }
         .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 800; font-size: 12.5px; padding: 0.7rem 1rem; border-radius: 0.85rem; transition: transform 0.1s; }
         .btn:active { transform: scale(0.97); }
         .btn-green { background: linear-gradient(135deg, #22c55e, #15803d); color: #fff; box-shadow: 0 8px 18px -8px rgba(21, 128, 61, 0.7); }
@@ -62,6 +67,7 @@
         <div class="bg-white/95 backdrop-blur-md px-4 py-3 border-b border-slate-200 sticky top-0 z-10 flex items-center gap-2.5">
             <button onclick="closeBill()" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center border border-slate-200 text-xs" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
             <div class="min-w-0 flex-1"><div id="bTitle" class="font-extrabold text-sm truncate">Bill</div><p id="bSub" class="text-[11px] text-slate-500 truncate">&nbsp;</p></div>
+            <button id="bLayout" onclick="toggleBillLayout()" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center border border-slate-200 text-xs flex-shrink-0" aria-label="Change layout" title="Change layout"><i id="bLayoutIcon" class="fa-solid fa-table-cells-large text-sm"></i></button>
             <button id="bSave" onclick="saveBill()" class="btn btn-green !py-2 !px-4"><i class="fa-solid fa-check"></i>Save</button>
         </div>
         <div class="px-4 pt-4 pb-32 space-y-4" id="bBody"></div>
@@ -99,6 +105,18 @@
     </div>
 </div>
 
+<!-- statement on screen (to screenshot) -->
+<div id="stmtSheet" class="sheet hidden" style="background:#0f172a">
+    <div class="inner w-full max-w-[480px] mx-auto min-h-screen px-3 pt-3 pb-10">
+        <div class="flex items-center justify-between gap-2 mb-3">
+            <button onclick="closeStatement()" class="btn !py-2 !px-3 text-white" style="background:rgba(255,255,255,0.12)"><i class="fa-solid fa-xmark"></i>关闭</button>
+            <span class="text-[11px] font-bold text-slate-400"><i class="fa-solid fa-camera mr-1"></i>直接截图发给租客</span>
+            <button onclick="statementImage(stmtBill)" class="btn btn-green !py-2 !px-3"><i class="fa-solid fa-image"></i>存成图片</button>
+        </div>
+        <div id="stmtBody" class="rounded-2xl overflow-hidden shadow-2xl"></div>
+    </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -112,6 +130,10 @@ let data = { units: [], tenants: [], bills: [] };
 let unitId = null;          // the unit whose bills are open (null = list of units)
 let editing = null;         // the bill being edited (working copy)
 let toastTimer = null;
+// bill editor layout: big cards one under the other, or small cards two per row (tap one to open it big)
+let billCompact = false; try { billCompact = localStorage.getItem('bill_layout') === 'compact'; } catch (e) { /* storage blocked */ }
+let openItem = null;
+function toggleBillLayout() { billCompact = !billCompact; openItem = null; try { localStorage.setItem('bill_layout', billCompact ? 'compact' : 'big'); } catch (e) { /* ignore */ } renderBill(); }
 
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2400); }
 
@@ -193,12 +215,14 @@ function renderUnit(u) {
     const list = bills.map((b) => {
         const s = stats([b]); const total = sum(b.items);
         const cls = s.unpaid.length ? 'is-red' : (s.pending.length ? 'is-amber' : '');
-        return `<button onclick="openBill(${b.id})" class="card ${cls} tap w-full text-left p-4 block">
+        return `<div role="button" tabindex="0" onclick="openBill(${b.id})" onkeydown="if(event.key==='Enter')openBill(${b.id})" class="card ${cls} tap w-full text-left p-4 block cursor-pointer">
             <div class="flex items-start justify-between gap-2"><div><div class="font-extrabold text-[14px]">${dateLabel(b.billDate)}费用明细</div><div class="text-[11px] text-slate-400 font-semibold">${dateLong(b.billDate)} · ${b.items.length} items</div></div><div class="text-right"><div class="text-[15px] font-extrabold">${money(total)}</div>${b.received ? '<span class="chip green mt-1"><i class="fa-solid fa-check"></i>Received</span>' : '<span class="chip gray mt-1">Not received</span>'}</div></div>
-            <div class="mt-2.5 flex flex-wrap gap-1.5">
+            <div class="mt-2.5 flex items-end justify-between gap-2">
+                <div class="flex flex-wrap gap-1.5">
                 ${s.unpaid.length ? `<span class="chip red"><i class="fa-solid fa-circle-xmark"></i>${s.unpaid.length} unpaid · ${money(s.owe)}</span>` : ''}
                 ${s.pending.length ? `<span class="chip amber"><i class="fa-solid fa-clock"></i>${s.pending.length} pending</span>` : ''}
-                ${!s.unpaid.length && !s.pending.length ? '<span class="chip green"><i class="fa-solid fa-check"></i>All paid</span>' : ''}</div></button>`;
+                ${!s.unpaid.length && !s.pending.length ? '<span class="chip green"><i class="fa-solid fa-check"></i>All paid</span>' : ''}</div>
+                <button onclick="event.stopPropagation();showStatement(${b.id})" class="stmt-btn" aria-label="Show statement"><i class="fa-solid fa-receipt"></i>明细</button></div></div>`;
     }).join('');
     return head + `<div class="space-y-3">${list}</div>`;
 }
@@ -228,11 +252,13 @@ function newBill(forUnit) {
 function openBill(id) { editing = JSON.parse(JSON.stringify(data.bills.find((b) => b.id === id))); showBill(); }
 function showBill() {
     const u = data.units.find((x) => x.id === editing.unitId);
-    $('bTitle').textContent = u.name; renderBill(); $('billSheet').classList.remove('hidden'); $('billSheet').scrollTop = 0; document.body.style.overflow = 'hidden';
+    $('bTitle').textContent = u.name; openItem = null; renderBill(); $('billSheet').classList.remove('hidden'); $('billSheet').scrollTop = 0; document.body.style.overflow = 'hidden';
 }
 function closeBill() { $('billSheet').classList.add('hidden'); document.body.style.overflow = ''; editing = null; }
 
 function renderBill() {
+    const keep = $('billSheet').scrollTop;
+    $('bLayoutIcon').className = `fa-solid ${billCompact ? 'fa-list' : 'fa-table-cells-large'} text-sm`;
     const b = editing; const items = b.items;
     $('bSub').textContent = `${dateLabel(b.billDate)}费用明细 · ${money(sum(items))}`;
     const groups = CATS.map(([key, label, icon]) => {
@@ -240,7 +266,9 @@ function renderBill() {
         if (!rows.length && key === 'stamp') return '';
         const sub = sum(rows.map((r) => r.it));
         return `<section class="card p-3.5"><div class="flex items-center justify-between mb-2"><div class="font-extrabold text-[13px]"><i class="fa-solid ${icon} text-emerald-600 mr-1.5"></i>${label}</div><div class="text-xs font-extrabold text-slate-500">${money(sub)}</div></div>
-            <div class="space-y-2.5">${rows.map(({ it, i }) => itemRow(it, i)).join('') || '<div class="text-[11px] text-slate-400 px-1">No items</div>'}</div>
+            ${billCompact
+                ? `<div class="grid grid-cols-2 gap-2">${rows.map(({ it, i }) => i === openItem ? `<div class="col-span-2">${itemRow(it, i, true)}</div>` : miniItem(it, i)).join('') || '<div class="text-[11px] text-slate-400 px-1 col-span-2">No items</div>'}</div>`
+                : `<div class="space-y-2.5">${rows.map(({ it, i }) => itemRow(it, i)).join('') || '<div class="text-[11px] text-slate-400 px-1">No items</div>'}</div>`}
             <button onclick="addItem('${key}')" class="mt-2.5 w-full text-[12px] font-extrabold text-emerald-700 bg-emerald-50 rounded-xl py-2"><i class="fa-solid fa-plus mr-1"></i>Add item</button></section>`;
     }).join('');
     const st = stats([b]);
@@ -253,9 +281,18 @@ function renderBill() {
         <div class="card p-4"><div class="flex items-center justify-between"><span class="text-[12px] font-extrabold text-slate-500">TOTAL</span><span class="text-xl font-extrabold">${money(sum(items))}</span></div></div>
         <div class="grid grid-cols-2 gap-2.5"><button onclick="statementImage()" class="btn btn-soft"><i class="fa-solid fa-image"></i>给租客的明细</button><button onclick="saveBill(true)" class="btn btn-soft"><i class="fa-solid fa-copy"></i>存好并复制下月</button></div>
         ${b.id ? '<button onclick="deleteBill()" class="btn btn-red w-full"><i class="fa-solid fa-trash-can"></i>Delete this bill</button>' : ''}`;
+    $('billSheet').scrollTop = keep;
 }
-function itemRow(it, i) {
-    return `<div class="rounded-xl border border-slate-200 p-2.5 ${it.status === 'unpaid' ? 'bg-red-50/60 border-red-200' : ''}">
+function miniItem(it, i) {
+    const hasAmt = it.amount !== '' && it.amount != null;
+    return `<button onclick="openItem=${i};renderBill()" class="mini-item ${it.status}">
+        <div class="flex items-center justify-between gap-1.5"><span class="text-[12.5px] font-extrabold truncate">${esc(it.name) || '—'}</span>${it.link ? '<i class="fa-solid fa-paperclip text-[10px] text-blue-500"></i>' : ''}</div>
+        <div class="text-[10.5px] text-slate-400 font-semibold truncate min-h-[1rem]">${esc(it.detail) || '&nbsp;'}</div>
+        <div class="flex items-center justify-between gap-1 mt-1"><span class="text-[13px] font-extrabold">${hasAmt ? money(it.amount) : '—'}</span><span class="chip ${it.status === 'paid' ? 'green' : it.status === 'unpaid' ? 'red' : 'amber'} !text-[9.5px] !px-1.5">${STATUS[it.status]}</span></div></button>`;
+}
+function itemRow(it, i, closable) {
+    return `<div class="rounded-xl border border-slate-200 p-2.5 ${it.status === 'unpaid' ? 'bg-red-50/60 border-red-200' : ''} ${closable ? 'ring-2 ring-emerald-300' : ''}">
+        ${closable ? '<div class="flex justify-end -mt-0.5 mb-1"><button onclick="openItem=null;renderBill()" class="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1"><i class="fa-solid fa-chevron-up mr-1"></i>收起</button></div>' : ''}
         <div class="flex items-center gap-2"><input class="field !py-1.5 !text-[13px]" placeholder="项目名称" value="${esc(it.name)}" oninput="editing.items[${i}].name=this.value">
             <button onclick="removeItem(${i})" class="text-slate-300 hover:text-red-500 px-1" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></div>
         <div class="grid grid-cols-[1fr_7.2rem] gap-2 mt-2"><input class="field !py-1.5 !text-[12.5px]" placeholder="费用说明（例如 10/8 – 8/9）" value="${esc(it.detail)}" oninput="editing.items[${i}].detail=this.value">
@@ -268,8 +305,8 @@ function itemRow(it, i) {
 // one box for link or note: an http(s) address is the receipt link, anything else is a note
 function setLinkNote(i, v) { const it = editing.items[i]; if (/^https?:\/\//i.test(v.trim())) { it.link = v.trim(); } else { it.note = v; if (!v) it.link = ''; } }
 function updateTotals() { $('bSub').textContent = `${dateLabel(editing.billDate)}费用明细 · ${money(sum(editing.items))}`; }
-function addItem(cat) { editing.items.push(blankItem(cat)); renderBill(); }
-function removeItem(i) { editing.items.splice(i, 1); renderBill(); }
+function addItem(cat) { editing.items.push(blankItem(cat)); if (billCompact) openItem = editing.items.length - 1; renderBill(); }
+function removeItem(i) { editing.items.splice(i, 1); openItem = null; renderBill(); }
 
 function cleanBill() {
     return { unitId: editing.unitId, billDate: editing.billDate, received: !!editing.received, notes: editing.notes || '',
@@ -290,20 +327,36 @@ async function deleteBill() {
 }
 
 // ---------- the picture for the tenant ----------
-async function statementImage() {
-    const b = cleanBill(); const u = data.units.find((x) => x.id === b.unitId); const ten = data.tenants.find((t) => t.unitId === u.id);
+function statementHtml(b, width) {
+    const u = data.units.find((x) => x.id === b.unitId); const ten = data.tenants.find((t) => t.unitId === u.id);
     const total = sum(b.items); const rows = (key) => b.items.filter((i) => i.category === key);
     const sec = ([key, label]) => { const r = rows(key); if (!r.length) return '';
         return `<div style="margin-top:18px"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px;color:#14532d;border-bottom:2px solid #bbf7d0;padding-bottom:6px"><span>${label}</span><span>${money(sum(r))}</span></div>
             ${r.map((i) => `<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14px"><div style="min-width:0"><div style="font-weight:700;color:#0f172a">${esc(i.name)}</div>${i.detail ? `<div style="font-size:12px;color:#64748b;margin-top:2px">${esc(i.detail)}</div>` : ''}</div><div style="font-weight:700;white-space:nowrap;color:#0f172a">${i.amount == null ? '—' : money(i.amount)}</div></div>`).join('')}</div>`; };
-    const node = document.createElement('div');
-    node.style.cssText = 'position:fixed;left:-9999px;top:0;width:520px;background:#fff;padding:28px 26px;font-family:Inter,"PingFang SC","Noto Sans SC",sans-serif;color:#0f172a';
-    node.innerHTML = `<div style="display:flex;align-items:center;gap:12px"><img src="/tracker-icon/apple-touch-icon.png" style="width:48px;height:48px;border-radius:12px" crossorigin="anonymous"><div><div style="font-weight:800;font-size:19px">费用明细 Statement</div><div style="font-size:12px;color:#64748b;margin-top:2px">m.boutiquehomes</div></div></div>
+    return `<div style="width:${width};background:#fff;padding:28px 26px;box-sizing:border-box;font-family:Inter,'PingFang SC','Noto Sans SC',sans-serif;color:#0f172a">
+        <div style="display:flex;align-items:center;gap:12px"><img src="/tracker-icon/apple-touch-icon.png" style="width:48px;height:48px;border-radius:12px" crossorigin="anonymous"><div><div style="font-weight:800;font-size:19px">费用明细 Statement</div><div style="font-size:12px;color:#64748b;margin-top:2px">m.boutiquehomes</div></div></div>
         <div style="margin-top:16px;background:#f0fdf4;border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.7"><div><b>单位 Unit：</b>${esc(u.name)}</div><div><b>租客 Tenant：</b>${esc((ten && (ten.fullName || ten.name)) || u.clientName || '-')}</div><div><b>日期 Date：</b>${dateLong(b.billDate)}</div></div>
         ${CATS.map(sec).join('')}
         <div style="margin-top:20px;background:linear-gradient(135deg,#16a34a,#166534);color:#fff;border-radius:14px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center"><span style="font-weight:700;font-size:14px">总计 Total</span><span style="font-weight:800;font-size:24px">${money(total)}</span></div>
         ${b.notes ? `<div style="margin-top:14px;font-size:12px;color:#475569;white-space:pre-wrap">${esc(b.notes)}</div>` : ''}
-        <div style="margin-top:16px;text-align:center;font-size:11px;color:#94a3b8">Thank you · 谢谢</div>`;
+        <div style="margin-top:16px;text-align:center;font-size:11px;color:#94a3b8">Thank you · 谢谢</div></div>`;
+}
+
+// on screen, full width: the tenant can be sent a screenshot of it
+let stmtBill = null;
+function showStatement(id) {
+    stmtBill = data.bills.find((b) => b.id === id); if (!stmtBill) return;
+    $('stmtBody').innerHTML = statementHtml(stmtBill, '100%');
+    $('stmtSheet').classList.remove('hidden'); $('stmtSheet').scrollTop = 0; document.body.style.overflow = 'hidden';
+}
+function closeStatement() { $('stmtSheet').classList.add('hidden'); stmtBill = null; if ($('billSheet').classList.contains('hidden') && $('unitSheet').classList.contains('hidden')) document.body.style.overflow = ''; }
+
+// the same statement as a picture (share sheet on a phone, download elsewhere)
+async function statementImage(bill) {
+    const b = bill || cleanBill(); const u = data.units.find((x) => x.id === b.unitId);
+    const node = document.createElement('div');
+    node.style.cssText = 'position:fixed;left:-9999px;top:0;width:520px';
+    node.innerHTML = statementHtml(b, '520px');
     document.body.appendChild(node);
     try {
         if (document.fonts && document.fonts.ready) await document.fonts.ready;
