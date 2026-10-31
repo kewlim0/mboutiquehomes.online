@@ -4,968 +4,168 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#0f172a">
     <link rel="icon" type="image/x-icon" href="/tracker-icon/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/tracker-icon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/tracker-icon/favicon-16x16.png">
     <link rel="apple-touch-icon" href="/tracker-icon/apple-touch-icon.png">
-    <title>SIM Manager Dashboard</title>
-    <!-- Tailwind CSS -->
+    <title>Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#f0f5ff',
-                            100: '#e0ebff',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                        }
-                    },
-                    boxShadow: {
-                        'soft-lg': '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)',
-                        'game-btn': '0 4px 0 0 #2563eb, 0 6px 12px rgba(37, 99, 235, 0.3)',
-                        'card-glow': '0 0 20px rgba(59, 130, 246, 0.15)',
-                    }
-                }
-            }
-        }
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };
     </script>
     <style>
-        /* No zooming by accident: a double tap must not zoom the page, and a field must not make the phone zoom in on focus
-           (iOS zooms into any field whose text is smaller than 16px). */
-        html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
-        button, a, label, select { touch-action: manipulation; }
-        @media (max-width: 767px), (pointer: coarse) {
-            input, select, textarea { font-size: 16px !important; }
-        }
-
-        /* Add / edit form: every field the same height and width. iPhone draws a date field taller and wider than the rest
-           (it spilled over the Tag column), so it gets the same plain look as the dropdowns. */
-        #simForm .grid > div { min-width: 0; }
-        #simForm input:not([type="hidden"]), #simForm select { height: 2.75rem; }
-        #simForm input[type="date"] {
-            -webkit-appearance: none; appearance: none;
-            display: block; width: 100%; min-width: 0; max-width: 100%;
-            text-align: left; line-height: 1.2;
-        }
-        #simForm input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.2em; margin: 0; }
-        #simForm input[type="date"]::-webkit-calendar-picker-indicator { margin: 0; padding: 0 0.1rem; opacity: 0.6; }
-
-        /* Smooth scrolling & custom scrollbars */
+        :root { --ink: #0f172a; }
+        html { background: #0f172a; }
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f1f5f9;
-            color: #1e293b;
-            -webkit-tap-highlight-color: transparent;
+            font-family: 'Inter', sans-serif; color: #e2e8f0; min-height: 100vh;
+            -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
+            background:
+                radial-gradient(120% 60% at 100% -10%, rgba(34, 197, 94, 0.22) 0%, transparent 55%),
+                radial-gradient(90% 55% at -10% 8%, rgba(99, 102, 241, 0.28) 0%, transparent 55%),
+                #0f172a;
+            background-attachment: fixed;
         }
+        .wrap { width: 100%; max-width: 480px; margin: 0 auto; padding: max(1.25rem, env(safe-area-inset-top)) 1.1rem max(2rem, env(safe-area-inset-bottom)); }
 
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .hide-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        /* entrance */
+        @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+        .rise { animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .d1 { animation-delay: 0.05s; } .d2 { animation-delay: 0.12s; } .d3 { animation-delay: 0.2s; } .d4 { animation-delay: 0.28s; }
+        @media (prefers-reduced-motion: reduce) { .rise { animation: none; } }
 
-        /* Glassmorphism effects */
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 2px solid rgba(255, 255, 255, 0.6);
-        }
+        .glass { background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 
-        /* Animated pulse ring for urgent items */
-        @keyframes pulse-ring {
-            0% { transform: scale(0.95); opacity: 0.8; }
-            50% { transform: scale(1.05); opacity: 0.4; }
-            100% { transform: scale(0.95); opacity: 0.8; }
-        }
-        .pulse-urgent {
-            animation: pulse-ring 2s infinite ease-in-out;
-        }
+        /* summary strip */
+        .stat { padding: 0.8rem 0.5rem; text-align: center; border-radius: 1rem; }
+        .stat b { display: block; font-size: 1.55rem; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+        .stat span { display: block; margin-top: 0.25rem; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #94a3b8; }
 
-        /* Add / edit sheet: slides up (fades in on desktop) and slides back down when closed */
-        @keyframes backdrop-in  { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes backdrop-out { from { opacity: 1; } to { opacity: 0; } }
-        @keyframes sheet-up   { from { transform: translateY(100%); opacity: 0.6; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes sheet-down { from { transform: translateY(0); opacity: 1; } to { transform: translateY(100%); opacity: 0.6; } }
-        @keyframes pop-in  { from { transform: translateY(14px) scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
-        @keyframes pop-out { from { transform: none; opacity: 1; } to { transform: translateY(14px) scale(0.96); opacity: 0; } }
-        #modalBackdrop.is-open { animation: backdrop-in 0.22s ease-out both; }
-        #modalBackdrop.is-open .modal-card { animation: sheet-up 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }
-        #modalBackdrop.is-closing { animation: backdrop-out 0.2s ease-in both; pointer-events: none; }
-        #modalBackdrop.is-closing .modal-card { animation: sheet-down 0.22s cubic-bezier(0.4, 0, 1, 1) both; }
-        @media (min-width: 640px) {
-            #modalBackdrop.is-open .modal-card { animation: pop-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
-            #modalBackdrop.is-closing .modal-card { animation: pop-out 0.18s ease-in both; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            #modalBackdrop.is-open, #modalBackdrop.is-open .modal-card,
-            #modalBackdrop.is-closing, #modalBackdrop.is-closing .modal-card { animation: none; }
-        }
+        /* feature tiles */
+        .tile { position: relative; display: block; border-radius: 1.6rem; padding: 1.15rem; overflow: hidden; color: #fff; text-decoration: none; transition: transform 0.18s ease, box-shadow 0.18s ease; }
+        .tile:active { transform: scale(0.975); }
+        .tile-sim { background: linear-gradient(135deg, #16a34a 0%, #15803d 55%, #166534 100%); box-shadow: 0 18px 40px -16px rgba(34, 197, 94, 0.55); }
+        .tile-bill { background: linear-gradient(135deg, #1e293b 0%, #172033 100%); border: 1px dashed rgba(255, 255, 255, 0.18); }
+        .tile::before { content: ''; position: absolute; width: 11rem; height: 11rem; right: -3.5rem; top: -4rem; border-radius: 50%; background: rgba(255, 255, 255, 0.1); }
+        .tile::after { content: ''; position: absolute; width: 7rem; height: 7rem; right: 1.5rem; bottom: -4.2rem; border-radius: 50%; background: rgba(255, 255, 255, 0.07); }
+        .tile > * { position: relative; z-index: 1; }
+        .tile-icon { width: 3rem; height: 3rem; border-radius: 1rem; background: rgba(255, 255, 255, 0.18); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18); }
+        .tile-bill .tile-icon { background: rgba(255, 255, 255, 0.07); color: #94a3b8; }
+        .tile h2 { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.01em; }
+        .tile p { font-size: 0.78rem; font-weight: 500; opacity: 0.82; margin-top: 0.15rem; }
+        .chip { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.68rem; font-weight: 800; padding: 0.28rem 0.6rem; border-radius: 999px; background: rgba(255, 255, 255, 0.16); white-space: nowrap; }
+        .chip.warn { background: #fef3c7; color: #92400e; }
+        .chip.bad { background: #fee2e2; color: #b91c1c; }
+        .chip.wa { background: rgba(255, 255, 255, 0.95); color: #15803d; }
+        .go { width: 2.2rem; height: 2.2rem; border-radius: 999px; background: #fff; color: #15803d; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; flex-shrink: 0; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18); transition: transform 0.18s ease; }
+        .tile:hover .go { transform: translateX(3px); }
+        .soon { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #cbd5e1; background: rgba(255, 255, 255, 0.1); padding: 0.28rem 0.6rem; border-radius: 999px; }
 
-        /* One-per-row layout: slim number bars (title line above, one thin bordered bar per number) */
-        .sim-row { margin-top: 0.85rem; }
-        .sim-row-title { font-size: 12.5px; font-weight: 800; color: #1e293b; margin: 0 0 0.35rem 0.1rem; display: flex; align-items: baseline; gap: 0.4rem; min-width: 0; }
-        .sim-row-title small { font-size: 10.5px; font-weight: 700; color: #94a3b8; }
-        .sim-row-bar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 0.8rem; padding: 0.42rem 0.7rem; }
-        .sim-row-bar.is-soon { border-color: #fcd34d; }
-        .sim-row-bar.is-urgent { border-color: #f87171; }
-        .sim-row-bar.is-expired { border-color: #fca5a5; background: #fffafa; }
-        .sim-row-main { min-width: 0; flex: 1; }
-        .sim-row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.35rem; font-size: 10.5px; font-weight: 600; color: #94a3b8; line-height: 1.3; }
-        .sim-row-pill { font-size: 9.5px; font-weight: 800; padding: 0.04rem 0.4rem; border-radius: 999px; line-height: 1.4; white-space: nowrap; }
-        .sim-row-phone { display: flex; align-items: center; gap: 0.4rem; font-size: 0.92rem; font-weight: 600; color: #334155; margin-top: 0.05rem; }
-        .sim-row-side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; flex-shrink: 0; }
-        .sim-row-exp { font-size: 10px; font-weight: 600; color: #94a3b8; white-space: nowrap; }
-        .sim-row-btns { display: flex; gap: 0.3rem; }
-        .sim-row-btns button { height: 1.55rem; min-width: 1.55rem; padding: 0 0.4rem; border-radius: 0.5rem; font-size: 10.5px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 0.2rem; border: 1px solid transparent; }
-        .sim-row-bar { cursor: pointer; }
-        .sim-row-bar:active { background: #f8fafc; }
-        .status-pill { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 9.5px; font-weight: 800; color: #94a3b8; padding: 0.04rem 0.4rem; border-radius: 999px; background: #f1f5f9; line-height: 1.4; white-space: nowrap; }
-        .status-pill i { font-size: 10px; }
-        .status-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: #cbd5e1; }
-        .status-pill .dot.active { background: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,0.2); }
-        .status-pill:has(.dot.active) { background: #dcfce7; color: #15803d; }
-        .sim-row-note { font-size: 10.5px; color: #94a3b8; margin: 0.25rem 0.15rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        /* Two-per-row layout (the button next to "Add SIM"): the same cards, squeezed to half width */
-        #cardsList.is-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; align-items: stretch; }
-        #cardsList.is-grid > * { margin-top: 0 !important; }
-        #cardsList.is-grid > .text-center { grid-column: 1 / -1; }
-        #cardsList.is-grid .sim-card { padding: 0.7rem; display: flex; flex-direction: column; min-width: 0; }
-        #cardsList.is-grid .sim-head { flex-direction: column; align-items: flex-start; gap: 0.4rem; }
-        #cardsList.is-grid .sim-head > div:first-child { flex-wrap: wrap; gap: 0.3rem; }
-        /* carrier: a small soft-tinted chip with a colour dot instead of a big solid block */
-        #cardsList.is-grid .sim-telco {
-            display: inline-flex; align-items: center; gap: 0.3rem;
-            padding: 0.18rem 0.5rem 0.18rem 0.4rem; border-radius: 9999px;
-            font-size: 9.5px; font-weight: 800; letter-spacing: 0.04em; line-height: 1.2;
-            color: var(--c); background: rgba(var(--rgb), 0.12); border: 1px solid rgba(var(--rgb), 0.28); box-shadow: none;
-        }
-        #cardsList.is-grid .sim-telco::before {
-            content: ''; width: 0.4rem; height: 0.4rem; border-radius: 9999px; background: var(--c); flex: 0 0 auto;
-            box-shadow: 0 0 0 2px rgba(var(--rgb), 0.2);
-        }
-        /* tag: quiet grey text with a # in front */
-        #cardsList.is-grid .sim-tag {
-            padding: 0.1rem 0.15rem; border: 0; background: transparent; border-radius: 0;
-            font-size: 9.5px; font-weight: 700; color: #94a3b8; letter-spacing: 0.01em;
-        }
-        #cardsList.is-grid .sim-tag::before { content: '#'; margin-right: 1px; color: #cbd5e1; }
-        #cardsList.is-grid .sim-status { font-size: 9.5px; padding: 0.18rem 0.5rem; gap: 0.3rem; max-width: 100%; line-height: 1.2; }
-        #cardsList.is-grid .sim-status i { font-size: 9px; }
-        #cardsList.is-grid .sim-status span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        #cardsList.is-grid .sim-phone { font-size: 0.82rem; gap: 0.35rem; flex-wrap: wrap; }
-        #cardsList.is-grid .sim-body { flex: 1; min-width: 0; }
-        #cardsList.is-grid .sim-body p { overflow-wrap: anywhere; }
-        #cardsList.is-grid .sim-foot { flex-direction: column; align-items: stretch; gap: 0.5rem; margin-top: 0.6rem; padding-top: 0.6rem; }
-        #cardsList.is-grid .sim-actions { justify-content: space-between; }
-        #cardsList.is-grid .sim-actions .sim-renew { flex: 1; justify-content: center; white-space: nowrap; padding-left: 0.4rem; padding-right: 0.4rem; min-width: 0; }
-        #cardsList.is-grid .sim-actions .sim-renew span { font-size: 10.5px; }
-
-        /* Press effect for game-like buttons */
-        .btn-game {
-            transition: all 0.1s ease;
-        }
-        .btn-game:active {
-            transform: translateY(2px);
-            box-shadow: 0 2px 0 0 #1d4ed8, 0 3px 6px rgba(37, 99, 235, 0.2);
-        }
+        .skeleton { display: inline-block; width: 1.6rem; height: 1.4rem; border-radius: 0.4rem; background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.16), rgba(255,255,255,0.06)); background-size: 200% 100%; animation: shimmer 1.2s infinite linear; vertical-align: middle; }
+        @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+        .topbtn { width: 2.4rem; height: 2.4rem; border-radius: 0.85rem; display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 0.85rem; text-decoration: none; transition: background 0.15s; }
+        .topbtn:active { background: rgba(255, 255, 255, 0.14); }
     </style>
 </head>
-<body class="min-h-screen bg-slate-100">
+<body>
+    <main class="wrap">
 
-    <!-- Page container (no device frame, no fake status bar): the page itself scrolls -->
-    <div class="w-full max-w-[480px] mx-auto min-h-screen bg-slate-100 flex flex-col relative">
-
-        <!-- Sticky Header Bar -->
-        <header class="bg-white/90 backdrop-blur-md px-4 py-3 border-b border-slate-200/80 sticky top-0 z-20 flex flex-col gap-3">
-            <div class="flex items-center justify-between">
-                <!-- User Profile / Avatar -->
-                <div class="flex items-center gap-2.5">
-                    <img src="/img/logo-black-192.png" alt="m.boutiquehomes" class="w-10 h-10 rounded-full shadow-md flex-shrink-0">
-                    <div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="font-bold text-slate-800 text-sm">SIM Manager</span>
-                            <span class="bg-amber-100 text-amber-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md uppercase border border-amber-300">VIP</span>
-                        </div>
-                        <p class="text-[11px] text-slate-500 font-medium">Auto-Sync Active</p>
-                    </div>
-                </div>
-
-                <!-- Header Actions -->
-                <div class="flex items-center gap-2">
-                    <button id="layoutBtn" onclick="toggleLayout()" title="Show two per row" aria-label="Show two per row" aria-pressed="false" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold border border-slate-200 text-xs transition">
-                        <i id="layoutIcon" class="fa-solid fa-table-cells-large text-sm"></i>
-                    </button>
-                    <button onclick="openModal()" class="btn-game px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/20 active:translate-y-0.5">
-                        <i class="fa-solid fa-plus text-xs"></i>
-                        <span>Add SIM</span>
-                    </button>
+        <!-- top bar -->
+        <header class="rise flex items-center justify-between">
+            <div class="flex items-center gap-3 min-w-0">
+                <img src="/tracker-icon/apple-touch-icon.png" alt="" class="w-11 h-11 rounded-2xl shadow-lg shadow-black/30 flex-shrink-0">
+                <div class="min-w-0">
+                    <h1 class="text-lg font-extrabold leading-tight tracking-tight">Tracker</h1>
+                    <p id="today" class="text-[11px] font-semibold text-slate-400 truncate">&nbsp;</p>
                 </div>
             </div>
-
-            <!-- Search Bar -->
-            <div class="relative">
-                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Search phone number, alias, operator..."
-                       class="w-full pl-9 pr-8 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
-                <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">
-                    <i class="fa-solid fa-circle-xmark"></i>
-                </button>
-            </div>
-
-            <!-- Filter Tabs -->
-            <div class="flex items-center gap-1.5 overflow-x-auto hide-scrollbar pt-0.5">
-                <button onclick="setFilter('all')" id="filter-all" class="filter-btn active px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap bg-slate-800 text-white shadow-sm">
-                    All Lines (<span id="cnt-all">0</span>)
-                </button>
-                <button onclick="setFilter('urgent')" id="filter-urgent" class="filter-btn px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap bg-slate-100 text-slate-600 hover:bg-slate-200">
-                    ⚠️ Expiring Soon (<span id="cnt-urgent">0</span>)
-                </button>
-                <button onclick="setFilter('active')" id="filter-active" class="filter-btn px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap bg-slate-100 text-slate-600 hover:bg-slate-200">
-                    🟢 Active (<span id="cnt-active">0</span>)
-                </button>
-                <button onclick="setFilter('expired')" id="filter-expired" class="filter-btn px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap bg-slate-100 text-slate-600 hover:bg-slate-200">
-                    🔴 Expired (<span id="cnt-expired">0</span>)
-                </button>
+            <div class="flex items-center gap-1.5">
+                <a href="/admin/dashboard" class="topbtn glass" title="Back to admin" aria-label="Back to admin"><i class="fa-solid fa-gauge-high"></i></a>
             </div>
         </header>
 
-        <!-- Main Scrollable Content Area -->
-        <main class="flex-1 px-4 py-4 space-y-4">
+        <!-- greeting + summary -->
+        <section class="rise d1 mt-7">
+            <p class="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-400/90">Overview</p>
+            <h2 id="headline" class="mt-1 text-[1.65rem] leading-[1.15] font-extrabold tracking-tight">Everything<br>in one place.</h2>
+        </section>
 
-            <!-- Bento Box Dashboard Summary -->
-            <div class="grid grid-cols-2 gap-3">
-                <!-- Card 1: Total Managed -->
-                <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-3.5 text-white shadow-lg shadow-indigo-500/15 relative overflow-hidden border border-indigo-400/30 flex flex-col justify-between">
-                    <div class="absolute -right-3 -bottom-3 w-16 h-16 bg-white/10 rounded-full blur-sm"></div>
-                    <div class="flex justify-between items-start">
-                        <span class="text-[11px] font-bold text-indigo-100 uppercase tracking-wider">Total Managed</span>
-                        <div class="w-7 h-7 rounded-xl bg-white/20 flex items-center justify-center text-white text-xs">
-                            <i class="fa-solid fa-sim-card"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <span id="summaryTotal" class="text-2xl font-black">0</span>
-                        <span class="text-xs text-indigo-200 ml-1 font-medium">Numbers</span>
-                    </div>
+        <section class="rise d2 glass rounded-3xl mt-5 p-2 grid grid-cols-3 gap-1" aria-label="SIM summary">
+            <div class="stat"><b id="sTotal"><span class="skeleton"></span></b><span>SIM lines</span></div>
+            <div class="stat" style="background: rgba(251, 191, 36, 0.08)"><b id="sSoon" class="text-amber-300"><span class="skeleton"></span></b><span>Expiring ≤ 7d</span></div>
+            <div class="stat" style="background: rgba(248, 113, 113, 0.08)"><b id="sOver" class="text-red-300"><span class="skeleton"></span></b><span>Expired</span></div>
+        </section>
+
+        <!-- features -->
+        <p class="rise d3 mt-8 mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Your tools</p>
+        <div class="space-y-3.5">
+            <a href="/tracker/sim/" class="tile tile-sim rise d3">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="tile-icon"><i class="fa-solid fa-sim-card"></i></div>
+                    <span class="go"><i class="fa-solid fa-arrow-right"></i></span>
                 </div>
+                <h2 class="mt-4">SIM Tracker</h2>
+                <p>Phone lines, top-ups and the 60-day countdown.</p>
+                <div id="simChips" class="mt-4 flex flex-wrap gap-1.5"><span class="chip"><i class="fa-solid fa-circle-notch fa-spin"></i>Loading…</span></div>
+            </a>
 
-                <!-- Card 2: Urgent Expiration Alert -->
-                <div class="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl p-3.5 text-white shadow-lg shadow-orange-500/15 relative overflow-hidden border border-amber-300/30 flex flex-col justify-between">
-                    <div class="absolute -right-2 -top-2 w-12 h-12 bg-white/10 rounded-full blur-xs"></div>
-                    <div class="flex justify-between items-start">
-                        <span class="text-[11px] font-bold text-amber-100 uppercase tracking-wider">Needs Attention</span>
-                        <div class="w-7 h-7 rounded-xl bg-white/20 flex items-center justify-center text-white text-xs pulse-urgent">
-                            <i class="fa-solid fa-clock-rotate-left"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <span id="summaryUrgent" class="text-2xl font-black">0</span>
-                        <span class="text-xs text-amber-100 ml-1 font-medium"><7 Days Left</span>
-                    </div>
+            <div class="tile tile-bill rise d4" aria-disabled="true">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="tile-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                    <span class="soon">Coming soon</span>
                 </div>
-            </div>
-
-            <!-- List Section Header -->
-            <div class="flex items-center justify-between px-1 pt-1">
-                <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                    <i class="fa-solid fa-layer-group text-blue-500"></i> Phone Numbers Directory
-                </h2>
-                <span id="sortLabel" class="text-[11px] font-semibold text-slate-400">Sorted by: Days left</span>
-            </div>
-
-            <!-- Dynamic Phone Number Cards Container -->
-            <div id="cardsList" class="space-y-3 pb-16">
-                <!-- Rendered by JavaScript -->
-            </div>
-
-            <!-- Empty State Container -->
-            <div id="emptyState" class="hidden text-center py-12 px-4">
-                <div class="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto text-slate-400 text-2xl mb-3">
-                    <i class="fa-solid fa-folder-open"></i>
-                </div>
-                <h3 class="font-bold text-slate-700 text-sm">No SIM Cards Found</h3>
-                <p class="text-slate-400 text-xs mt-1">Try adjusting your filters or click "Add SIM" to register a new phone number.</p>
-            </div>
-        </main>
-
-        <!-- Toast Notification Box -->
-        <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-md border border-slate-700 transition-all duration-300 transform translate-y-20 opacity-0 z-50 flex items-center gap-2 pointer-events-none">
-            <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
-            <span id="toastMsg">Action executed successfully!</span>
-        </div>
-
-        <!-- Add/Edit Modal Dialog -->
-        <div id="modalBackdrop" class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 hidden transition-opacity flex items-end sm:items-center justify-center">
-            <div class="modal-card bg-white w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border border-slate-200">
-                <div class="flex justify-between items-center pb-3 border-b border-slate-100">
-                    <h3 id="modalTitle" class="font-extrabold text-slate-800 text-base flex items-center gap-2">
-                        <i class="fa-solid fa-mobile-screen text-blue-500"></i> Add New Mobile Line
-                    </h3>
-                    <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-
-                <form id="simForm" onsubmit="saveSim(event)" class="space-y-3.5 mt-4">
-                    <input type="hidden" id="editId">
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">Phone Number *</label>
-                        <input type="text" id="phoneNum" required placeholder="+60 12-345 6789"
-                               class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">Telco Provider *</label>
-                            <select id="telco" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="Maxis">Maxis / Hotlink</option>
-                                <option value="CelcomDigi">CelcomDigi</option>
-                                <option value="U Mobile">U Mobile</option>
-                                <option value="YES 5G">YES 5G</option>
-                                <option value="Unifi">Unifi Mobile</option>
-                                <option value="Singtel">Singtel</option>
-                                <option value="Other">Other / Global</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">Alias / Owner *</label>
-                            <input type="text" id="alias" required placeholder="e.g. Work Line"
-                                   class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">Last Top Up Date *</label>
-                            <input type="date" id="topupDate" required
-                                   class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">Tag Label</label>
-                            <select id="tag" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="Personal">Personal</option>
-                                <option value="Work">Work</option>
-                                <option value="2FA / OTP">2FA / OTP</option>
-                                <option value="Marketing">Marketing</option>
-                                <option value="Backup">Backup</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">WhatsApp</label>
-                        <select id="whatsapp" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="active">active</option>
-                            <option value="inactive">inactive</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">Notes / Plan Remarks</label>
-                        <textarea id="notes" rows="2" placeholder="e.g. Monthly RM30 plan renewal needed before 12 PM"
-                                  class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                    </div>
-
-                    <div class="pt-2 flex items-center justify-end gap-2">
-                        <button type="button" onclick="closeModal()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs">
-                            Cancel
-                        </button>
-                        <button type="submit" class="btn-game px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs shadow-md shadow-blue-500/30">
-                            Save SIM Details
-                        </button>
-                    </div>
-                </form>
+                <h2 class="mt-4 text-slate-200">Bill</h2>
+                <p class="text-slate-400" style="opacity: 1">Bills and due dates, tracked here.</p>
             </div>
         </div>
 
-    </div>
+        <p class="rise d4 mt-8 text-center text-[11px] font-semibold text-slate-500">m.boutiquehomes · private</p>
+    </main>
 
-    <!-- JavaScript Application Logic -->
     <script>
-        // Global State
-        let sims = [];
-        let currentFilter = 'all';
-        let sortAsc = true; // nearest expiration first
+        // today, in this phone's own time zone
+        function dayStart(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+        const now = new Date();
+        document.getElementById('today').textContent = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-        // Helper date utility
-        function getFutureDateStr(daysOffset) {
-            const d = new Date();
-            d.setDate(d.getDate() + daysOffset);
-            return d.toISOString().split('T')[0];
-        }
+        // same rule as the SIM page: days left until the expiry date (negative = already past)
+        const daysLeft = (expDate) => Math.ceil((dayStart(expDate) - dayStart(new Date())) / 86400000);
+        const $ = (id) => document.getElementById(id);
 
-        // "59 days left", "1 day left", "-2 days left" (a negative number = already past the 60 days)
-        function daysLeftText(n) {
-            return `${n} ${Math.abs(n) === 1 ? 'day' : 'days'} left`;
-        }
-
-        // Calculate days remaining
-        function getDaysRemaining(expDateStr) {
-            const today = new Date();
-            today.setHours(0,0,0,0);
-            const exp = new Date(expDateStr);
-            exp.setHours(0,0,0,0);
-
-            const diffTime = exp - today;
-            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        }
-
-        // ---------- server (MySQL) ----------
-        // The numbers are stored in the website's database. You must be signed in to the admin; otherwise we go to the login page.
-        async function api(method, path, body) {
-            const res = await fetch('/api/admin/' + path, {
-                method,
-                credentials: 'same-origin',
-                headers: body ? { 'Content-Type': 'application/json' } : undefined,
-                body: body ? JSON.stringify(body) : undefined
-            });
-            const data = await res.json().catch(() => ({}));
-            if (res.status === 401) {
-                window.location.replace('/admin/?next=%2Ftracker%2F');
-                throw new Error('Please sign in');
-            }
-            if (!res.ok) throw new Error(data.error || 'Something went wrong, please try again');
-            return data;
-        }
-
-        const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        let loading = true;
-
-        // Initialize App
-        window.onload = async function() {
-            applyLayout();
-            renderApp();               // shows the "loading" state
+        async function load() {
+            let sims;
             try {
-                sims = (await api('GET', 'sims')).sims;
-            } catch (err) {
-                showToast(err.message, 'fa-circle-exclamation', 'text-red-400');
+                const res = await fetch('/api/admin/sims', { credentials: 'same-origin' });
+                if (res.status === 401) { window.location.replace('/admin/?next=%2Ftracker%2F'); return; }
+                if (!res.ok) throw new Error('bad status');
+                sims = (await res.json()).sims;
+            } catch (e) {
+                ['sTotal', 'sSoon', 'sOver'].forEach((id) => { $(id).textContent = '–'; });
+                $('simChips').innerHTML = '<span class="chip bad"><i class="fa-solid fa-triangle-exclamation"></i>Could not load</span>';
+                return;
             }
-            loading = false;
-            renderApp();
-        };
+            const days = sims.map((s) => daysLeft(s.expDate));
+            const over = days.filter((d) => d < 0).length;
+            const soon = days.filter((d) => d >= 0 && d <= 7).length;
+            const wa = sims.filter((s) => s.whatsapp === 'active').length;
+            $('sTotal').textContent = sims.length;
+            $('sSoon').textContent = soon;
+            $('sOver').textContent = over;
 
-        // ---------- search ----------
-        // Other names people use for a carrier, so "hotlink", "umobile" or "unifi mobile" all find the right lines.
-        const TELCO_ALIASES = {
-            'Maxis': 'maxis hotlink',
-            'CelcomDigi': 'celcomdigi celcom digi',
-            'U Mobile': 'u mobile umobile',
-            'YES 5G': 'yes 5g yes5g',
-            'Unifi': 'unifi mobile',
-            'Singtel': 'singtel',
-            'Other': 'other global'
-        };
-        const squash = (t) => String(t).toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
+            const chips = [`<span class="chip"><i class="fa-solid fa-mobile-screen"></i>${sims.length} ${sims.length === 1 ? 'line' : 'lines'}</span>`];
+            if (wa) chips.push(`<span class="chip wa"><i class="fa-brands fa-whatsapp"></i>${wa} WhatsApp</span>`);
+            if (soon) chips.push(`<span class="chip warn"><i class="fa-solid fa-clock"></i>${soon} expiring soon</span>`);
+            if (over) chips.push(`<span class="chip bad"><i class="fa-solid fa-circle-xmark"></i>${over} expired</span>`);
+            if (!soon && !over && sims.length) chips.push('<span class="chip"><i class="fa-solid fa-circle-check"></i>All good</span>');
+            $('simChips').innerHTML = chips.join('');
 
-        // How a search works:
-        //  1) The whole phrase is tried first ("u mobile", "monna 2", "+60 12-884"): spaces, dashes and the + are ignored,
-        //     and a number also matches the way it is dialled locally ("012884...").
-        //  2) If nothing matches as a phrase, every word you typed has to match somewhere on the line (number, name,
-        //     carrier, tag, note or date). One- and two-letter words only match the start of a name/tag word or of a number,
-        //     so a lone "2" does not match every date that has a 2 in it.
-        function simText(item) {
-            const digits = String(item.phone).replace(/\D/g, '');
-            const local = digits.startsWith('60') ? '0' + digits.slice(2) : digits;
-            const text = [item.phone, item.alias, item.telco, TELCO_ALIASES[item.telco] || '', item.tag, item.notes, item.topupDate, item.expDate].join(' ').toLowerCase();
-            const words = [item.alias, item.telco, TELCO_ALIASES[item.telco] || '', item.tag, item.notes].join(' ').toLowerCase()
-                .split(/[^a-z0-9\u4e00-\u9fff]+/).filter(Boolean);
-            return { digits, local, text, squashed: squash(text) + ' ' + digits + ' ' + local, words };
+            $('headline').innerHTML = over || soon
+                ? `${over + soon} ${over + soon === 1 ? 'line needs' : 'lines need'}<br>your attention.`
+                : 'All lines are<br>in good shape.';
         }
-
-        function searchSims(list, query) {
-            const info = new Map(list.map((item) => [item, simText(item)]));
-            const phrase = squash(query);
-            if (phrase) {
-                const hits = list.filter((item) => info.get(item).squashed.includes(phrase));
-                if (hits.length) return hits;
-            }
-            const words = query.split(/\s+/).filter(Boolean);
-            return list.filter((item) => {
-                const t = info.get(item);
-                return words.every((word) => {
-                    const w = squash(word);
-                    if (!w) return t.text.includes(word);
-                    if (w.length <= 2) {
-                        return t.words.some((x) => x.startsWith(w)) || (/^\d+$/.test(w) && (t.digits.startsWith(w) || t.local.startsWith(w)));
-                    }
-                    return t.text.includes(word) || t.squashed.includes(w);
-                });
-            });
-        }
-
-        // Render Dashboard UI
-        function renderApp() {
-            const cardsContainer = document.getElementById('cardsList');
-            const emptyState = document.getElementById('emptyState');
-            const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
-
-            // Filter logic
-            const searched = searchVal ? searchSims(sims, searchVal) : sims;
-            let filtered = searched.filter(item => {
-                const days = getDaysRemaining(item.expDate);
-                // Filter tabs
-                if (currentFilter === 'urgent' && (days < 0 || days > 7)) return false;
-                if (currentFilter === 'active' && days < 0) return false;
-                if (currentFilter === 'expired' && days >= 0) return false;
-
-                return true;
-            });
-
-            // Sorting logic
-            filtered.sort((a, b) => {
-                const daysA = getDaysRemaining(a.expDate);
-                const daysB = getDaysRemaining(b.expDate);
-                return sortAsc ? daysA - daysB : daysB - daysA;
-            });
-
-            // Update Counts in UI
-            updateCounters();
-            document.getElementById('sortLabel').textContent = searchVal
-                ? `${filtered.length} ${filtered.length === 1 ? 'line' : 'lines'} found`
-                : 'Sorted by: Days left';
-
-            // Render Cards
-            if (loading) {
-                emptyState.classList.add('hidden');
-                cardsContainer.innerHTML = '<div class="text-center text-slate-400 text-xs py-10"><i class="fa-solid fa-circle-notch fa-spin text-lg mb-2 block"></i>Loading your SIM lines…</div>';
-            } else if (filtered.length === 0) {
-                cardsContainer.innerHTML = '';
-                emptyState.classList.remove('hidden');
-            } else {
-                emptyState.classList.add('hidden');
-                cardsContainer.innerHTML = filtered.map(item => renderSimCard(item)).join('');
-            }
-        }
-
-        // Telco Badge Styling Helper
-        function getTelcoStyle(telco) {
-            // bg/text: the solid pill of the one-per-row cards. c: accent colour used by the compact chip of the two-per-row cards.
-            switch(telco) {
-                case 'Maxis': return { bg: 'bg-green-500', text: 'text-white', label: 'Maxis', c: '#16a34a', rgb: '34,197,94' };
-                case 'CelcomDigi': return { bg: 'bg-cyan-500', text: 'text-white', label: 'CelcomDigi', c: '#0891b2', rgb: '6,182,212' };
-                case 'U Mobile': return { bg: 'bg-orange-500', text: 'text-white', label: 'U Mobile', c: '#ea580c', rgb: '249,115,22' };
-                case 'YES 5G': return { bg: 'bg-rose-500', text: 'text-white', label: 'YES 5G', c: '#e11d48', rgb: '244,63,94' };
-                case 'Singtel': return { bg: 'bg-red-600', text: 'text-white', label: 'Singtel', c: '#dc2626', rgb: '220,38,38' };
-                default: return { bg: 'bg-indigo-600', text: 'text-white', label: telco, c: '#4f46e5', rgb: '79,70,229' };
-            }
-        }
-
-        // Render Individual Card HTML
-        // WhatsApp status indicator: green dot when active, grey when inactive
-        // compact = icon and dot only (the number bars are narrow); the full word is in the tooltip
-        function waPill(item, compact) {
-            const on = item.whatsapp === 'active';
-            const word = on ? 'active' : 'inactive';
-            return `<span class="status-pill" title="WhatsApp ${word}" aria-label="WhatsApp ${word}"><i class="fa-brands fa-whatsapp"></i><span class="dot ${on ? 'active' : ''}"></span>${compact ? '' : `<span>${word}</span>`}</span>`;
-        }
-
-        // Tapping a number opens its edit sheet (the little buttons keep their own job)
-        function rowTap(ev, id) {
-            if (ev.target.closest('button')) return;
-            editSim(id);
-        }
-
-        function renderSimRow(item) {
-            const daysLeft = getDaysRemaining(item.expDate);
-            const telcoStyle = getTelcoStyle(item.telco);
-            let cls = '', pill = 'background:#dcfce7;color:#15803d', text = daysLeftText(daysLeft);
-            if (daysLeft < 0) { cls = 'is-expired'; pill = 'background:#fee2e2;color:#b91c1c'; text = daysLeftText(daysLeft); }
-            else if (daysLeft <= 3) { cls = 'is-urgent'; pill = 'background:#fee2e2;color:#dc2626'; text = daysLeftText(daysLeft); }
-            else if (daysLeft <= 7) { cls = 'is-soon'; pill = 'background:#fef3c7;color:#b45309'; }
-            return `
-                <div class="sim-row">
-                    <div class="sim-row-title"><span>${esc(item.alias)}</span>${item.tag ? `<small>#${esc(item.tag)}</small>` : ''}</div>
-                    <div class="sim-row-bar ${cls}" onclick="rowTap(event, '${item.id}')">
-                        <div class="sim-row-main">
-                            <div class="sim-row-meta"><span style="color:${telcoStyle.c}">${esc(telcoStyle.label)}</span><span class="sim-row-pill" style="${pill}">${text}</span>${waPill(item, true)}</div>
-                            <div class="sim-row-phone"><span>${esc(item.phone)}</span>
-                                <button data-phone="${esc(item.phone)}" onclick="copyToClipboard(this.dataset.phone)" title="Copy Number" class="text-slate-300 hover:text-blue-600 text-[11px] transition"><i class="fa-regular fa-copy"></i></button>
-                            </div>
-                        </div>
-                        <div class="sim-row-side">
-                            <span class="sim-row-exp">Top up ${esc(item.topupDate)}</span>
-                            <div class="sim-row-btns">
-                                <button onclick="quickRenew('${item.id}')" title="Topped up today (restart the 60-day countdown)" style="background:#ecfdf5;color:#047857;border-color:#a7f3d0"><i class="fa-solid fa-bolt text-[9px]"></i>Top up</button>
-                                <button onclick="editSim('${item.id}')" title="Edit SIM" style="background:#f1f5f9;color:#475569"><i class="fa-solid fa-pen-to-square"></i></button>
-                                <button onclick="deleteSim('${item.id}')" title="Delete SIM" style="background:#fef2f2;color:#dc2626"><i class="fa-solid fa-trash-can"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                    ${item.notes ? `<div class="sim-row-note"><i class="fa-solid fa-note-sticky"></i> ${esc(item.notes)}</div>` : ''}
-                </div>`;
-        }
-
-        function renderSimCard(item) {
-            if (!gridLayout) return renderSimRow(item);
-            const daysLeft = getDaysRemaining(item.expDate);
-            const telcoStyle = getTelcoStyle(item.telco);
-
-            // Expiration Status Badge
-            let badgeBg = '';
-            let badgeText = '';
-            let badgeIcon = '';
-            let borderHighlight = 'border-slate-200';
-
-            if (daysLeft < 0) {
-                badgeBg = 'bg-red-100 text-red-700 border-red-200';
-                badgeText = `Expired (${daysLeftText(daysLeft)})`;
-                badgeIcon = 'fa-solid fa-circle-xmark';
-                borderHighlight = 'border-red-300 shadow-red-500/10';
-            } else if (daysLeft <= 3) {
-                badgeBg = 'bg-red-50 text-red-600 border-red-200 animate-pulse';
-                badgeText = `Urgent: ${daysLeftText(daysLeft)}`;
-                badgeIcon = 'fa-solid fa-triangle-exclamation';
-                borderHighlight = 'border-red-400 shadow-red-500/15';
-            } else if (daysLeft <= 7) {
-                badgeBg = 'bg-amber-100 text-amber-700 border-amber-300';
-                badgeText = daysLeftText(daysLeft);
-                badgeIcon = 'fa-solid fa-clock';
-                borderHighlight = 'border-amber-300';
-            } else {
-                badgeBg = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                badgeText = `Active (${daysLeftText(daysLeft)})`;
-                badgeIcon = 'fa-solid fa-shield-check';
-            }
-
-            return `
-                <div onclick="rowTap(event, '${item.id}')" class="sim-card cursor-pointer bg-white rounded-2xl p-4 border-2 ${borderHighlight} shadow-soft-lg hover:shadow-md transition duration-200 relative group">
-                    <!-- Top Info Header -->
-                    <div class="sim-head flex items-start justify-between gap-2">
-                        <div class="flex items-center gap-2">
-                            <!-- Operator Pill -->
-                            <span class="sim-telco ${telcoStyle.bg} ${telcoStyle.text} text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider shadow-sm" style="--c:${telcoStyle.c};--rgb:${telcoStyle.rgb}">
-                                ${esc(telcoStyle.label)}
-                            </span>
-                            <!-- Custom Tag Pill -->
-                            <span class="sim-tag bg-slate-100 text-slate-600 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-200">
-                                ${esc(item.tag)}
-                            </span>
-                        </div>
-
-                        ${waPill(item)}
-                        <!-- Status Badge -->
-                        <div class="sim-status flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeBg}">
-                            <i class="${badgeIcon}"></i>
-                            <span>${badgeText}</span>
-                        </div>
-                    </div>
-
-                    <!-- Number & Alias Body -->
-                    <div class="sim-body mt-3">
-                        <div class="flex items-center justify-between">
-                            <h3 class="sim-phone text-base font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-                                <span>${esc(item.phone)}</span>
-                                <button data-phone="${esc(item.phone)}" onclick="copyToClipboard(this.dataset.phone)" title="Copy Number" class="text-slate-400 hover:text-blue-600 text-xs transition">
-                                    <i class="fa-regular fa-copy"></i>
-                                </button>
-                            </h3>
-                        </div>
-                        <p class="text-xs font-semibold text-slate-500 mt-0.5">${esc(item.alias)}</p>
-                    </div>
-
-                    <!-- Notes Preview if available -->
-                    ${item.notes ? `
-                    <div class="mt-2.5 p-2 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-600 flex items-start gap-1.5">
-                        <i class="fa-solid fa-note-sticky text-slate-400 mt-0.5 text-[10px]"></i>
-                        <span class="line-clamp-2">${esc(item.notes)}</span>
-                    </div>
-                    ` : ''}
-
-                    <!-- Footer Action Bar -->
-                    <div class="sim-foot mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between">
-                        <span class="text-[11px] font-medium text-slate-400">
-                            Last top up: <strong class="text-slate-700">${esc(item.topupDate)}</strong>
-                        </span>
-
-                        <div class="sim-actions flex items-center gap-1.5">
-                            <!-- Topped up today Quick Button -->
-                            <button onclick="quickRenew('${item.id}')" title="Topped up today (restart the 60-day countdown)" class="sim-renew px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 transition flex items-center gap-1">
-                                <i class="fa-solid fa-bolt text-[10px]"></i>
-                                <span>Top up</span>
-                            </button>
-
-                            <!-- Edit Button -->
-                            <button onclick="editSim('${item.id}')" title="Edit SIM" class="w-7 h-7 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs transition">
-                                <i class="fa-solid fa-pen-to-square"></i>
-                            </button>
-
-                            <!-- Delete Button -->
-                            <button onclick="deleteSim('${item.id}')" title="Delete SIM" class="w-7 h-7 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center text-xs transition">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Counter Summaries
-        function updateCounters() {
-            const total = sims.length;
-            let urgentCount = 0;
-            let activeCount = 0;
-            let expiredCount = 0;
-
-            sims.forEach(s => {
-                const days = getDaysRemaining(s.expDate);
-                if (days < 0) expiredCount++;
-                else activeCount++;
-
-                if (days >= 0 && days <= 7) urgentCount++;
-            });
-
-            document.getElementById('summaryTotal').innerText = total;
-            document.getElementById('summaryUrgent').innerText = urgentCount;
-
-            document.getElementById('cnt-all').innerText = total;
-            document.getElementById('cnt-urgent').innerText = urgentCount;
-            document.getElementById('cnt-active').innerText = activeCount;
-            document.getElementById('cnt-expired').innerText = expiredCount;
-        }
-
-        // Copy functionality (iframe proof fallback)
-        function copyToClipboard(text) {
-            const tempInput = document.createElement('input');
-            tempInput.value = text;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            try {
-                document.execCommand('copy');
-                showToast(`Copied ${text} to clipboard!`, 'fa-circle-check', 'text-emerald-400');
-            } catch (err) {
-                showToast('Failed to copy', 'fa-circle-exclamation', 'text-red-400');
-            }
-            document.body.removeChild(tempInput);
-        }
-
-        // Today's date in this phone's own time zone (YYYY-MM-DD)
-        function todayStr() {
-            const d = new Date();
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        }
-
-        // "Topped up today": the last top-up date becomes today, so the 60-day countdown starts again
-        async function quickRenew(id) {
-            const sim = sims.find(s => String(s.id) === String(id));
-            if (!sim) return;
-
-            try {
-                const saved = (await api('PUT', 'sims/' + sim.id, { ...sim, topupDate: todayStr() })).sim;
-                sims = sims.map(s => (s.id === saved.id ? saved : s));
-                renderApp();
-                showToast('Topped up today: 59 days left!', 'fa-bolt', 'text-amber-400');
-            } catch (err) {
-                showToast(err.message, 'fa-circle-exclamation', 'text-red-400');
-            }
-        }
-
-        // Delete SIM
-        async function deleteSim(id) {
-            const sim = sims.find(s => String(s.id) === String(id));
-            if (!sim) return;
-            if (!confirm(`Delete ${sim.phone}?`)) return;
-
-            try {
-                await api('DELETE', 'sims/' + sim.id);
-                sims = sims.filter(s => s.id !== sim.id);
-                renderApp();
-                showToast(`Deleted ${sim.phone}`, 'fa-trash-can', 'text-rose-400');
-            } catch (err) {
-                showToast(err.message, 'fa-circle-exclamation', 'text-red-400');
-            }
-        }
-
-        // Filter Switcher
-        function setFilter(filterType) {
-            currentFilter = filterType;
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('bg-slate-800', 'text-white', 'shadow-sm');
-                btn.classList.add('bg-slate-100', 'text-slate-600');
-            });
-
-            const activeBtn = document.getElementById(`filter-${filterType}`);
-            if (activeBtn) {
-                activeBtn.classList.remove('bg-slate-100', 'text-slate-600');
-                activeBtn.classList.add('bg-slate-800', 'text-white', 'shadow-sm');
-            }
-
-            renderApp();
-        }
-
-        // Layout toggle: one card per row <-> two cards per row (remembered in this browser)
-        let gridLayout = false;
-        try { gridLayout = localStorage.getItem('sim_layout') === 'grid'; } catch (e) { /* storage blocked */ }
-
-        function applyLayout() {
-            document.getElementById('cardsList').classList.toggle('is-grid', gridLayout);
-            const btn = document.getElementById('layoutBtn');
-            const label = gridLayout ? 'Show one per row' : 'Show two per row';
-            btn.title = label;
-            btn.setAttribute('aria-label', label);
-            btn.setAttribute('aria-pressed', String(gridLayout));
-            btn.classList.toggle('bg-slate-800', gridLayout);
-            btn.classList.toggle('text-white', gridLayout);
-            btn.classList.toggle('bg-slate-100', !gridLayout);
-            btn.classList.toggle('text-slate-600', !gridLayout);
-            document.getElementById('layoutIcon').className = `fa-solid ${gridLayout ? 'fa-list' : 'fa-table-cells-large'} text-sm`;
-        }
-
-        function toggleLayout() {
-            gridLayout = !gridLayout;
-            try { localStorage.setItem('sim_layout', gridLayout ? 'grid' : 'list'); } catch (e) { /* ignore */ }
-            applyLayout();
-            renderApp();
-        }
-
-        // Search Input Listener
-        function handleSearch() {
-            const val = document.getElementById('searchInput').value;
-            const clearBtn = document.getElementById('clearSearchBtn');
-            if (val.length > 0) {
-                clearBtn.classList.remove('hidden');
-            } else {
-                clearBtn.classList.add('hidden');
-            }
-            renderApp();
-        }
-
-        function clearSearch() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('clearSearchBtn').classList.add('hidden');
-            renderApp();
-        }
-
-        // Modal Open / Close
-        function openModal() {
-            document.getElementById('simForm').reset();
-            document.getElementById('editId').value = '';
-            document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-mobile-screen text-blue-500"></i> Add New Mobile Line';
-            document.getElementById('topupDate').value = todayStr();
-            showModal();
-        }
-
-        function editSim(id) {
-            const sim = sims.find(s => String(s.id) === String(id));
-            if (!sim) return;
-
-            document.getElementById('editId').value = sim.id;
-            document.getElementById('phoneNum').value = sim.phone;
-            document.getElementById('telco').value = sim.telco;
-            document.getElementById('alias').value = sim.alias;
-            document.getElementById('topupDate').value = sim.topupDate;
-            document.getElementById('whatsapp').value = sim.whatsapp === 'active' ? 'active' : 'inactive';
-            document.getElementById('tag').value = sim.tag;
-            document.getElementById('notes').value = sim.notes || '';
-
-            document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-blue-500"></i> Edit SIM Details';
-            showModal();
-        }
-
-        // Open with a slide-up; close with a slide-down (also when tapping outside the sheet, or pressing Esc)
-        function showModal() {
-            const backdrop = document.getElementById('modalBackdrop');
-            backdrop.classList.remove('hidden', 'is-closing');
-            void backdrop.offsetWidth; // restart the animation if it is opened again straight away
-            backdrop.classList.add('is-open');
-            document.body.classList.add('overflow-hidden');
-        }
-
-        function closeModal() {
-            const backdrop = document.getElementById('modalBackdrop');
-            if (backdrop.classList.contains('hidden') || backdrop.classList.contains('is-closing')) return;
-            document.body.classList.remove('overflow-hidden');
-            const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            const finish = () => {
-                backdrop.classList.add('hidden');
-                backdrop.classList.remove('is-open', 'is-closing');
-            };
-            if (calm) { finish(); return; }
-            backdrop.classList.remove('is-open');
-            backdrop.classList.add('is-closing');
-            setTimeout(finish, 240);
-        }
-
-        // tapping the dark area around the sheet closes it
-        // (only when the press also started on the dark area: selecting text inside a field and letting go outside must not close it)
-        let pressStartedOutside = false;
-        document.getElementById('modalBackdrop').addEventListener('pointerdown', (e) => { pressStartedOutside = e.target === e.currentTarget; });
-        document.getElementById('modalBackdrop').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget && pressStartedOutside) closeModal();
-            pressStartedOutside = false;
-        });
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
-
-        // Save Form Handler
-        let saving = false;
-        async function saveSim(event) {
-            event.preventDefault();
-            if (saving) return;
-
-            const editId = document.getElementById('editId').value;
-            const data = {
-                phone: document.getElementById('phoneNum').value.trim(),
-                telco: document.getElementById('telco').value,
-                alias: document.getElementById('alias').value.trim(),
-                topupDate: document.getElementById('topupDate').value,
-                whatsapp: document.getElementById('whatsapp').value,
-                tag: document.getElementById('tag').value,
-                notes: document.getElementById('notes').value.trim()
-            };
-
-            saving = true;
-            try {
-                if (editId) {
-                    const saved = (await api('PUT', 'sims/' + editId, data)).sim;
-                    sims = sims.map(s => (String(s.id) === String(editId) ? saved : s));
-                    showToast('SIM details updated!', 'fa-circle-check', 'text-emerald-400');
-                } else {
-                    const saved = (await api('POST', 'sims', data)).sim;
-                    sims.unshift(saved);
-                    showToast('New SIM added successfully!', 'fa-circle-check', 'text-emerald-400');
-                }
-                closeModal();
-                renderApp();
-            } catch (err) {
-                showToast(err.message, 'fa-circle-exclamation', 'text-red-400');
-            } finally {
-                saving = false;
-            }
-        }
-
-        // Custom Toast Notification
-        function showToast(message, iconClass = 'fa-circle-check', iconColor = 'text-emerald-400') {
-            const toast = document.getElementById('toast');
-            const toastMsg = document.getElementById('toastMsg');
-            const toastIcon = document.getElementById('toastIcon');
-
-            toastMsg.innerText = message;
-            toastIcon.className = `fa-solid ${iconClass} ${iconColor}`;
-
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            toast.classList.add('translate-y-0', 'opacity-100');
-
-            setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 2500);
-        }
+        load();
     </script>
 </body>
 </html>

@@ -414,7 +414,7 @@ const PRIVATE_ADMIN_DIR = path.join(__dirname, '..', 'private', 'admin');
 const noStore = (res) => res.set('Cache-Control', 'no-store');
 
 // pages that send you to the login page first and bring you back after you sign in (/admin/?next=/tracker/)
-const NEXT_PAGES = ['/tracker/', '/db'];
+const NEXT_PAGES = ['/tracker/', '/tracker/sim/', '/db'];
 
 app.get('/admin', wrap(async (req, res) => {
   noStore(res);
@@ -494,6 +494,13 @@ app.get('/tracker', wrap(async (req, res) => {
   if (!req.originalUrl.startsWith('/tracker/')) return res.redirect(301, '/tracker/');
   if (!(await currentAdmin(req))) return res.redirect('/admin/?next=%2Ftracker%2F');
   res.sendFile(path.join(PRIVATE_TRACKER_DIR, 'index.html'));
+}));
+// /tracker/sim/: the SIM tracker itself (the dashboard at /tracker/ links to it)
+app.get('/tracker/sim', wrap(async (req, res) => {
+  noStore(res);
+  if (!req.originalUrl.startsWith('/tracker/sim/')) return res.redirect(301, '/tracker/sim/');
+  if (!(await currentAdmin(req))) return res.redirect('/admin/?next=%2Ftracker%2Fsim%2F');
+  res.sendFile(path.join(PRIVATE_TRACKER_DIR, 'sim', 'index.html'));
 }));
 
 // ---------- static site ----------
