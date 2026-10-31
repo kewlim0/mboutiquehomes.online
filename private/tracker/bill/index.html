@@ -40,10 +40,16 @@
         .card.is-red { border-color: #f87171; background: linear-gradient(180deg, #fff 0%, #fff7f7 100%); }
         .card.is-amber { border-color: #fcd34d; }
         .tap:active { transform: scale(0.985); }
-        .sheet { position: fixed; inset: 0; z-index: 40; background: #f1f5f9; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .sheet { position: fixed; inset: 0; z-index: 40; background: #f1f5f9; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
         .sheet.hidden { display: none; }
         @keyframes slideup { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
         .sheet:not(.hidden) > .inner { animation: slideup 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
+        /* the bill editor and the unit editor are whole pages: they slide in from the right and slide back out to the right */
+        @keyframes sheet-in-right { from { transform: translate3d(100%, 0, 0); } to { transform: translate3d(0, 0, 0); } }
+        @keyframes sheet-out-right { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(100%, 0, 0); } }
+        #billSheet:not(.hidden) > .inner, #unitSheet:not(.hidden) > .inner { animation: sheet-in-right 0.36s cubic-bezier(0.22, 1, 0.36, 1) both; will-change: transform; }
+        #billSheet.sheet-out > .inner, #unitSheet.sheet-out > .inner { animation: sheet-out-right 0.22s ease-in both; }
+        @media (prefers-reduced-motion: reduce) { #billSheet:not(.hidden) > .inner, #unitSheet:not(.hidden) > .inner, #billSheet.sheet-out > .inner, #unitSheet.sheet-out > .inner { animation: none; } }
         .st { appearance: none; -webkit-appearance: none; border: 0; border-radius: 999px; font-size: 11px !important; font-weight: 800; padding: 0.32rem 1.4rem 0.32rem 0.7rem; background-repeat: no-repeat; background-position: right 0.45rem center; background-size: 0.5rem; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23475569' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E"); }
         .st.paid { background-color: #dcfce7; color: #15803d; } .st.pending { background-color: #fef3c7; color: #92400e; } .st.unpaid { background-color: #fee2e2; color: #b91c1c; }
         .acct-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 0.75rem; padding: 0.3rem 0.35rem 0.3rem 0.7rem; }
@@ -443,7 +449,7 @@ function newBill(forUnit) {
 function openBill(id) { editing = JSON.parse(JSON.stringify(data.bills.find((b) => b.id === id))); showBill(); }
 function showBill() {
     const u = data.units.find((x) => x.id === editing.unitId);
-    $('bTitle').textContent = u.name; openItem = null; delMode = {}; renderBill(); $('billSheet').classList.remove('hidden'); $('billSheet').scrollTop = 0; document.body.style.overflow = 'hidden';
+    $('bTitle').textContent = u.name; openItem = null; delMode = {}; renderBill(); sheetShow($('billSheet')); $('billSheet').scrollTop = 0; document.body.style.overflow = 'hidden';
     billSnap = billState();   // what the editor looked like when it opened: any difference later means unsaved changes
 }
 // ----- unsaved changes: closing with the X asks first -----
@@ -468,7 +474,15 @@ async function requestCloseBill() {
     if (r === 'save') return saveBill();        // saveBill closes the editor when it worked, and stays open with a message when it did not
     if (r === 'discard') return closeBill();
 }
-function closeBill() { $('billSheet').classList.add('hidden'); document.body.style.overflow = ''; editing = null; }
+// show / hide a full-page sheet with the slide (the state changes at once; only the picture waits for the slide-out)
+function sheetShow(el) { clearTimeout(el._t); el.classList.remove('hidden', 'sheet-out'); }
+function sheetHide(el) {
+    clearTimeout(el._t);
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { el.classList.add('hidden'); return; }
+    el.classList.add('sheet-out');
+    el._t = setTimeout(() => { el.classList.add('hidden'); el.classList.remove('sheet-out'); }, 230);
+}
+function closeBill() { sheetHide($('billSheet')); document.body.style.overflow = ''; editing = null; }
 
 function renderBill() {
     const keep = $('billSheet').scrollTop;
@@ -778,7 +792,7 @@ function openUnit(id) {
     set('u-name', u.name); set('u-client', u.clientName); set('u-tnb', u.tnbNo); set('u-wifi', u.wifiNo); set('u-water', u.waterNo); set('u-syabas', u.syabasNo);
     set('u-rent', u.rentRm); setMode(u.rentMode); set('u-start', u.rentalStart); set('u-end', u.rentalEnd); set('u-due', u.rentDue); set('u-acc', u.ownerAcc); set('u-notes', u.notes);
     $('uDelete').classList.toggle('hidden', !id);
-    $('unitSheet').classList.remove('hidden'); $('unitSheet').scrollTop = 0; document.body.style.overflow = 'hidden';
+    sheetShow($('unitSheet')); $('unitSheet').scrollTop = 0; document.body.style.overflow = 'hidden';
     unitSnap = unitState();
 }
 function setMode(v) {
@@ -795,7 +809,7 @@ async function requestCloseUnit() {
     if (r === 'save') return saveUnit();
     if (r === 'discard') return closeUnit();
 }
-function closeUnit() { $('unitSheet').classList.add('hidden'); document.body.style.overflow = ''; }
+function closeUnit() { sheetHide($('unitSheet')); document.body.style.overflow = ''; }
 async function saveUnit() {
     const body = { name: $('u-name').value, clientName: $('u-client').value, tnbNo: $('u-tnb').value, wifiNo: $('u-wifi').value, waterNo: $('u-water').value, syabasNo: $('u-syabas').value,
         rentRm: $('u-rent').value, rentMode: $('u-mode').value, rentDue: $('u-due').value, rentalStart: $('u-start').value, rentalEnd: $('u-end').value, ownerAcc: $('u-acc').value, notes: $('u-notes').value };
