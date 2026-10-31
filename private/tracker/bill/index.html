@@ -358,7 +358,7 @@ function statementHtml(b) {
         <div style="border-radius:14px;overflow:hidden;border:${bd}">
         <table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:-1px">
             <colgroup><col style="width:17%"><col style="width:18%"><col style="width:32%"><col style="width:17%"><col style="width:16%"></colgroup>
-            <tr><td colspan="5" style="${td('text-align:center;background:linear-gradient(135deg,#16a34a,#166534);color:#fff;padding:14px 10px')}"><div style="font-size:18px;font-weight:800">${esc(u.name)} ${dateLabel(b.billDate)}费用明细</div><div style="font-size:12px;opacity:0.85;margin-top:3px">租客 Tenant：${esc((ten && (ten.fullName || ten.name)) || u.clientName || '-')} · ${dateLong(b.billDate)}</div></td></tr>
+            <tr><td colspan="5" style="${td('text-align:center;background:linear-gradient(135deg,#16a34a,#166534);color:#fff;padding:14px 10px')}"><div style="font-size:18px;font-weight:800">${esc(u.name)} ${dateLabel(b.billDate)}费用明细</div><div style="font-size:12px;opacity:0.85;margin-top:7px">租客 Tenant：${esc((ten && (ten.fullName || ten.name)) || u.clientName || '-')} · ${dateLong(b.billDate)}</div></td></tr>
             <tr style="background:#ecfdf5">${['项目', '细项目', '费用', '金额', '状态'].map((h) => `<td style="${td('text-align:center;font-weight:800;color:#14532d')}">${h}</td>`).join('')}</tr>
             ${body}
             <tr><td colspan="3" style="${td('text-align:center;font-weight:800;background:#f0fdf4;padding:13px 10px')}">【${label}】</td><td style="${td('text-align:center;font-weight:800;font-size:15px;color:#dc2626;background:#f0fdf4;white-space:nowrap')}">${money(sum(b.items))}</td><td style="${td('text-align:center;background:#f0fdf4')}">${b.received ? '<span style="display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:800;background:#166534;color:#fff">Received</span>' : ''}</td></tr>
@@ -387,8 +387,11 @@ function closeStatement() { $('stmtSheet').classList.add('hidden'); stmtBill = n
 async function statementImage(bill) {
     const b = bill || cleanBill(); const u = data.units.find((x) => x.id === b.unitId);
     const node = document.createElement('div');
+    node.id = 'stmt-export';
     node.style.cssText = `position:fixed;left:-9999px;top:0;width:${STMT_WIDTH}px`;
-    node.innerHTML = statementHtml(b);
+    // html2canvas puts each line of text at the bottom of its line box, so with the normal (taller) line-height every
+    // cell and pill reads low. A line-height of 1 and a little extra bottom padding on the pills centre them in the picture.
+    node.innerHTML = '<style>#stmt-export td, #stmt-export td div, #stmt-export td span { line-height: 1 !important } #stmt-export td span { padding: 4px 10px 7px !important }</style>' + statementHtml(b);
     document.body.appendChild(node);
     try {
         if (document.fonts && document.fonts.ready) await document.fonts.ready;
