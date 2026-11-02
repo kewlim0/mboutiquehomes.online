@@ -111,6 +111,7 @@
         .agr-main small { font-size: 0.68rem; font-weight: 600; color: #64748b; margin-top: 0.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .agr-go { color: #16a34a; font-size: 0.8rem; flex-shrink: 0; }
         .agr-empty .agr-go { color: #94a3b8; }
+        .agr-file { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.75rem 0.6rem 0.6rem; border-radius: 1rem; background: #fff; border: 1.5px solid #bbf7d0; }
         .agr-acts { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
         .agr-acts button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; font-size: 0.7rem; font-weight: 800; padding: 0.5rem; border-radius: 0.75rem; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
         .agr-acts button.danger { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
@@ -241,6 +242,7 @@
             <div><label class="lbl">收租日</label><textarea class="field" id="u-due" rows="6" maxlength="500" placeholder="每个月1号"></textarea></div>
             <div><label class="lbl">屋主户口</label><textarea class="field" id="u-acc" rows="9" maxlength="4000"></textarea></div>
             <div><label class="lbl">备注</label><textarea class="field" id="u-notes" rows="6" maxlength="4000"></textarea></div>
+            <div id="uAgreement" class="hidden" style="margin-bottom:1.4rem"><label class="lbl">Tenancy agreement</label><div id="uAgrBody"></div></div>
             <button id="uDelete" type="button" onclick="deleteUnit()" class="btn btn-red w-full hidden"><i class="fa-solid fa-trash-can"></i>删除这个单位（连账单一起删除）</button>
         </form>
     </div>
@@ -522,9 +524,21 @@ function agreementBox(u) {
         return `<div class="agr-box"><button type="button" class="agr-card agr-empty" onclick="pickAgreement(${u.id})"><span class="agr-ico"><i class="fa-solid fa-file-contract"></i></span><span class="agr-main"><b>Tenancy agreement</b><small>还没有上传 · 点这里上传 PDF 或照片</small></span><i class="fa-solid fa-cloud-arrow-up agr-go"></i></button></div>`;
     }
     const pdf = a.type === 'application/pdf';
-    return `<div class="agr-box"><a class="agr-card" href="/api/admin/rental-units/${u.id}/agreement" target="_blank" rel="noopener"><span class="agr-ico on"><i class="fa-solid ${pdf ? 'fa-file-pdf' : 'fa-file-image'}"></i></span><span class="agr-main"><b>Tenancy agreement</b><small>${esc(a.name)} · ${fmtSize(a.size || 0)}</small></span><i class="fa-solid fa-arrow-up-right-from-square agr-go"></i></a>
-        <div class="agr-acts"><button type="button" onclick="pickAgreement(${u.id})"><i class="fa-solid fa-arrows-rotate"></i>更换文件</button><button type="button" class="danger" onclick="deleteAgreement(${u.id})"><i class="fa-regular fa-trash-can"></i>删除</button></div></div>`;
+    return `<div class="agr-box"><a class="agr-card" href="/api/admin/rental-units/${u.id}/agreement" target="_blank" rel="noopener"><span class="agr-ico on"><i class="fa-solid ${pdf ? 'fa-file-pdf' : 'fa-file-image'}"></i></span><span class="agr-main"><b>Tenancy agreement</b><small>${esc(a.name)} · ${fmtSize(a.size || 0)}</small></span><i class="fa-solid fa-arrow-up-right-from-square agr-go"></i></a></div>`;
 }
+// the same file in the Edit unit page: here (and only here) it can be replaced or deleted
+function renderAgreementEditor(u) {
+    const box = $('uAgreement');
+    if (!u) { box.classList.add('hidden'); return; }            // a unit that is not saved yet has no file
+    box.classList.remove('hidden');
+    const a = u.agreement;
+    $('uAgrBody').innerHTML = a
+        ? `<div class="agr-file"><span class="agr-ico on"><i class="fa-solid ${a.type === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image'}"></i></span><span class="agr-main"><b>${esc(a.name)}</b><small>${fmtSize(a.size || 0)}</small></span></div>
+           <div class="agr-acts"><button type="button" onclick="pickAgreement(${u.id})"><i class="fa-solid fa-arrows-rotate"></i>更换文件</button><button type="button" class="danger" onclick="deleteAgreement(${u.id})"><i class="fa-regular fa-trash-can"></i>删除合同</button></div>`
+        : `<button type="button" class="agr-card agr-empty" onclick="pickAgreement(${u.id})"><span class="agr-ico"><i class="fa-solid fa-file-contract"></i></span><span class="agr-main"><b>还没有合同</b><small>点这里上传 PDF 或照片</small></span><i class="fa-solid fa-cloud-arrow-up agr-go"></i></button>`;
+}
+// after an upload or delete: redraw the file part of the Edit page if it is open
+function refreshAgreementEditor(id) { if (!$('unitSheet').classList.contains('hidden') && editUnit && editUnit.id === id) { editUnit = data.units.find((x) => x.id === id) || editUnit; renderAgreementEditor(editUnit); } }
 let agrTarget = null;
 function pickAgreement(id) { agrTarget = id; $('agrInput').click(); }
 async function uploadAgreement(id, file) {
@@ -539,12 +553,13 @@ async function uploadAgreement(id, file) {
             if (!res.ok) throw new Error(out.error || '上传失败，请再试一次');
             await reload();
         }, '上传中…');
+        refreshAgreementEditor(id);
         toast('合同已上传');
     } catch (e) { toast(e.message); }
 }
 async function deleteAgreement(id) {
     if (!confirm('删除这份 Tenancy agreement 吗？文件会从服务器上永久删除。')) return;
-    try { await trkSaving.run(async () => { await api('DELETE', 'rental-units/' + id + '/agreement'); await reload(); }, '删除中…'); toast('已删除'); } catch (e) { toast(e.message); }
+    try { await trkSaving.run(async () => { await api('DELETE', 'rental-units/' + id + '/agreement'); await reload(); }, '删除中…'); refreshAgreementEditor(id); toast('已删除'); } catch (e) { toast(e.message); }
 }
 
 function openUnitView(id) { slideView('fwd', () => { resetSel(); unitId = id; history.pushState({ unit: id }, ''); render(); window.scrollTo(0, 0); }); }
@@ -919,6 +934,7 @@ function openUnit(id) {
     set('u-name', u.name); set('u-client', u.clientName); set('u-tnb', u.tnbNo); set('u-wifi', u.wifiNo); set('u-water', u.waterNo); set('u-syabas', u.syabasNo);
     set('u-rent', u.rentRm); setMode(u.rentMode); set('u-start', u.rentalStart); set('u-end', u.rentalEnd); set('u-due', u.rentDue); set('u-acc', u.ownerAcc); set('u-notes', u.notes);
     $('uDelete').classList.toggle('hidden', !id);
+    renderAgreementEditor(editUnit);
     sheetShow($('unitSheet')); $('unitSheet').scrollTop = 0; document.body.style.overflow = 'hidden';
     unitSnap = unitState();
 }
