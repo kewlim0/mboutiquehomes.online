@@ -743,7 +743,7 @@ function stmtFee(i) {
     return i.detail || amt || '—';
 }
 function statementHtml(b) {
-    const u = data.units.find((x) => x.id === b.unitId); const ten = data.tenants.find((t) => t.unitId === u.id);
+    const u = data.units.find((x) => x.id === b.unitId);
     const LEFT = STMT_LEFT, SUB = STMT_SUB, PILL = STMT_PILL;
     const bd = '1px solid #cbd5e1'; const td = (extra = '') => `border:${bd};padding:9px 8px;${extra}`;
     const fee = (i) => {
@@ -770,7 +770,7 @@ function statementHtml(b) {
         <div style="border-radius:14px;overflow:hidden;border:${bd}">
         <table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:-1px">
             <colgroup><col style="width:17%"><col style="width:18%"><col style="width:32%"><col style="width:17%"><col style="width:16%"></colgroup>
-            <tr><td colspan="5" style="${td('text-align:center;background:linear-gradient(135deg,#16a34a,#166534);color:#fff;padding:14px 10px')}"><div style="font-size:18px;font-weight:800">${esc(u.name)} ${dateLabel(b.billDate)}费用明细</div><div style="font-size:12px;opacity:0.85;margin-top:7px">租客 Tenant：${esc((ten && (ten.fullName || ten.name)) || u.clientName || '-')} · ${dateLong(b.billDate)}</div></td></tr>
+            <tr><td colspan="5" style="${td('text-align:center;background:linear-gradient(135deg,#16a34a,#166534);color:#fff;padding:14px 10px')}"><div style="font-size:18px;font-weight:800">${esc(u.name)} ${dateLabel(b.billDate)}费用明细</div></td></tr>
             <tr style="background:#ecfdf5">${['项目', '细项目', '费用', '金额', '状态'].map((h) => `<td style="${td('text-align:center;font-weight:800;color:#14532d')}">${h}</td>`).join('')}</tr>
             ${body}
             <tr><td colspan="3" style="${td('text-align:center;font-weight:800;background:#f0fdf4;padding:13px 10px')}">【${label}】</td><td style="${td('text-align:center;font-weight:800;color:#dc2626;background:#f0fdf4;white-space:nowrap;font-size:' + fitSize(money(sum(b.items)), 800, STMT_AMOUNT_W - 16, 15) + 'px')}">${money(sum(b.items))}</td><td style="${td('text-align:center;background:#f0fdf4')}">${b.received ? '<span style="display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:800;background:#166534;color:#fff">Received</span>' : ''}</td></tr>
@@ -802,7 +802,7 @@ const STMT_FONT = '"Inter","PingFang SC","Noto Sans SC",system-ui,sans-serif';
 function loadImage(src) { return new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; }); }
 
 async function statementCanvas(b) {
-    const u = data.units.find((x) => x.id === b.unitId); const ten = data.tenants.find((t) => t.unitId === u.id);
+    const u = data.units.find((x) => x.id === b.unitId);
     try { await Promise.all([document.fonts.load(`500 14px ${STMT_FONT}`), document.fonts.load(`700 14px ${STMT_FONT}`), document.fonts.load(`800 14px ${STMT_FONT}`)]); } catch (e) { /* use whatever is there */ }
     const logo = await loadImage('/tracker-icon/apple-touch-icon.png');
 
@@ -831,7 +831,7 @@ async function statementCanvas(b) {
     // ---- layout: every row gets a height ----
     const LH = 19;   // line height inside a cell
     const groups = CATS.map(([key]) => ({ key, rows: b.items.filter((i) => i.category === key) })).filter((g) => g.rows.length);
-    const TITLE_H = 74, HEAD_H = 38, SUB_H = 40, GRAND_H = 52;
+    const TITLE_H = 56, HEAD_H = 38, SUB_H = 40, GRAND_H = 52;
     const layout = groups.map((g) => {
         const list = stmtTogether(g.rows).map((i) => { const lines = wrap(stmtFee(i), colW(2) - 16, f(500, 14)); return { i, lines, h: Math.max(40, lines.length * LH + 20) }; });
         return { g, list, sum: sum(g.rows) };
@@ -865,8 +865,7 @@ async function statementCanvas(b) {
     // title bar
     const grad = c.createLinearGradient(TX, y, TX + TW, y + TITLE_H); grad.addColorStop(0, '#16a34a'); grad.addColorStop(1, '#166534');
     cell(TX, y, TW, TITLE_H, null); c.fillStyle = grad; c.fillRect(TX, y, TW, TITLE_H);
-    text(`${u.name} ${dateLabel(b.billDate)}费用明细`, TX + TW / 2, y + 30, f(800, 18), '#fff');
-    text(`租客 Tenant：${(ten && (ten.fullName || ten.name)) || u.clientName || '-'} · ${dateLong(b.billDate)}`, TX + TW / 2, y + 54, f(500, 12), 'rgba(255,255,255,0.88)');
+    text(`${u.name} ${dateLabel(b.billDate)}费用明细`, TX + TW / 2, y + TITLE_H / 2, f(800, 18), '#fff');
     y += TITLE_H;
     // column titles
     ['项目', '细项目', '费用', '金额', '状态'].forEach((h, k) => { cell(TX + colX[k], y, colW(k), HEAD_H, '#ecfdf5'); text(h, TX + colX[k] + colW(k) / 2, y + HEAD_H / 2, f(800, 14), '#14532d'); });
