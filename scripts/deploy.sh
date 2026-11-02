@@ -7,7 +7,7 @@
 #   4) checks the public site from your computer
 #
 # It never uploads or overwrites: .env (live DB password + admin login), .mysql/ (local database),
-# .db-*.json (saved connection details), node_modules/, or uploads/ (images uploaded on the live admin).
+# .db-*.json (saved connection details), node_modules/, uploads/ (images uploaded on the live admin), or private-files/ (tenancy agreements uploaded on the live admin).
 # The live database is not touched.
 set -euo pipefail
 
@@ -25,6 +25,7 @@ EXCLUDES=(
   --exclude .mysql
   --exclude '.db-*.json'
   --exclude 'uploads/*'
+  --exclude 'private-files/*'
   --exclude .git
   --exclude .DS_Store
 )
@@ -77,6 +78,8 @@ check "SIM 页对未登录访客不可见 (/tracker/sim/ 跳转)" "[ \"\$(curl -
 check "Bill 页对未登录访客不可见 (/tracker/bill/ 跳转)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/tracker/bill/')\" = 302 ]"
 check "租客页对未登录访客不可见 (/tracker/tenants/ 跳转)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/tracker/tenants/')\" = 302 ]"
 check "租赁数据接口未登录 401" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/api/admin/rentals')\" = 401 ]"
+check "租约文件未登录拿不到 (401)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/api/admin/rental-units/1/agreement')\" = 401 ]"
+check "租约文件不能用普通链接取到" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/private-files/agreements/x.pdf')\" != 200 ]"
 check "配置文件没有暴露 (/.env = 404)"        "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/.env')\" = 404 ]"
 
 echo

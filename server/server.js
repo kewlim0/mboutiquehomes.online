@@ -308,6 +308,55 @@ admin.put('/rental-items/:id/status', wrap(async (req, res) => {
   bill ? res.json({ bill }) : notFound(res);
 }));
 
+// Tenancy agreement of a unit: upload (PDF or a photo), view, remove. Admin only; the files are not reachable any other way.
+fs.mkdirSync(rentals.AGREEMENT_DIR, { recursive: true });
+const agreementUpload = multer({
+  storage: multer.diskStorage({
+    destination: rentals.AGREEMENT_DIR,
+    filename: (req, file, cb) => cb(null, crypto.randomBytes(18).toString('hex') + '.tmp'),
+  }),
+  limits: { fileSize: 20 * 1024 * 1024, files: 1 },
+});
+// the real type, from the first bytes (the type the browser reports can be faked)
+function detectAgreementType(file) {
+  const fd = fs.openSync(file, 'r'); const b = Buffer.alloc(1032); const n = fs.readSync(fd, b, 0, 1032, 0); fs.closeSync(fd);
+  const head = b.subarray(0, n);
+  if (head.includes(Buffer.from('%PDF-')) && head.indexOf('%PDF-') < 1024) return { ext: 'pdf', type: 'application/pdf' };
+  if (head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) return { ext: 'jpg', type: 'image/jpeg' };
+  if (head.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return { ext: 'png', type: 'image/png' };
+  if (head.subarray(0, 4).toString() === 'RIFF' && head.subarray(8, 12).toString() === 'WEBP') return { ext: 'webp', type: 'image/webp' };
+  return null;
+}
+admin.post('/rental-units/:id/agreement', (req, res, next) => {
+  if (REMOTE_DB) return res.status(403).json({ error: '当前连接的是线上数据库，本地不能上传合同（文件只会存在你的电脑里）。请到线上后台上传。' });
+  next();
+}, agreementUpload.single('file'), wrap(async (req, res) => {
+  const unitId = idParam(req);
+  if (!req.file) return res.status(400).json({ error: '没有收到文件' });
+  const drop = () => fs.unlink(req.file.path, () => {});
+  const kind = detectAgreementType(req.file.path);
+  if (!kind) { drop(); return res.status(400).json({ error: '只支持 PDF，或 JPG / PNG / WebP 照片' }); }
+  if (!(await rentals.agreementRow(unitId))) { drop(); return notFound(res); }
+  const finalName = req.file.filename.replace(/\.tmp$/, '.' + kind.ext);
+  fs.renameSync(req.file.path, path.join(rentals.AGREEMENT_DIR, finalName));
+  // browsers send the name as latin1 bytes: turn it back so Chinese file names survive
+  let name = Buffer.from(req.file.originalname || '', 'latin1').toString('utf8').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '_').trim().slice(0, 150) || ('tenancy-agreement.' + kind.ext);
+  if (!/\.[A-Za-z0-9]{2,5}$/.test(name)) name += '.' + kind.ext;
+  const unit = await rentals.setAgreement(unitId, { file: finalName, name, type: kind.type, size: req.file.size });
+  res.status(201).json({ unit });
+}));
+admin.get('/rental-units/:id/agreement', wrap(async (req, res) => {
+  const a = await rentals.getAgreement(idParam(req));
+  if (!a || !fs.existsSync(a.file)) return notFound(res);
+  noStore(res);
+  res.set({ 'Content-Type': a.type, 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex', 'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(a.name)}`, 'Content-Security-Policy': "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox" });
+  res.sendFile(a.file);
+}));
+admin.delete('/rental-units/:id/agreement', wrap(async (req, res) => {
+  const unit = await rentals.clearAgreement(idParam(req));
+  unit ? res.json({ unit }) : notFound(res);
+}));
+
 admin.post('/team', wrap(async (req, res) => {
   res.status(201).json({ id: await repo.createTeamMember(v.teamMember(req.body)) });
 }));

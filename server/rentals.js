@@ -1,7 +1,13 @@
 // Rental units, tenants and the monthly bills (the /tracker/bill/ and /tracker/tenants/ pages).
 // Everything here sits behind the admin sign-in; none of it is part of the public site content.
+const fs = require('fs');
+const path = require('path');
 const pool = require('./db');
 const { HttpError } = require('./validate');
+
+// Tenancy agreements are private documents: they live in this folder (not under uploads/ or public/), are never served as a
+// plain link, and are only handed out by an admin-only route.
+const AGREEMENT_DIR = path.join(__dirname, '..', 'private-files', 'agreements');
 
 // ---------- tables ----------
 let ready = null;
@@ -27,6 +33,16 @@ function ensureRentals() {
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+      // the tenancy agreement of a unit (one file: a PDF or a photo)
+      const [have] = await pool.query("SHOW COLUMNS FROM rental_units LIKE 'agreement_file'");
+      if (!have.length) {
+        await pool.query(`ALTER TABLE rental_units
+          ADD COLUMN agreement_file VARCHAR(80) NULL,
+          ADD COLUMN agreement_name VARCHAR(200) NULL,
+          ADD COLUMN agreement_type VARCHAR(60) NULL,
+          ADD COLUMN agreement_size INT UNSIGNED NULL,
+          ADD COLUMN agreement_at TIMESTAMP NULL`);
+      }
       await pool.query(`CREATE TABLE IF NOT EXISTS rental_tenants (
         id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
         unit_id    INT UNSIGNED NULL,
@@ -170,6 +186,8 @@ const mapUnit = (r) => ({
   id: r.id, name: r.name, clientName: r.client_name, tnbNo: r.tnb_no, wifiNo: r.wifi_no, waterNo: r.water_no, syabasNo: r.syabas_no,
   rentRm: num(r.rent_rm), rentMode: r.rent_mode, rentDue: r.rent_due, rentalStart: ymd(r.rental_start), rentalEnd: ymd(r.rental_end),
   ownerAcc: r.owner_acc || '', notes: r.notes || '',
+  // only what the page needs: never the file's place on disk
+  agreement: r.agreement_file ? { name: r.agreement_name, type: r.agreement_type, size: r.agreement_size, at: r.agreement_at } : null,
 });
 const mapTenant = (r) => ({
   id: r.id, unitId: r.unit_id, name: r.name, fullName: r.full_name, passport: r.passport, email: r.email, phone: r.phone, notes: r.notes || '',
@@ -217,7 +235,38 @@ async function updateUnit(unitId, u) {
   await pool.query(`UPDATE rental_units SET ${UNIT_COLS.split(', ').map((c) => `${c}=?`).join(', ')} WHERE id = ?`, [...unitValues(u), unitId]);
   return oneUnit(unitId);
 }
-async function deleteUnit(unitId) { await ensureRentals(); const [res] = await pool.query('DELETE FROM rental_units WHERE id = ?', [unitId]); return res.affectedRows > 0; }
+async function deleteUnit(unitId) {
+  await ensureRentals();
+  const old = await agreementRow(unitId);
+  const [res] = await pool.query('DELETE FROM rental_units WHERE id = ?', [unitId]);
+  if (res.affectedRows && old && old.agreement_file) fs.unlink(path.join(AGREEMENT_DIR, old.agreement_file), () => {});   // the contract goes with the unit
+  return res.affectedRows > 0;
+}
+
+// ---------- tenancy agreement file ----------
+async function agreementRow(unitId) { const [[r]] = await pool.query('SELECT id, agreement_file, agreement_name, agreement_type, agreement_size FROM rental_units WHERE id = ?', [unitId]); return r || null; }
+// store a new file (an uploaded one that is already in AGREEMENT_DIR under its final name); the previous file is removed
+async function setAgreement(unitId, f) {
+  await ensureRentals();
+  const old = await agreementRow(unitId);
+  if (!old) return null;
+  await pool.query('UPDATE rental_units SET agreement_file=?, agreement_name=?, agreement_type=?, agreement_size=?, agreement_at=NOW() WHERE id = ?', [f.file, f.name, f.type, f.size, unitId]);
+  if (old.agreement_file && old.agreement_file !== f.file) fs.unlink(path.join(AGREEMENT_DIR, old.agreement_file), () => {});
+  return oneUnit(unitId);
+}
+async function clearAgreement(unitId) {
+  await ensureRentals();
+  const old = await agreementRow(unitId);
+  if (!old) return null;
+  await pool.query('UPDATE rental_units SET agreement_file=NULL, agreement_name=NULL, agreement_type=NULL, agreement_size=NULL, agreement_at=NULL WHERE id = ?', [unitId]);
+  if (old.agreement_file) fs.unlink(path.join(AGREEMENT_DIR, old.agreement_file), () => {});
+  return oneUnit(unitId);
+}
+async function getAgreement(unitId) {
+  await ensureRentals();
+  const r = await agreementRow(unitId);
+  return r && r.agreement_file ? { file: path.join(AGREEMENT_DIR, r.agreement_file), name: r.agreement_name, type: r.agreement_type } : null;
+}
 
 const tenantValues = (t) => [t.unitId, t.name, t.fullName, t.passport, t.email, t.phone, t.notes];
 async function createTenant(t) {
@@ -325,7 +374,7 @@ async function importAll(data) {
 }
 
 module.exports = {
-  ensureRentals, listAll, unit, tenant, bill,
+  ensureRentals, listAll, unit, tenant, bill, AGREEMENT_DIR, setAgreement, clearAgreement, getAgreement, agreementRow,
   createUnit, updateUnit, deleteUnit, createTenant, updateTenant, deleteTenant,
   createBill, updateBill, deleteBill, setItemStatus, setBillReceived, importAll,
 };

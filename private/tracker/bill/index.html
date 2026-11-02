@@ -100,6 +100,58 @@
         @keyframes ch-pop { from { opacity: 0; transform: translateY(4px) scale(0.92); } to { opacity: 1; transform: none; } }
         @keyframes ch-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: 0.45; } }
         @media (prefers-reduced-motion: reduce) { .ch-line { animation: none; stroke-dashoffset: 0; } .ch-area, .ch-bubble, .ch-halo { animation: none; } }
+        .agr-box { margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid #f1f5f9; }
+        .agr-card { display: flex; align-items: center; gap: 0.7rem; width: 100%; text-align: left; padding: 0.6rem 0.75rem 0.6rem 0.6rem; border-radius: 1rem; background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1.5px solid #bbf7d0; color: inherit; text-decoration: none; transition: transform 0.12s; }
+        .agr-card:active { transform: scale(0.985); }
+        .agr-empty { background: #f8fafc; border: 1.5px dashed #cbd5e1; }
+        .agr-ico { width: 2.5rem; height: 2.5rem; border-radius: 0.8rem; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; flex-shrink: 0; }
+        .agr-ico.on { background: linear-gradient(135deg, #22c55e, #15803d); color: #fff; box-shadow: 0 8px 16px -8px rgba(21, 128, 61, 0.8); }
+        .agr-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .agr-main b { font-size: 0.8rem; font-weight: 800; color: #0f172a; }
+        .agr-main small { font-size: 0.68rem; font-weight: 600; color: #64748b; margin-top: 0.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .agr-go { color: #16a34a; font-size: 0.8rem; flex-shrink: 0; }
+        .agr-empty .agr-go { color: #94a3b8; }
+        .agr-acts { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+        .agr-acts button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; font-size: 0.7rem; font-weight: 800; padding: 0.5rem; border-radius: 0.75rem; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+        .agr-acts button.danger { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+        .agr-acts button:active { transform: scale(0.96); }
+        .list-bar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0.2rem 0.1rem 0.7rem; }
+        .list-title { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #94a3b8; }
+        .list-title span { margin-left: 0.3rem; background: #e2e8f0; color: #64748b; border-radius: 999px; padding: 0.05rem 0.5rem; letter-spacing: 0; }
+        .list-actions { display: flex; gap: 0.4rem; }
+        .sel-pill { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 11.5px; font-weight: 800; padding: 0.42rem 0.85rem; border-radius: 999px; background: #fff; color: #475569; border: 1.5px solid #e2e8f0; box-shadow: 0 3px 10px -6px rgba(15, 23, 42, 0.35); transition: background 0.15s, color 0.15s, border-color 0.15s; }
+        .sel-pill.hidden { display: none; }
+        .sel-pill.on { background: #16a34a; color: #fff; border-color: #16a34a; box-shadow: 0 8px 18px -8px rgba(21, 128, 61, 0.8); }
+        .sel-pill:active { transform: scale(0.95); }
+        .unit-card { position: relative; transition: padding-left 0.22s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.15s, background 0.15s, box-shadow 0.15s; }
+        .sel-dot { position: absolute; left: 0.95rem; top: 50%; width: 1.5rem; height: 1.5rem; margin-top: -0.75rem; border-radius: 999px; border: 2px solid #cbd5e1; background: #fff; color: transparent; display: flex; align-items: center; justify-content: center; font-size: 0.68rem; opacity: 0; transform: scale(0.6); pointer-events: none; transition: opacity 0.2s, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), background 0.15s, border-color 0.15s, color 0.15s; }
+        .sel-mode .unit-card { padding-left: 3.1rem; }
+        .sel-mode .sel-dot { opacity: 1; transform: none; }
+        .unit-card.picked { border-color: #16a34a !important; background: linear-gradient(180deg, #f0fdf4, #fff) !important; box-shadow: 0 10px 24px -14px rgba(21, 128, 61, 0.7); }
+        .unit-card.picked .sel-dot { background: #16a34a; border-color: #16a34a; color: #fff; }
+        #view.has-selbar { padding-bottom: 11.5rem; }
+        .sel-bar { position: fixed; left: 50%; bottom: 0; width: 100%; max-width: 480px; z-index: 30; transform: translate(-50%, 115%); transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1); padding: 0.95rem 1rem calc(0.9rem + env(safe-area-inset-bottom)); background: linear-gradient(160deg, #0f172a 0%, #172033 100%); color: #fff; border-radius: 1.6rem 1.6rem 0 0; box-shadow: 0 -18px 40px -14px rgba(15, 23, 42, 0.55); }
+        .sel-bar.show { transform: translate(-50%, 0); }
+        .sel-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.8rem; }
+        .sel-info { min-width: 0; }
+        .sel-line { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+        .sel-chip { font-size: 10.5px; font-weight: 800; background: rgba(255, 255, 255, 0.12); border-radius: 999px; padding: 0.15rem 0.6rem; }
+        .sel-chip b { color: #4ade80; }
+        .sel-pend { font-size: 10.5px; font-weight: 700; color: #94a3b8; }
+        .sel-label { margin-top: 0.55rem; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #94a3b8; }
+        .sel-total { font-size: 1.7rem; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .sel-total.tick { animation: sel-tick 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+        @keyframes sel-tick { from { transform: scale(1.06); color: #4ade80; } to { transform: none; } }
+        .sel-btns { display: flex; flex-direction: column; align-items: stretch; gap: 0.4rem; flex-shrink: 0; }
+        .sel-copy { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; font-size: 12.5px; font-weight: 800; padding: 0.65rem 1.1rem; border-radius: 0.95rem; background: linear-gradient(135deg, #22c55e, #15803d); color: #fff; box-shadow: 0 10px 20px -10px rgba(34, 197, 94, 0.9); }
+        .sel-copy:disabled { opacity: 0.4; box-shadow: none; }
+        .sel-copy:active { transform: scale(0.96); }
+        .sel-clear { font-size: 11px; font-weight: 700; color: #94a3b8; padding: 0.15rem; }
+        .sel-extra { margin-top: 0.65rem; font-size: 10.5px; font-weight: 700; color: #fca5a5; background: rgba(239, 68, 68, 0.14); border-radius: 0.75rem; padding: 0.4rem 0.7rem; }
+        .sel-extra i { margin-right: 0.35rem; }
+        .sel-extra b { color: #fff; }
+        .sel-extra.hidden { display: none; }
+        @media (prefers-reduced-motion: reduce) { .sel-bar, .unit-card, .sel-dot { transition: none; } .sel-total.tick { animation: none; } }
         .stmt-btn { display: inline-flex; align-items: center; gap: 0.35rem; flex-shrink: 0; font-size: 11.5px; font-weight: 800; color: #15803d; background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 0.8rem; padding: 0.4rem 0.75rem; }
         .stmt-btn:active { transform: scale(0.95); }
         .mini-item { text-align: left; border-radius: 0.85rem; border: 1px solid #e2e8f0; border-left-width: 4px; padding: 0.55rem 0.65rem; background: #fff; min-width: 0; }
@@ -218,6 +270,17 @@
     </div>
 </div>
 
+<!-- totals of the picked units -->
+<div id="selBar" class="sel-bar" role="region" aria-label="已选单位合计">
+    <div class="sel-row">
+        <div class="sel-info"><div class="sel-line"><span class="sel-chip">已选 <b id="selCount">0</b> 个单位</span><span class="sel-pend" id="selPend"></span></div>
+            <div class="sel-label">Pending 合计</div><div class="sel-total" id="selTotal">RM 0.00</div></div>
+        <div class="sel-btns"><button type="button" id="selCopy" class="sel-copy" onclick="copyPlain(this, this.dataset.v)" aria-label="复制合计"><i class="fa-regular fa-copy"></i><span>复制</span></button>
+            <button type="button" class="sel-clear" onclick="picked.clear();paintSel()">清除</button></div>
+    </div>
+    <div id="selExtra" class="sel-extra hidden"></div>
+</div>
+<input type="file" id="agrInput" accept="application/pdf,image/jpeg,image/png,image/webp" hidden>
 <div id="toast"></div>
 
 <script>
@@ -286,13 +349,40 @@ function render() {
         $('hTitle').textContent = 'Bill';
         $('hSub').textContent = all.unpaid.length ? `${all.unpaid.length} unpaid · ${money(all.owe)}` : (data.units.length ? 'Nothing unpaid' : 'Add your first unit');
         $('hActionText').textContent = 'Unit'; $('hAction').onclick = () => openUnit();
-        $('view').innerHTML = renderUnits();
+        $('view').innerHTML = renderUnits(); paintSel();
     } else {
         $('hTitle').textContent = u.name;
         $('hSub').textContent = u.clientName || ' ';
         $('hActionText').textContent = 'Bill'; $('hAction').onclick = () => newBill(u.id);
         $('view').innerHTML = renderUnit(u);
     }
+}
+
+// ---------- pick several units: a bar at the bottom adds up what is still to pay ----------
+let selMode = false; const picked = new Set();
+function unitTap(id) { if (selMode) toggleUnit(id); else openUnitView(id); }
+function toggleSelMode() { selMode = !selMode; if (!selMode) picked.clear(); paintSel(); }
+function toggleUnit(id) { picked.has(id) ? picked.delete(id) : picked.add(id); paintSel(); }
+function selectAll() { if (picked.size === data.units.length) picked.clear(); else data.units.forEach((u) => picked.add(u.id)); paintSel(); }
+function resetSel() { selMode = false; picked.clear(); const bar = $('selBar'); if (bar) bar.classList.remove('show'); }
+function paintSel() {
+    const list = $('unitList'), bar = $('selBar'); if (!list) { bar.classList.remove('show'); return; }
+    list.classList.toggle('sel-mode', selMode);
+    list.querySelectorAll('[data-unit]').forEach((c) => c.classList.toggle('picked', picked.has(Number(c.dataset.unit))));
+    const t = $('selToggle'), a = $('selAll');
+    if (t) { t.classList.toggle('on', selMode); t.querySelector('i').className = `fa-solid ${selMode ? 'fa-check' : 'fa-list-check'}`; t.querySelector('span').textContent = selMode ? '完成' : '多选'; }
+    if (a) { a.classList.toggle('hidden', !selMode); a.querySelector('span').textContent = picked.size === data.units.length ? '取消全选' : '全选'; }
+    // totals of the chosen units: still pending (the amount the bar leads with) and unpaid
+    let wait = 0, owe = 0, nPend = 0; picked.forEach((id) => { const s = stats(unitBills(id)); wait += s.wait; owe += s.owe; nPend += s.pending.length; });
+    $('selCount').textContent = picked.size;
+    const prev = $('selTotal').textContent, now = money(wait); $('selTotal').textContent = now;
+    if (prev !== now) { $('selTotal').classList.remove('tick'); void $('selTotal').offsetWidth; $('selTotal').classList.add('tick'); }
+    $('selPend').textContent = `${nPend} 项 pending`;
+    const extra = $('selExtra'); extra.classList.toggle('hidden', !owe);
+    if (owe) extra.innerHTML = `<i class="fa-solid fa-circle-xmark"></i>另有 Unpaid ${money(owe)} · 两项合计 <b>${money(wait + owe)}</b>`;
+    $('selCopy').dataset.v = wait.toFixed(2); $('selCopy').disabled = !wait;
+    bar.classList.toggle('show', selMode && picked.size > 0);
+    $('view').classList.toggle('has-selbar', selMode && picked.size > 0);
 }
 
 // ---------- monthly totals chart (top of the unit list) ----------
@@ -377,12 +467,15 @@ function renderUnits() {
             !s.unpaid.length && !s.pending.length && bills.length ? '<span class="chip green"><i class="fa-solid fa-check"></i>All paid</span>' : '',
             !bills.length ? '<span class="chip gray">No bills yet</span>' : '',
         ].join('');
-        return `<div role="button" tabindex="0" onclick="openUnitView(${u.id})" onkeydown="if(event.key==='Enter')openUnitView(${u.id})" class="card ${cls} tap w-full text-left p-4 block cursor-pointer">
+        return `<div role="button" tabindex="0" data-unit="${u.id}" onclick="unitTap(${u.id})" onkeydown="if(event.key==='Enter')unitTap(${u.id})" class="card ${cls} tap w-full text-left p-4 block cursor-pointer unit-card"><span class="sel-dot" aria-hidden="true"><i class="fa-solid fa-check"></i></span>
             <div class="flex items-start justify-between gap-2"><div class="min-w-0"><div class="font-extrabold text-[15px] truncate">${esc(u.name)}</div><div class="text-[11.5px] text-slate-500 font-semibold truncate">${esc(u.clientName) || '&nbsp;'}</div></div>
             <div class="text-right flex-shrink-0">${u.rentRm ? `<div class="text-[13px] font-extrabold text-slate-700">${money(u.rentRm).replace('.00', '')}</div><div class="text-[10px] font-bold text-slate-400">${esc(rentMode(u.rentMode)) || 'rent'}</div>` : ''}</div></div>
             <div class="mt-3 flex flex-wrap gap-1.5 items-center">${chips}${last ? `<span class="text-[10.5px] font-semibold text-slate-400 ml-auto">Latest ${dateLabel(last.billDate)}</span>` : ''}</div></div>`;
     }).join('');
-    return banner + `<div id="chartBox">${renderChart()}</div>` + `<div class="space-y-3">${cards}</div>`;
+    const bar = `<div class="list-bar"><div class="list-title">Units <span>${data.units.length}</span></div>
+        <div class="list-actions"><button type="button" id="selAll" class="sel-pill hidden" onclick="selectAll()"><i class="fa-regular fa-square-check"></i><span>全选</span></button>
+        <button type="button" id="selToggle" class="sel-pill" onclick="toggleSelMode()"><i class="fa-solid fa-list-check"></i><span>多选</span></button></div></div>`;
+    return banner + `<div id="chartBox">${renderChart()}</div>` + bar + `<div class="space-y-3" id="unitList">${cards}</div>`;
 }
 
 function renderUnit(u) {
@@ -390,7 +483,8 @@ function renderUnit(u) {
     const info = [['TNB', u.tnbNo], ['WiFi', u.wifiNo], ['Indah Water', u.waterNo], ['Syabas', u.syabasNo]].filter((r) => r[1]);
     const head = `<div class="card p-4 mb-4"><div class="flex items-center justify-between gap-2"><div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Unit details</div><button onclick="openUnit(${u.id})" class="chip gray"><i class="fa-solid fa-pen"></i>Edit</button></div>
         ${info.length ? `<div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">${info.map((r) => `<div class="min-w-0"><div class="text-[10px] font-bold text-slate-400">${r[0]}</div><div class="text-[12.5px] font-bold break-words">${esc(r[1])}</div></div>`).join('')}</div>` : '<div class="text-xs text-slate-400 mt-2">No account numbers yet.</div>'}
-        ${u.rentRm ? `<div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs"><span class="font-bold text-slate-500">${esc(rentMode(u.rentMode)) || 'Rent'}${u.rentDue ? ' · ' + esc(u.rentDue.split('\n')[0]) : ''}</span><span class="font-extrabold text-slate-800">${money(u.rentRm).replace('.00', '')}</span></div>` : ''}</div>`;
+        ${u.rentRm ? `<div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs"><span class="font-bold text-slate-500">${esc(rentMode(u.rentMode)) || 'Rent'}${u.rentDue ? ' · ' + esc(u.rentDue.split('\n')[0]) : ''}</span><span class="font-extrabold text-slate-800">${money(u.rentRm).replace('.00', '')}</span></div>` : ''}
+        ${agreementBox(u)}</div>`;
     if (!bills.length) return head + '<div class="text-center text-slate-400 text-sm py-10">No bills yet. Tap “Bill” to start one.</div>';
     const list = bills.map((b) => {
         const s = stats([b]); const total = sum(b.items);
@@ -420,7 +514,40 @@ function slideView(dir, change) {
         setTimeout(() => { v.classList.remove('vs-in-' + dir); root.classList.remove('vs-run'); sliding = false; }, 440);
     }, 170);
 }
-function openUnitView(id) { slideView('fwd', () => { unitId = id; history.pushState({ unit: id }, ''); render(); window.scrollTo(0, 0); }); }
+// ---------- tenancy agreement (a PDF or a photo of the contract, one per unit) ----------
+const fmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+function agreementBox(u) {
+    const a = u.agreement;
+    if (!a) {
+        return `<div class="agr-box"><button type="button" class="agr-card agr-empty" onclick="pickAgreement(${u.id})"><span class="agr-ico"><i class="fa-solid fa-file-contract"></i></span><span class="agr-main"><b>Tenancy agreement</b><small>还没有上传 · 点这里上传 PDF 或照片</small></span><i class="fa-solid fa-cloud-arrow-up agr-go"></i></button></div>`;
+    }
+    const pdf = a.type === 'application/pdf';
+    return `<div class="agr-box"><a class="agr-card" href="/api/admin/rental-units/${u.id}/agreement" target="_blank" rel="noopener"><span class="agr-ico on"><i class="fa-solid ${pdf ? 'fa-file-pdf' : 'fa-file-image'}"></i></span><span class="agr-main"><b>Tenancy agreement</b><small>${esc(a.name)} · ${fmtSize(a.size || 0)}</small></span><i class="fa-solid fa-arrow-up-right-from-square agr-go"></i></a>
+        <div class="agr-acts"><button type="button" onclick="pickAgreement(${u.id})"><i class="fa-solid fa-arrows-rotate"></i>更换文件</button><button type="button" class="danger" onclick="deleteAgreement(${u.id})"><i class="fa-regular fa-trash-can"></i>删除</button></div></div>`;
+}
+let agrTarget = null;
+function pickAgreement(id) { agrTarget = id; $('agrInput').click(); }
+async function uploadAgreement(id, file) {
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) { toast('文件太大了（最多 20MB）'); return; }
+    try {
+        await trkSaving.run(async () => {
+            const fd = new FormData(); fd.append('file', file);
+            const res = await fetch('/api/admin/rental-units/' + id + '/agreement', { method: 'POST', credentials: 'same-origin', body: fd });
+            const out = await res.json().catch(() => ({}));
+            if (res.status === 401) { location.replace('/admin/?next=%2Ftracker%2Fbill%2F'); throw new Error('Please sign in'); }
+            if (!res.ok) throw new Error(out.error || '上传失败，请再试一次');
+            await reload();
+        }, '上传中…');
+        toast('合同已上传');
+    } catch (e) { toast(e.message); }
+}
+async function deleteAgreement(id) {
+    if (!confirm('删除这份 Tenancy agreement 吗？文件会从服务器上永久删除。')) return;
+    try { await trkSaving.run(async () => { await api('DELETE', 'rental-units/' + id + '/agreement'); await reload(); }, '删除中…'); toast('已删除'); } catch (e) { toast(e.message); }
+}
+
+function openUnitView(id) { slideView('fwd', () => { resetSel(); unitId = id; history.pushState({ unit: id }, ''); render(); window.scrollTo(0, 0); }); }
 function openUnitList() { slideView('back', () => { unitId = null; render(); window.scrollTo(0, 0); }); }
 window.addEventListener('popstate', () => {
     if (!$('billSheet').classList.contains('hidden')) closeBill(true);
@@ -826,6 +953,7 @@ async function deleteUnit() {
 }
 
 async function reload() { data = await api('GET', 'rentals'); render(); }
+$('agrInput').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) uploadAgreement(agrTarget, f); });
 history.replaceState({ unit: null }, '');
 // placeholders in the shape of the unit list while it loads
 $('hSub').innerHTML = '<span class="sk inline-block h-2.5 w-28 align-middle"></span>';

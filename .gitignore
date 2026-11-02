@@ -8,3 +8,7 @@ uploads/*
 .db-local.json
 .env.*
 !.env.example
+
+# tenancy agreements uploaded in the admin (private documents)
+private-files/*
+!private-files/.gitkeep
