@@ -550,6 +550,7 @@ async function uploadAgreement(id, file) {
             const res = await fetch('/api/admin/rental-units/' + id + '/agreement', { method: 'POST', credentials: 'same-origin', body: fd });
             const out = await res.json().catch(() => ({}));
             if (res.status === 401) { location.replace('/admin/?next=%2Ftracker%2Fbill%2F'); throw new Error('Please sign in'); }
+            if (res.status === 413) throw new Error('文件太大，服务器没有收下（' + fmtSize(file.size) + '）。请换小一点的文件');
             if (!res.ok) throw new Error(out.error || '上传失败，请再试一次');
             await reload();
         }, '上传中…');
