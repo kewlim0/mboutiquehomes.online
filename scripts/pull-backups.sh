@@ -13,7 +13,8 @@ KEEP_LOCAL_DAYS="${KEEP_LOCAL_DAYS:-90}"
 
 mkdir -p "$DEST"; chmod 700 "$DEST"
 echo "→ pulling backups from $HOST into $DEST"
-rsync -a --partial --exclude '.lock' -e "ssh -o BatchMode=yes -o ConnectTimeout=20" "$HOST:/root/backups/" "$DEST/"
+# (the rsync that comes with macOS is old (2.6.9): options go first, in the plain "--name=value" form)
+rsync -a -e "ssh -o BatchMode=yes -o ConnectTimeout=20" --exclude=.lock "$HOST:/root/backups/" "$DEST/"
 
 latest_db="$(ls -1t "$DEST"/db/db-*.sql.gz 2>/dev/null | head -1 || true)"
 if [ -z "$latest_db" ]; then echo "✗ no database backup found yet (has the nightly backup run on the server?)"; exit 1; fi
