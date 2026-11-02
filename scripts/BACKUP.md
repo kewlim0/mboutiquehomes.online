@@ -24,7 +24,11 @@ ssh root@216.219.95.253 "bash /var/www/mboutiquehomes/scripts/backup.sh && (cron
 ```
 bash "/Users/admin/Documents/Portfolio Website/scripts/pull-backups.sh"
 ```
-让 Mac 每天自动拉（电脑睡眠时，醒来后会补拉）：
+让 Mac 每天自动拉（电脑睡眠时，醒来后会补拉）。macOS 不让后台任务读「文档」文件夹，所以要先把脚本复制到 `~/Backups/`：
+```
+cp "/Users/admin/Documents/Portfolio Website/scripts/pull-backups.sh" ~/Backups/ && chmod 700 ~/Backups/pull-backups.sh
+```
+再安装：
 ```
 cp "/Users/admin/Documents/Portfolio Website/scripts/com.mboutiquehomes.pull-backups.plist" ~/Library/LaunchAgents/ && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.mboutiquehomes.pull-backups.plist
 ```

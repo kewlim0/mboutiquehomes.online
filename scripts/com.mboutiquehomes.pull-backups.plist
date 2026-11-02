@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Pulls the server's backups to this Mac once a day (see scripts/BACKUP.md). Install: copy to ~/Library/LaunchAgents/ and launchctl bootstrap. -->
+<!-- Pulls the server's backups to this Mac once a day (see scripts/BACKUP.md). Install: copy pull-backups.sh to ~/Backups/ (background jobs may not read ~/Documents), copy this file to ~/Library/LaunchAgents/ and launchctl bootstrap. -->
 <plist version="1.0">
 <dict>
     <key>Label</key><string>com.mboutiquehomes.pull-backups</string>
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/admin/Documents/Portfolio Website/scripts/pull-backups.sh</string>
+        <string>/Users/admin/Backups/pull-backups.sh</string>
     </array>
     <key>StartCalendarInterval</key>
     <dict><key>Hour</key><integer>10</integer><key>Minute</key><integer>30</integer></dict>
