@@ -364,6 +364,7 @@
                 <!-- Modal Image Carousel Header -->
                 <div class="relative h-60 w-full skeleton">
                     <div id="modalGallery" class="w-full h-full"></div>
+                    <button type="button" id="dlPhotosBtn" aria-label="下载全部照片" class="round-btn absolute top-14 right-3 z-10 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-md active:scale-90 transition"><i class="fa-solid fa-download text-[13px]"></i></button>
                     <div id="modalImgCaption" class="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-white text-[10px] font-medium">
                         <i class="fa-solid fa-camera mr-1"></i> <span data-i18n="realPhoto">实拍样板间照片</span>
                     </div>
@@ -455,7 +456,10 @@
 
                     <!-- Description -->
                     <div>
-                        <h4 class="text-xs font-bold text-charcoal-900 mb-1"><span data-i18n="descTitle">详细描述</span></h4>
+                        <div class="flex items-center justify-between mb-1">
+                            <h4 class="text-xs font-bold text-charcoal-900"><span data-i18n="descTitle">详细描述</span></h4>
+                            <button type="button" id="copyDescBtn" aria-label="复制描述" class="round-btn w-7 h-7 rounded-full border border-gold-500/40 text-gold-700 flex items-center justify-center hover:bg-gold-500/10 active:scale-90 transition"><i class="fa-regular fa-copy text-[12px]"></i></button>
+                        </div>
                         <p id="modalDesc" class="text-xs text-gray-600 leading-relaxed">
                             
                         </p>

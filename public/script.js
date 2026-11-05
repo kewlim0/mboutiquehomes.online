@@ -310,6 +310,11 @@ const uiText = {
         sold: "已售出",
         rented: "已出租",
         linkCopied: "链接已复制，可以发给朋友了",
+        downloadPhotos: "下载全部照片",
+        downloading: "正在打包照片…",
+        downloadFailed: "下载失败，请稍后再试",
+        copyDesc: "复制描述",
+        descCopied: "描述已复制",
         submitted: "委托信息已成功提交！我们的豪宅顾问与专业摄影团队将尽快与您联系。"
     },
     en: {
@@ -329,6 +334,11 @@ const uiText = {
         sold: "Sold",
         rented: "Rented",
         linkCopied: "Link copied. Send it to a friend!",
+        downloadPhotos: "Download all photos",
+        downloading: "Preparing photos…",
+        downloadFailed: "Download failed, please try again",
+        copyDesc: "Copy description",
+        descCopied: "Description copied",
         submitted: "Your request has been submitted! Our luxury advisors and photography team will contact you shortly."
     }
 };
@@ -865,6 +875,8 @@ function openDetailModal(item, instant = false) {
     document.getElementById('modalPrice').classList.toggle('hidden', !!item.closed);   // sold / rented: no price on the public site
     document.getElementById('modalLocation').innerHTML = `<i class="fa-solid fa-location-dot text-gold-600 mr-1"></i> ${esc(item.address)}`;
     document.getElementById('shareBtnLabel').textContent = ui('copyLink');
+    document.getElementById('dlPhotosBtn').setAttribute('aria-label', ui('downloadPhotos'));
+    document.getElementById('copyDescBtn').setAttribute('aria-label', ui('copyDesc'));
     document.getElementById('modalArea').innerText = formatArea(item.areaSqft);
     document.getElementById('modalBeds').innerHTML = bedsHtml(item, L);
     document.getElementById('modalFurnish').innerText = item.status[L];
@@ -1006,6 +1018,74 @@ async function shareCurrentListing() {
         window.prompt('', url);                  // very old browsers: let the visitor copy it by hand
     }
 }
+
+// ----- copy the description text -----
+async function copyDescription() {
+    if (!currentDetail) return;
+    const text = currentDetail.desc[currentLang] || '';
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch (err) {
+        window.prompt('', text);                 // very old browsers: let the visitor copy it by hand
+        return;
+    }
+    showSiteToast(ui('descCopied'));
+}
+
+// ----- download every photo of the open listing as one .zip (photos are already compressed, so the zip just stores them) -----
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(bytes) { let c = 0xFFFFFFFF; for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function makeZip(files) {   // files: [{ name, data: Uint8Array }]
+    const enc = new TextEncoder(), parts = [], central = [];
+    let offset = 0;
+    for (const f of files) {
+        const name = enc.encode(f.name), crc = crc32(f.data), size = f.data.length;
+        const head = new DataView(new ArrayBuffer(30));
+        head.setUint32(0, 0x04034b50, true); head.setUint16(4, 20, true); head.setUint16(6, 0x0800, true);   // 0x0800 = UTF-8 names
+        head.setUint32(14, crc, true); head.setUint32(18, size, true); head.setUint32(22, size, true); head.setUint16(26, name.length, true);
+        parts.push(head.buffer, name, f.data);
+        const c = new DataView(new ArrayBuffer(46));
+        c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+        c.setUint32(16, crc, true); c.setUint32(20, size, true); c.setUint32(24, size, true); c.setUint16(28, name.length, true); c.setUint32(42, offset, true);
+        central.push(c.buffer, name);
+        offset += 30 + name.length + size;
+    }
+    const centralSize = central.reduce((n, b) => n + (b.byteLength ?? b.length), 0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, centralSize, true); end.setUint32(16, offset, true);
+    return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
+}
+let downloadingPhotos = false;
+async function downloadAllPhotos() {
+    if (!currentDetail || downloadingPhotos) return;
+    const item = currentDetail, btn = document.getElementById('dlPhotosBtn');
+    const photos = item.photos && item.photos.length ? item.photos : [item.img];
+    downloadingPhotos = true;
+    btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[13px]"></i>';
+    showSiteToast(ui('downloading'));
+    try {
+        const files = [];
+        for (let i = 0; i < photos.length; i++) {
+            const res = await fetch(Store.resolve(photos[i]));
+            if (!res.ok) throw new Error('photo ' + (i + 1));
+            const ext = ((res.headers.get('content-type') || '').match(/image\/(jpeg|png|webp|gif|avif)/) || [, 'jpeg'])[1].replace('jpeg', 'jpg');
+            files.push({ name: `photo-${String(i + 1).padStart(2, '0')}.${ext}`, data: new Uint8Array(await res.arrayBuffer()) });
+        }
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(makeZip(files));
+        a.download = `${(item.title.en || item.title[currentLang] || 'listing').replace(/[^\w\u4e00-\u9fa5-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'listing'}-photos.zip`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    } catch (err) {
+        showSiteToast(ui('downloadFailed'));
+    } finally {
+        downloadingPhotos = false;
+        btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-download text-[13px]"></i>';
+    }
+}
+document.getElementById('dlPhotosBtn')?.addEventListener('click', downloadAllPhotos);
+document.getElementById('copyDescBtn')?.addEventListener('click', copyDescription);
 
 const shareBtn = document.getElementById('shareBtn');
 if (shareBtn) shareBtn.addEventListener('click', shareCurrentListing);
