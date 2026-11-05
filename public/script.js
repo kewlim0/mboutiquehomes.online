@@ -745,7 +745,7 @@ function renderProperties() {
 
             <div class="p-2.5 flex flex-col flex-1">
                 <h3 class="font-serif font-bold text-[13px] leading-snug text-charcoal-900 group-hover:text-gold-600 transition line-clamp-2 min-h-[2.4rem]">${esc(item.title[L])}</h3>
-                <span class="text-sm font-bold text-gold-700 mt-1">${formatPrice(item.priceRM, item.isRentPrice)}</span>
+                ${item.closed ? '' : `<span class="text-sm font-bold text-gold-700 mt-1">${formatPrice(item.priceRM, item.isRentPrice)}</span>`}
                 <p class="text-[10px] text-gray-500 mt-1 truncate"><i class="fa-solid fa-location-dot text-gold-500 mr-1"></i>${esc(item.location[L])}</p>
 
                 <div class="flex items-center justify-between gap-1 text-[10px] text-gray-600 mt-2 pt-2 border-t border-gray-100">
@@ -862,6 +862,7 @@ function openDetailModal(item, instant = false) {
 
     document.getElementById('modalTitle').innerText = item.title[L];
     document.getElementById('modalPrice').innerText = formatPrice(item.priceRM, item.isRentPrice);
+    document.getElementById('modalPrice').classList.toggle('hidden', !!item.closed);   // sold / rented: no price on the public site
     document.getElementById('modalLocation').innerHTML = `<i class="fa-solid fa-location-dot text-gold-600 mr-1"></i> ${esc(item.address)}`;
     document.getElementById('shareBtnLabel').textContent = ui('copyLink');
     document.getElementById('modalArea').innerText = formatArea(item.areaSqft);
