@@ -4,6 +4,7 @@
 Tabs read: SEND, 2R (03 & 03A), 4R (07 & 10), BIG UNIT. One row per unit; the same unit on several tabs is merged.
 Uses only the standard library. The output holds real owner data, so it stays in private-files/ (never committed or deployed)."""
 import json, re, sys, zipfile, calendar
+from decimal import Decimal
 import xml.etree.ElementTree as ET
 from datetime import date, timedelta
 
@@ -45,7 +46,10 @@ def read_workbook(path):
                     val = ''.join(x.text or '' for x in c.iter('{%s}t' % NS['m']))
                 elif v is not None:
                     val = v.text or ''
-                    if re.fullmatch(r'-?\d+\.0', val):
+                    if re.fullmatch(r'-?\d+(\.\d+)?[eE][+-]?\d+', val):          # a phone number saved as a number: 6.0176877219E10
+                        d = Decimal(val)
+                        val = str(int(d)) if d == d.to_integral_value() else val
+                    elif re.fullmatch(r'-?\d+\.0', val):
                         val = val[:-2]
                 else:
                     val = ''
@@ -87,7 +91,7 @@ def classify(notes, status_col):
         status = 'sale'
     elif re.search(r'tenan|\brent(ed|al)?\b|\blease', txt) or find_date(txt):
         status = 'tenant'
-    elif re.search(r'no pick|cannot reach|can\'?t reach|no answer|not reachable|unreachable|wrong number|switch(ed)? off', txt):
+    elif re.search(r"cannot\s+(be\s+)?reach|can'?t\s+(be\s+)?reach|no\s+pick|no\s+answer|busy\s+line|not\s+in\s+service|out\s+of\s+service|wrong\s+number|unreachable|not\s+reachable|switch(ed)?\s+off|disconnected", txt):
         status = 'noanswer'
     else:
         status = 'none'
@@ -107,8 +111,26 @@ def norm_unit(text):
 
 
 def clean_phone(p):
-    p = re.sub(r'[\s\-()]', '', p or '')
-    return p
+    """Returns (phone, repaired). A number saved as a number loses its leading 0 (a mobile 012... becomes 12...), so it is put back;
+    6012... / +44... style international numbers are kept as they are."""
+    raw = (p or '').strip()
+    d = re.sub(r'[\s\-()]', '', raw)
+    if raw.startswith('-') or not re.fullmatch(r'\+?\d+', d):
+        return '', False
+    plus, digits = d.startswith('+'), d.lstrip('+')
+    if plus or digits.startswith('0'):
+        return d, False
+    if digits.startswith('60') and 11 <= len(digits) <= 12:   # 6012-345 6789 -> 012-345 6789 (one way of writing Malaysian numbers)
+        return '0' + digits[2:], False
+    if re.fullmatch(r'1\d{8,9}', digits):                  # mobile that lost its 0: 12-345 6789 -> 012-345 6789
+        return '0' + digits, False
+    if re.fullmatch(r'3\d{8}', digits):                    # landline that lost its 0: 3-5639 9333 -> 03-5639 9333
+        return '0' + digits, False
+    if re.fullmatch(r'[4-9]\d{7}', digits):                # 8 digits: the area code is a guess (Klang Valley 03), so it is flagged
+        return '03' + digits, True
+    if 9 <= len(digits) <= 15:                             # other country codes (44..., 65...)
+        return '+' + digits, False
+    return '', False
 
 
 def sheet_rows(rows):
@@ -128,6 +150,9 @@ def sheet_rows(rows):
         if not unit:
             continue
         yield {'unit': unit, 'name': clean_name(get('name'), unit), 'phone': get('tel'), 'type': get('type'), 'status': get('status'), 'notes': '\n'.join(extra)}
+
+
+TYPE_BY_SUFFIX = {}
 
 
 def main(src, dst):
@@ -150,21 +175,29 @@ def main(src, dst):
                 o['notes'].append(r['notes'])
             if line in ('2R', '4R') or not o['line']:
                 o['line'] = line if line != 'SEND' else o['line']
+    seen = {}
+    for o in owners.values():
+        t = o['type'].upper().replace(' ', '')
+        if t in ('C', 'D', 'E', 'F', 'C/E', 'D/F'):
+            seen.setdefault(o['unit'].split('-')[2], {}).setdefault(t, 0)
+            seen[o['unit'].split('-')[2]][t] += 1
+    TYPE_BY_SUFFIX.update({k: max(v, key=v.get) for k, v in seen.items() if max(v.values()) >= 0.95 * sum(v.values())})
     out = []
     for o in owners.values():
         notes = '\n'.join(o['notes'])
         status, end = classify(notes, o['status_col'])
-        phone = clean_phone(o['phone'])
-        # a number the spreadsheet mangled (a leading "-", or too short to be a phone number) is moved into the notes
-        if o['phone'].lstrip().startswith('-') or not re.fullmatch(r'\+?\d{9,15}', phone):
-            if phone:
-                notes = (notes + '\n' if notes else '') + f'原表格的电话：{o["phone"]}'
-            phone = ''
+        phone, repaired = clean_phone(o['phone'])
+        if o['phone'].strip() and not phone:        # a number the spreadsheet mangled: kept in the notes instead of guessing
+            notes = (notes + '\n' if notes else '') + f'原表格的电话：{o["phone"]}'
+        elif repaired:
+            notes = (notes + '\n' if notes else '') + f'电话是自动补全的，请核对（原表格：{o["phone"]}）'
         t = o['type'].upper().replace(' ', '')
         t = t if t in ('C', 'D', 'E', 'F', 'C/E', 'D/F') else ''
         note = '\n'.join(x for x in [o['status_col'] if o['status_col'] and o['status_col'].lower() not in notes.lower() else '', notes] if x)
         nxt = (end - timedelta(days=60)).isoformat() if end and status == 'tenant' else None
-        out.append({'unit': o['unit'], 'name': o['name'], 'phone': phone, 'type': t, 'line': o['line'] if o['line'] != 'SEND' else '',
+        suffix = o['unit'].split('-')[2]
+        out.append({'unit': o['unit'], 'name': o['name'], 'phone': phone, 'type': t or TYPE_BY_SUFFIX.get(suffix, ''),
+                    'line': '2R' if suffix in ('03', '03A') else '4R' if suffix in ('07', '10') else 'BIG',
                     'status': status, 'tenancyEnd': end.isoformat() if end else None, 'nextFollowup': nxt, 'note': note})
     out.sort(key=lambda x: x['unit'])
     json.dump(out, open(dst, 'w'), ensure_ascii=False, indent=0)
