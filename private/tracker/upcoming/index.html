@@ -179,10 +179,10 @@
             <div><p class="eyebrow">Overview</p><h2 id="hexTitle">业主状态分布</h2></div>
             <div class="seg" id="mode"><button class="on" data-m="status">按状态</button><button data-m="type">按户型</button></div>
         </div>
-        <div class="hexbox"><svg viewBox="-175 -170 350 340" id="hex" aria-label="六边形图表">
+        <div class="hexbox"><svg viewBox="-175 -170 350 340" id="hex" aria-label="图表">
             <defs><radialGradient id="hexfill" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#fbbf24" stop-opacity=".55"/><stop offset="1" stop-color="#d97706" stop-opacity=".22"/></radialGradient></defs>
             <g id="rings"></g><g id="spokes"></g><g id="hexShape"><polygon class="poly" id="poly"/><g id="dots"></g></g><g id="axes"></g></svg></div>
-        <p class="hint" id="hint">点六边形的任何一个角，下面的清单就只看那一类</p>
+        <p class="hint" id="hint">点图形的任何一个角，下面的清单就只看那一类</p>
     </section>
 
     <section class="card glass rise d3">
@@ -320,8 +320,19 @@ const typeOf = (unit, types) => { const sfx = suffixOf(unit); const t = (types |
 const blockOf = (o) => (o.unit.includes('-') ? o.unit.split('-')[0] : '');
 const isLate = (o) => !!o.nextFollowup && daysTo(o.nextFollowup) <= 0 && o.status !== 'own' && o.status !== 'listed';
 
-// ----- hexagon (status: always 6 corners; type: one corner per unit type of the open project) -----
-const R = 118, pt = (i, n, r) => { const a = (-90 + i * 360 / n) * Math.PI / 180; return [Math.cos(a) * r, Math.sin(a) * r]; };
+// ----- hexagon: the shape follows the number of corners -----
+// status: always 6 corners. type: one corner per unit type of the open project, so 3 types = triangle, 4 = diamond, 8 = octagon ...
+// (2 types = a narrow diamond, 1 type = a circle)
+const R = 118, SIDE = 0.22;
+const axisPt = (i, n, r) => { const a = (n === 2 ? (i === 0 ? -90 : 90) : -90 + i * 360 / Math.max(n, 1)) * Math.PI / 180; return [Math.cos(a) * r, Math.sin(a) * r]; };
+// the outline of the shape for one value per corner (each 0-100)
+function outline(vals) {
+    const n = vals.length;
+    if (n >= 3) return vals.map((v, i) => axisPt(i, n, R * v / 100));
+    if (n === 2) { const side = R * SIDE * Math.max(vals[0], vals[1]) / 100; return [[0, -R * vals[0] / 100], [side, 0], [0, R * vals[1] / 100], [-side, 0]]; }
+    return Array.from({ length: 24 }, (_, k) => { const a = k * Math.PI / 12; return [Math.cos(a) * R * vals[0] / 100, Math.sin(a) * R * vals[0] / 100]; });
+}
+const pts = (arr) => arr.map((q) => q.map((x) => x.toFixed(1)).join(',')).join(' ');
 let shownPoly = [], raf;
 function axisDefs() {
     return F.mode === 'status'
@@ -329,27 +340,25 @@ function axisDefs() {
         : projTypes().map((t) => ({ key: t.code, name: 'Type ' + t.code, n: owners.filter((o) => o.type === t.code).length }));
 }
 function drawPoly(v) {
-    const n = v.length;
-    $('poly').setAttribute('points', v.map((p, i) => pt(i, n, R * p / 100).map((x) => x.toFixed(1)).join(',')).join(' '));
-    $('dots').innerHTML = v.map((p, i) => `<circle class="dot" cx="${pt(i, n, R * p / 100)[0]}" cy="${pt(i, n, R * p / 100)[1]}" r="4"/>`).join('');
+    $('poly').setAttribute('points', pts(outline(v)));
+    $('dots').innerHTML = v.map((p, i) => `<circle class="dot" cx="${axisPt(i, v.length, R * p / 100)[0]}" cy="${axisPt(i, v.length, R * p / 100)[1]}" r="4"/>`).join('');
 }
 function renderAxes(defs) {
-    const n = defs.length;
-    $('rings').innerHTML = n < 3 ? '' : [25, 50, 75, 100].map((p) => `<polygon class="ring ${p === 100 ? 'outer' : ''}" points="${defs.map((_, i) => pt(i, n, R * p / 100).join(',')).join(' ')}"/>`).join('');
-    $('spokes').innerHTML = n < 3 ? '' : defs.map((_, i) => `<line class="spoke" x1="0" y1="0" x2="${pt(i, n, R)[0]}" y2="${pt(i, n, R)[1]}"/>`).join('');
-    $('axes').innerHTML = defs.map((d, i) => { const [x, y] = n < 3 ? [(i - (n - 1) / 2) * 90, 0] : pt(i, n, R + 30); return `<g class="axis ${F.axis === d.key ? 'on' : ''}" data-k="${esc(d.key)}">
-        <rect class="hit" x="${x - 34}" y="${y - 22}" width="68" height="44" rx="10"/><text class="nm" x="${x}" y="${y - 5}">${esc(d.name)}</text><text class="ct" x="${x}" y="${y + 12}">${d.n.toLocaleString()}</text></g>`; }).join('');
+    const n = defs.length, big = n > 8;
+    $('rings').innerHTML = n < 1 ? '' : [25, 50, 75, 100].map((p) => `<polygon class="ring ${p === 100 ? 'outer' : ''}" points="${pts(outline(defs.map(() => p)))}"/>`).join('');
+    $('spokes').innerHTML = n < 3 ? (n === 2 ? `<line class="spoke" x1="0" y1="${-R}" x2="0" y2="${R}"/>` : '') : defs.map((_, i) => `<line class="spoke" x1="0" y1="0" x2="${axisPt(i, n, R)[0]}" y2="${axisPt(i, n, R)[1]}"/>`).join('');
+    $('axes').innerHTML = defs.map((d, i) => { const [x, y] = axisPt(i, n, R + (big ? 24 : 30)); return `<g class="axis ${F.axis === d.key ? 'on' : ''}" data-k="${esc(d.key)}">
+        <rect class="hit" x="${x - 30}" y="${y - 20}" width="60" height="40" rx="10"/><text class="nm" style="font-size:${big ? 8.5 : 10.5}px" x="${x}" y="${y - (big ? 3 : 5)}">${esc(big ? d.name.replace('Type ', '') : d.name)}</text><text class="ct" style="font-size:${big ? 10.5 : 13}px" x="${x}" y="${y + (big ? 9 : 12)}">${d.n.toLocaleString()}</text></g>`; }).join('');
 }
 function updateHex() {
-    const defs = axisDefs(), max = Math.max(1, ...defs.map((d) => d.n)), n = defs.length, pr = curProject();
+    const defs = axisDefs(), max = Math.max(1, ...defs.map((d) => d.n)), n = defs.length;
     $('hexTitle').textContent = F.mode === 'status' ? '业主状态分布' : '户型分布';
     renderAxes(defs);
     const unsorted = F.mode === 'type' ? owners.filter((o) => !projTypes().some((t) => t.code === o.type)).length : 0;
     $('hint').textContent = F.mode === 'type' && !n ? '这个项目还没有设定户型，点上面的 ⚙ 去设定'
-        : F.mode === 'type' && n < 3 ? `这个项目只有 ${n} 种户型` : '点六边形的任何一个角，下面的清单就只看那一类'
-        + (unsorted ? `（还有 ${unsorted} 户没有户型）` : '');
-    $('hexShape').style.display = n < 3 ? 'none' : '';
-    if (n < 3) { shownPoly = []; return; }
+        : '点图形的任何一个角，下面的清单就只看那一类' + (F.mode === 'type' ? `（共 ${n} 种户型${unsorted ? `，还有 ${unsorted} 户没有户型` : ''}）` : '');
+    $('hexShape').style.display = n < 1 ? 'none' : '';
+    if (n < 1) { shownPoly = []; return; }
     const to = defs.map((d) => Math.max(8, Math.sqrt(d.n / max) * 100));
     if (shownPoly.length !== n) shownPoly = to.map(() => 8);
     cancelAnimationFrame(raf); const from = shownPoly.slice(), t0 = performance.now();
