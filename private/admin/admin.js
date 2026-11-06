@@ -933,7 +933,7 @@ $('listingSearchClear').addEventListener('click', () => { $('listingSearch').val
 // Bedrooms / bathrooms: two dropdowns. The Chinese and English texts shown on the site are generated from them.
 const range = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => String(from + i));
 const BEDROOM_OPTIONS = [['studio', '开放式 Studio'], ...range(1, 10).map((n) => [n, `${n} 房`])];
-const EXTRA_OPTIONS = [['', '不加房'], ...range(1, 5).map((n) => [n, `加 ${n} 房`])];   // "3+1": 3 rooms plus 1 small room
+const EXTRA_OPTIONS = [['', '不加'], ...range(1, 5).map((n) => [n, `+${n}`])];   // "3+1": 3 rooms plus 1 small room
 const BATHROOM_OPTIONS = range(1, 10).map((n) => [n, `${n} 卫`]);
 
 function bedsText(bedrooms, bathrooms) {
@@ -948,7 +948,7 @@ function fillSelect(el, placeholder, options) {
         + options.map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join('');
 }
 fillSelect($('lf-bed-main'), '几房', BEDROOM_OPTIONS);
-fillSelect($('lf-bed-extra'), '加几房', EXTRA_OPTIONS);
+fillSelect($('lf-bed-extra'), '+', EXTRA_OPTIONS);
 fillSelect($('lf-bathrooms'), '几卫', BATHROOM_OPTIONS);
 
 // the two bedroom dropdowns make one value: "3", "3+1" or "studio"
