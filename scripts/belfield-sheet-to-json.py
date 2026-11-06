@@ -80,6 +80,9 @@ def find_date(txt):
     m = re.search(r'(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*,?\s*(?:of\s+)?(\d{4})', t)
     if m:
         return end_of_month(int(m[2]), MONTHS[m[1]])
+    m = re.search(r'(\d{4})\s*,?\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*', t)      # "2028 December"
+    if m:
+        return end_of_month(int(m[1]), MONTHS[m[2]])
     return None
 
 
@@ -171,7 +174,7 @@ def main(src, dst):
             o['phone'] = o['phone'] or r['phone']
             o['type'] = o['type'] or r['type']
             o['status_col'] = o['status_col'] or r['status']
-            if r['notes'] and r['notes'] not in o['notes']:
+            if r['notes'] and r['notes'].lower() not in [x.lower() for x in o['notes']]:
                 o['notes'].append(r['notes'])
             if line in ('2R', '4R') or not o['line']:
                 o['line'] = line if line != 'SEND' else o['line']
