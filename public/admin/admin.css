@@ -284,9 +284,25 @@ body {
 }
 
 /* Dashboard: stay hidden until the first data load has finished, so empty counts never flash */
-.is-booting main {
-    visibility: hidden;
+.is-booting main,
+.is-booting .fab {
+    display: none;
 }
+
+/* Skeleton shimmer: grey blocks with a light band sweeping across while the first data loads (drawn by bootSkeleton in admin.js) */
+.boot-skel { display: none; }
+.is-booting .boot-skel { display: block; }
+.sk { position: relative; overflow: hidden; background: #e5e7eb; border-radius: 0.6rem; }
+.sk::after {
+    content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+    animation: sk-shimmer 1.3s ease-in-out infinite;
+}
+@keyframes sk-shimmer { to { transform: translateX(100%); } }
+.sk-card { background: #fff; border: 1px solid #eef0f3; border-radius: 1.1rem; padding: 1rem; box-shadow: 0 4px 14px -10px rgba(15, 23, 42, 0.25); }
+.sk-row { display: flex; align-items: center; gap: 0.5rem; }
+.sk-item { display: flex; gap: 0.75rem; }
+@media (prefers-reduced-motion: reduce) { .sk::after { animation: none; } }
 
 /* =====================================================================
    Hero banner manager (mobile first)

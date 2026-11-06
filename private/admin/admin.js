@@ -1489,8 +1489,27 @@ function revealPanel() {
     document.body.classList.remove('is-booting');
 }
 
+// grey shapes shaped like the tab being opened, with a shimmer, until the first data has arrived
+function bootSkeleton(tab) {
+    const b = (cls) => `<span class="sk block ${cls}"></span>`;
+    const card = (inner) => `<div class="sk-card">${inner}</div>`;
+    const bannerCard = card(`${b('h-36 w-full !rounded-xl')}<div class="mt-3 space-y-2">${b('h-3.5 w-2/3')}${b('h-3 w-1/2')}</div><div class="sk-row justify-between mt-4">${b('h-5 w-20 !rounded-full')}<div class="sk-row">${b('h-8 w-16 !rounded-xl')}${b('h-8 w-9 !rounded-xl')}</div></div>`);
+    const itemCard = card(`<div class="sk-item">${b('w-24 h-24 !rounded-xl flex-shrink-0')}<div class="flex-1 space-y-2 pt-1">${b('h-3 w-24')}${b('h-3.5 w-full')}${b('h-3 w-1/3')}<div class="sk-row justify-end pt-2">${b('h-7 w-16 !rounded-xl')}${b('h-7 w-16 !rounded-xl')}</div></div></div>`);
+    const html = {
+        hero: card(`<div class="sk-row justify-between">${b('h-4 w-32')}${b('h-6 w-28 !rounded-full')}</div>${b('h-44 w-full mt-3 !rounded-2xl')}${b('h-3 w-3/4 mt-3')}`)
+            + card(`${b('h-4 w-28')}${b('h-3 w-2/3 mt-2')}${b('h-11 w-full mt-3 !rounded-xl')}`)
+            + `<div class="sk-row justify-between pt-2"><div class="space-y-2">${b('h-5 w-24')}${b('h-3 w-44')}</div>${b('h-10 w-28 !rounded-xl')}</div>`
+            + `<div class="grid gap-3 sm:grid-cols-2">${bannerCard}${bannerCard}</div>`,
+        listings: `<div class="sk-row justify-between"><div class="space-y-2">${b('h-5 w-24')}${b('h-3 w-16')}</div>${b('h-10 w-28 !rounded-xl')}</div>${b('h-11 w-full !rounded-2xl')}${itemCard}${itemCard}${itemCard}`,
+        team: `<div class="sk-row justify-between"><div class="space-y-2">${b('h-5 w-24')}${b('h-3 w-40')}</div>${b('h-10 w-28 !rounded-xl')}</div><div class="grid gap-3 sm:grid-cols-2">${itemCard}${itemCard}</div>`,
+        admins: card(`${b('h-4 w-24')}${b('h-3 w-40 mt-2')}${b('h-10 w-full mt-4 !rounded-xl')}`),
+    };
+    $('bootSkel').innerHTML = html[tab] || card(`${b('h-4 w-32')}${b('h-3 w-56 mt-2')}`);
+}
+
 async function init() {
     $('apiDownOverlay').classList.add('hidden');
+    try { bootSkeleton(sessionStorage.getItem('admin-tab') || 'hero'); } catch (e) { bootSkeleton('hero'); }
     try { showTab(sessionStorage.getItem('admin-tab') || 'hero'); } catch (e) { showTab('hero'); }
     try {
         applyMe(await api('GET', 'admin/me'));
