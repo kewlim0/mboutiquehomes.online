@@ -931,11 +931,10 @@ $('listingSearchClear').addEventListener('click', () => { $('listingSearch').val
 })();
 
 // Bedrooms / bathrooms: two dropdowns. The Chinese and English texts shown on the site are generated from them.
-const BEDROOM_OPTIONS = [
-    ['studio', '开放式 Studio'], ['1', '1 房'], ['2', '2 房'], ['3', '3 房'], ['3+1', '3+1 房'], ['4', '4 房'],
-    ['4+1', '4+1 房'], ['5', '5 房'], ['5+1', '5+1 房'], ['6', '6 房'], ['7+', '7 房或以上']
-];
-const BATHROOM_OPTIONS = [['1', '1 卫'], ['2', '2 卫'], ['3', '3 卫'], ['4', '4 卫'], ['5', '5 卫'], ['6', '6 卫'], ['7+', '7 卫或以上']];
+const range = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => String(from + i));
+const BEDROOM_OPTIONS = [['studio', '开放式 Studio'], ...range(1, 10).map((n) => [n, `${n} 房`])];
+const EXTRA_OPTIONS = [['', '不加房'], ...range(1, 5).map((n) => [n, `加 ${n} 房`])];   // "3+1": 3 rooms plus 1 small room
+const BATHROOM_OPTIONS = range(1, 10).map((n) => [n, `${n} 卫`]);
 
 function bedsText(bedrooms, bathrooms) {
     return {
@@ -948,12 +947,44 @@ function fillSelect(el, placeholder, options) {
     el.innerHTML = `<option value="" disabled selected>${placeholder}</option>`
         + options.map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join('');
 }
-fillSelect($('lf-bedrooms'), '几房', BEDROOM_OPTIONS);
+fillSelect($('lf-bed-main'), '几房', BEDROOM_OPTIONS);
+fillSelect($('lf-bed-extra'), '加几房', EXTRA_OPTIONS);
 fillSelect($('lf-bathrooms'), '几卫', BATHROOM_OPTIONS);
+
+// the two bedroom dropdowns make one value: "3", "3+1" or "studio"
+function getBedrooms() {
+    const main = $('lf-bed-main').value, extra = $('lf-bed-extra').value;
+    return main && main !== 'studio' && extra ? `${main}+${extra}` : main;
+}
+function setBedrooms(value) {
+    const m = /^(\d+)\+(\d+)$/.exec(value || '');
+    const main = m ? m[1] : (value || ''), extra = m ? m[2] : '';
+    // an old "7+" (7 or more) is kept as one extra choice until it is changed
+    const old = $('lf-bed-main').querySelector('[data-legacy]'); if (old) old.remove();
+    if (main && ![...$('lf-bed-main').options].some((o) => o.value === main)) {
+        $('lf-bed-main').insertAdjacentHTML('beforeend', `<option value="${esc(main)}" data-legacy>${esc(main)} 房（旧）</option>`);
+    }
+    $('lf-bed-main').value = main;
+    $('lf-bed-extra').value = extra;
+    syncBedExtra();
+}
+function setBathrooms(value) {
+    const old = $('lf-bathrooms').querySelector('[data-legacy]'); if (old) old.remove();
+    if (value && ![...$('lf-bathrooms').options].some((o) => o.value === value)) {
+        $('lf-bathrooms').insertAdjacentHTML('beforeend', `<option value="${esc(value)}" data-legacy>${esc(value)} 卫（旧）</option>`);
+    }
+    $('lf-bathrooms').value = value || '';
+}
+// a studio has no extra room
+function syncBedExtra() {
+    const studio = $('lf-bed-main').value === 'studio';
+    if (studio) $('lf-bed-extra').value = '';
+    $('lf-bed-extra').disabled = studio || !$('lf-bed-main').value;
+}
 
 let legacyBedsNote = '';
 function updateBedsPreview() {
-    const b = $('lf-bedrooms').value;
+    const b = getBedrooms();
     const t = $('lf-bathrooms').value;
     if (b && t) {
         const text = bedsText(b, t);
@@ -962,7 +993,8 @@ function updateBedsPreview() {
         $('lf-beds-preview').textContent = legacyBedsNote || '选好几房、几卫，前台会自动显示中文和英文。';
     }
 }
-$('lf-bedrooms').addEventListener('change', updateBedsPreview);
+$('lf-bed-main').addEventListener('change', () => { syncBedExtra(); updateBedsPreview(); });
+$('lf-bed-extra').addEventListener('change', updateBedsPreview);
 $('lf-bathrooms').addEventListener('change', updateBedsPreview);
 
 // ----- renovation status: a dropdown; an older free-text value is kept as one extra choice until it is changed -----
@@ -1082,8 +1114,8 @@ function openListingForm(p) {
     $('lf-price').value = v.priceRM;
     $('lf-sqft').value = v.areaSqft;
     $('lf-area').value = v.area;
-    $('lf-bedrooms').value = v.bedrooms || '';
-    $('lf-bathrooms').value = v.bathrooms || '';
+    setBedrooms(v.bedrooms);
+    setBathrooms(v.bathrooms);
     // an old listing whose room text could not be read: tell the owner what it said so they can pick again
     legacyBedsNote = p && !(p.bedrooms && p.bathrooms) && p.beds && p.beds.zh
         ? `原来的房型是「${p.beds.zh}」，请重新选择几房、几卫。` : '';
@@ -1203,7 +1235,7 @@ $('listingForm').addEventListener('submit', async (e) => {
         type: $('lf-type').value,
         priceRM: Number($('lf-price').value),
         areaSqft: Number($('lf-sqft').value),
-        bedrooms: $('lf-bedrooms').value,
+        bedrooms: getBedrooms(),
         bathrooms: $('lf-bathrooms').value,
         area,
         location: {

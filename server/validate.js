@@ -39,8 +39,9 @@ function bilingual(obj, label, max, { required = false } = {}) {
 }
 
 // Bedrooms / bathrooms are picked from dropdowns; the Chinese and English texts are generated from them.
-const BEDROOMS = ['studio', '1', '2', '3', '3+1', '4', '4+1', '5', '5+1', '6', '7+'];
-const BATHROOMS = ['1', '2', '3', '4', '5', '6', '7+'];
+// bedrooms: studio, 1-10, or 1-10 plus 1-5 extra rooms ("3+1"); bathrooms: 1-10. The old "7+" (7 or more) is still accepted for listings that have it.
+const isBedrooms = (b) => /^(studio|([1-9]|10)(\+[1-5])?|\d+\+)$/.test(b);
+const isBathrooms = (b) => /^(([1-9]|10)|\d+\+)$/.test(b);
 
 function bedsText(bedrooms, bathrooms) {
   const bedZh = bedrooms === 'studio' ? '开放式' : `${bedrooms} 房`;
@@ -54,7 +55,7 @@ function parseBeds(zh) {
   if (!m) return null;
   const bedrooms = /^(开放式|studio)/i.test(m[1]) ? 'studio' : m[1];
   const bathrooms = m[2];
-  return BEDROOMS.includes(bedrooms) && BATHROOMS.includes(bathrooms) ? { bedrooms, bathrooms } : null;
+  return isBedrooms(bedrooms) && isBathrooms(bathrooms) ? { bedrooms, bathrooms } : null;
 }
 
 const MAX_PHOTOS = 20;
@@ -94,8 +95,8 @@ function bedsFields(b) {
   if (b.bedrooms !== undefined || b.bathrooms !== undefined) {
     const bedrooms = String(b.bedrooms ?? '');
     const bathrooms = String(b.bathrooms ?? '');
-    if (!BEDROOMS.includes(bedrooms)) throw new HttpError(400, '请选择房间数');
-    if (!BATHROOMS.includes(bathrooms)) throw new HttpError(400, '请选择卫生间数');
+    if (!isBedrooms(bedrooms)) throw new HttpError(400, '请选择房间数');
+    if (!isBathrooms(bathrooms)) throw new HttpError(400, '请选择卫生间数');
     return { bedrooms, bathrooms, beds: bedsText(bedrooms, bathrooms) };
   }
   // older clients that still send free text
@@ -269,6 +270,6 @@ function heroBanner(body) {
 }
 
 module.exports = {
-  BEDROOMS, BATHROOMS, bedsText, parseBeds,
+  isBedrooms, isBathrooms, bedsText, parseBeds,
   heroBanner,
   weakPasscodeReason, passcode, adminName, HttpError, AREAS, image, property, sim, teamMember };
