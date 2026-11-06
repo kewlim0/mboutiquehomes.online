@@ -312,6 +312,7 @@ const uiText = {
         linkCopied: "链接已复制，可以发给朋友了",
         downloadPhotos: "下载全部照片",
         downloading: "正在打包照片…",
+        photosPreparing: "照片准备中，稍等一下再点",
         downloadFailed: "下载失败，请稍后再试",
         copyDesc: "复制描述",
         descCopied: "描述已复制",
@@ -336,6 +337,7 @@ const uiText = {
         linkCopied: "Link copied. Send it to a friend!",
         downloadPhotos: "Download all photos",
         downloading: "Preparing photos…",
+        photosPreparing: "Getting the photos ready, tap again in a moment",
         downloadFailed: "Download failed, please try again",
         copyDesc: "Copy description",
         descCopied: "Description copied",
@@ -840,6 +842,7 @@ function submitValuationForm(e) {
 function openDetailModal(item, instant = false) {
     const L = currentLang;
     currentDetail = item;
+    setTimeout(() => { if (currentDetail === item) prefetchPhotoFiles(item); }, 1200);   // after the first pictures have loaded
     const modal = document.getElementById('detailModal');
     const gallery = document.getElementById('modalGallery');
     const photos = item.photos && item.photos.length ? item.photos : [item.img];
@@ -1011,25 +1014,38 @@ function showSiteToast(message) {
 async function shareCurrentListing() {
     if (!currentDetail) return;
     const url = `${location.origin}${listingUrl(currentDetail)}`;
-    try {
-        await navigator.clipboard.writeText(url);
-        showSiteToast(ui('linkCopied'));
-    } catch (err) {
-        window.prompt('', url);                  // very old browsers: let the visitor copy it by hand
-    }
+    if (await copyToClipboard(url)) showSiteToast(ui('linkCopied'));
+    else window.prompt('', url);                 // very old browsers: let the visitor copy it by hand
 }
 
-// ----- copy the description text -----
+// ----- copy text -----
+// iPhone Safari only allows copying inside the tap itself, so the old-style copy (hidden text box, runs at once) goes first
+// and the clipboard API is the fallback; returns true when the text really was copied
+async function copyToClipboard(text) {
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+        const ok = document.execCommand('copy');
+        ta.remove();
+        if (ok) return true;
+    } catch (err) { /* try the clipboard API */ }
+    try { await navigator.clipboard.writeText(text); return true; } catch (err) { return false; }
+}
+
 async function copyDescription() {
     if (!currentDetail) return;
     const text = currentDetail.desc[currentLang] || '';
-    try {
-        await navigator.clipboard.writeText(text);
-    } catch (err) {
+    const btn = document.getElementById('copyDescBtn');
+    if (await copyToClipboard(text)) {
+        showSiteToast(ui('descCopied'));
+        btn.innerHTML = '<i class="fa-solid fa-check text-[12px]"></i>';   // the button itself says "done" too
+        clearTimeout(btn._t); btn._t = setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy text-[12px]"></i>'; }, 1600);
+    } else {
         window.prompt('', text);                 // very old browsers: let the visitor copy it by hand
-        return;
     }
-    showSiteToast(ui('descCopied'));
 }
 
 // ----- download every photo of the open listing as one .zip (photos are already compressed, so the zip just stores them) -----
@@ -1056,9 +1072,52 @@ function makeZip(files) {   // files: [{ name, data: Uint8Array }]
     end.setUint32(12, centralSize, true); end.setUint32(16, offset, true);
     return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
 }
+// Phones and tablets: the share sheet with the photos themselves ("Save 10 Images" on iPhone). Safari only opens it inside the tap,
+// so the photos are fetched in the background as soon as the sheet is open and the button waits (spinner) until they are ready.
+const DL_ICON = '<i class="fa-solid fa-download text-[13px]"></i>', DL_SPIN = '<i class="fa-solid fa-spinner fa-spin text-[13px]"></i>';
+const touchShare = () => window.matchMedia('(pointer: coarse)').matches && typeof navigator.canShare === 'function' && typeof navigator.share === 'function';
+let photoFiles = { id: null, files: null, promise: null };
+function prefetchPhotoFiles(item) {
+    if (!touchShare()) return;
+    const btn = document.getElementById('dlPhotosBtn');
+    const photos = (item.photos && item.photos.length ? item.photos : [item.img]).filter(Boolean);
+    const state = photoFiles = { id: item.id, files: null, promise: null };
+    btn.innerHTML = DL_SPIN;
+    state.promise = (async () => {
+        const files = new Array(photos.length);
+        let next = 0;
+        const worker = async () => {
+            while (next < photos.length) {
+                const i = next++;
+                const res = await fetch(Store.resolve(photos[i]));
+                if (!res.ok) throw new Error('photo ' + (i + 1));
+                const blob = await res.blob();
+                const type = /^image\//.test(blob.type) ? blob.type : 'image/jpeg';
+                files[i] = new File([blob], `photo-${String(i + 1).padStart(2, '0')}.${type.split('/')[1].replace('jpeg', 'jpg')}`, { type });
+            }
+        };
+        await Promise.all([worker(), worker(), worker()]);
+        if (!navigator.canShare({ files })) throw new Error('cannot share');
+        state.files = files;
+    })().then(() => { if (photoFiles === state) btn.innerHTML = DL_ICON; },
+              () => { if (photoFiles === state) { state.promise = null; btn.innerHTML = DL_ICON; } });   // failed: the button falls back to the zip
+}
+async function sharePhotos() {
+    const state = photoFiles;
+    if (state.id !== currentDetail.id) return false;
+    if (!state.files) { if (state.promise) showSiteToast(ui('photosPreparing')); return !!state.promise; }
+    try {
+        await navigator.share({ files: state.files });
+    } catch (err) {
+        if (err && err.name !== 'AbortError') showSiteToast(ui('downloadFailed'));   // closing the sheet is not an error
+    }
+    return true;
+}
+
 let downloadingPhotos = false;
 async function downloadAllPhotos() {
     if (!currentDetail || downloadingPhotos) return;
+    if (touchShare() && await sharePhotos()) return;
     const item = currentDetail, btn = document.getElementById('dlPhotosBtn');
     const photos = item.photos && item.photos.length ? item.photos : [item.img];
     downloadingPhotos = true;
@@ -1081,7 +1140,7 @@ async function downloadAllPhotos() {
         showSiteToast(ui('downloadFailed'));
     } finally {
         downloadingPhotos = false;
-        btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-download text-[13px]"></i>';
+        btn.disabled = false; btn.innerHTML = DL_ICON;
     }
 }
 document.getElementById('dlPhotosBtn')?.addEventListener('click', downloadAllPhotos);
