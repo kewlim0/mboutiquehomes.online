@@ -287,6 +287,12 @@ admin.put('/upcoming/:id', wrap(async (req, res) => {
   const o = await upcoming.update(idParam(req), upcoming.owner(req.body));
   o ? res.json({ owner: o }) : notFound(res);
 }));
+admin.post('/upcoming-projects', wrap(async (req, res) => { res.status(201).json({ project: await upcoming.createProject(upcoming.project(req.body)) }); }));
+admin.put('/upcoming-projects/:id', wrap(async (req, res) => {
+  const p = await upcoming.updateProject(idParam(req), upcoming.project(req.body));
+  p ? res.json({ project: p }) : notFound(res);
+}));
+admin.delete('/upcoming-projects/:id', wrap(async (req, res) => { (await upcoming.removeProject(idParam(req))) ? res.json({ ok: true }) : notFound(res); }));
 admin.post('/upcoming/:id/followed', wrap(async (req, res) => {
   const b = req.body && typeof req.body === 'object' ? req.body : {};
   const note = typeof b.note === 'string' ? b.note.trim().slice(0, 500) : '';

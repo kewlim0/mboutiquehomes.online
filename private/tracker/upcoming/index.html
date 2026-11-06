@@ -38,6 +38,20 @@
         .top h1 { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.1; } .top p { font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-top: 0.15rem; }
         .addtop { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; box-shadow: 0 8px 20px -8px rgba(245, 158, 11, 0.7); }
 
+        .projects { display: flex; gap: 0.4rem; align-items: center; margin-top: 1rem; overflow-x: auto; scrollbar-width: none; padding-bottom: 0.15rem; }
+        .projects::-webkit-scrollbar { display: none; }
+        .proj { flex-shrink: 0; display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.74rem; font-weight: 800; padding: 0.5rem 0.9rem; border-radius: 999px; background: rgba(255, 255, 255, 0.07); color: #94a3b8; border: 1px solid transparent; }
+        .proj b { font-size: 0.62rem; font-weight: 800; padding: 0.1rem 0.45rem; border-radius: 999px; background: rgba(255, 255, 255, 0.1); }
+        .proj.on { background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(217, 119, 6, 0.16)); color: #fcd34d; border-color: rgba(251, 191, 36, 0.5); box-shadow: 0 8px 20px -12px rgba(245, 158, 11, 0.8); }
+        .proj.on b { background: rgba(251, 191, 36, 0.2); }
+        .proj.add { color: #cbd5e1; border: 1px dashed rgba(255, 255, 255, 0.25); background: none; }
+        .proj-gear { flex-shrink: 0; width: 2.2rem; height: 2.2rem; border-radius: 50%; display: grid; place-items: center; font-size: 0.8rem; color: #cbd5e1; background: rgba(255, 255, 255, 0.07); }
+        .trow { display: grid; grid-template-columns: 5rem 1fr 2rem; gap: 0.4rem; align-items: center; padding: 0.6rem; border-radius: 1rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); }
+        .trow .field { padding: 0.55rem 0.7rem; }
+        .trow .tnote { grid-column: 1 / -1; }
+        .trow .tdel { width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; color: #fca5a5; background: rgba(248, 113, 113, 0.12); font-size: 0.75rem; }
+        .check { display: flex; align-items: flex-start; gap: 0.6rem; font-size: 0.74rem; font-weight: 600; color: #cbd5e1; line-height: 1.5; padding: 0.75rem 0.85rem; border-radius: 0.9rem; background: rgba(255, 255, 255, 0.05); }
+        .check input { margin-top: 0.2rem; width: 1.1rem; height: 1.1rem; accent-color: #f59e0b; flex-shrink: 0; }
         .search { position: relative; margin-top: 1rem; display: block; }
         .search i { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.85rem; }
         .search input { width: 100%; padding: 0.8rem 1rem 0.8rem 2.6rem; border-radius: 1.1rem; background: rgba(255, 255, 255, 0.07); border: 1px solid var(--line); outline: none; font-size: 16px; font-weight: 600; }
@@ -150,6 +164,8 @@
         <button class="addtop" id="addTop" aria-label="Add owner"><i class="fa-solid fa-plus"></i></button>
     </header>
 
+    <div class="projects rise d1" id="projects"></div>
+
     <label class="search rise d1"><i class="fa-solid fa-magnifying-glass"></i><input id="q" type="search" placeholder="搜单位、姓名、电话，例如 B-48-03" autocomplete="off"></label>
 
     <section class="stats glass rise d1">
@@ -165,8 +181,8 @@
         </div>
         <div class="hexbox"><svg viewBox="-175 -170 350 340" id="hex" aria-label="六边形图表">
             <defs><radialGradient id="hexfill" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#fbbf24" stop-opacity=".55"/><stop offset="1" stop-color="#d97706" stop-opacity=".22"/></radialGradient></defs>
-            <g id="rings"></g><g id="spokes"></g><polygon class="poly" id="poly"/><g id="dots"></g><g id="axes"></g></svg></div>
-        <p class="hint">点六边形的任何一个角，下面的清单就只看那一类</p>
+            <g id="rings"></g><g id="spokes"></g><g id="hexShape"><polygon class="poly" id="poly"/><g id="dots"></g></g><g id="axes"></g></svg></div>
+        <p class="hint" id="hint">点六边形的任何一个角，下面的清单就只看那一类</p>
     </section>
 
     <section class="card glass rise d3">
@@ -177,8 +193,8 @@
 
     <div class="sec"><h3 id="listTitle">Follow-up 清单</h3><button class="clear" id="clear" hidden>清除筛选 ✕</button></div>
     <div class="filters" id="views"></div>
-    <div class="filters" id="blocks"><button class="f on" data-b="all">全部栋</button><button class="f" data-b="A">A 栋</button><button class="f" data-b="B">B 栋</button><button class="f" data-b="C">C 栋</button></div>
-    <div class="filters" id="lines"><button class="f on" data-l="all">全部单位</button><button class="f" data-l="2R">2 房 (03 / 03A)</button><button class="f" data-l="4R">4 房 (07 / 10)</button><button class="f" data-l="BIG">Big unit</button></div>
+    <div class="filters" id="blocks"></div>
+    <div class="filters" id="types"></div>
     <div id="list"></div>
 </main>
 <button class="fab" id="fab" aria-label="Add owner"><i class="fa-solid fa-plus"></i></button>
@@ -193,10 +209,8 @@
         </div>
         <form class="form" onsubmit="return false" autocomplete="off">
             <div><label class="lbl" for="f-unit">单位 *</label><input class="field" id="f-unit" maxlength="30" placeholder="例如 B-48-03" autocapitalize="characters"></div>
-            <div class="row2">
-                <div><label class="lbl" for="f-type">户型</label><select class="field" id="f-type"></select></div>
-                <div><label class="lbl" for="f-line">单位类别</label><select class="field" id="f-line"></select></div>
-            </div>
+            <div><label class="lbl" for="f-project">项目</label><select class="field" id="f-project"></select></div>
+            <div><label class="lbl" for="f-type">户型（输入单位后会按尾号自动选）</label><select class="field" id="f-type"></select></div>
             <div><label class="lbl" for="f-name">业主姓名</label><input class="field" id="f-name" maxlength="160"></div>
             <div><label class="lbl" for="f-phone">电话</label><input class="field" id="f-phone" type="tel" inputmode="tel" maxlength="40" placeholder="0123456789"></div>
             <div><label class="lbl" for="f-status">状态</label><select class="field" id="f-status"></select></div>
@@ -206,6 +220,28 @@
             </div>
             <div><label class="lbl" for="f-note">备注</label><textarea class="field" id="f-note" rows="5" maxlength="4000"></textarea></div>
             <button id="delBtn" type="button" class="btn btn-red hidden" style="width:100%"><i class="fa-solid fa-trash-can"></i>删除这位业主</button>
+        </form>
+    </div>
+</div>
+
+<!-- project: name + unit types -->
+<div id="psheet" class="sheet hidden">
+    <div class="inner">
+        <div class="sheet-top">
+            <button class="back glass" id="pClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            <div class="ttl" id="pTitle">项目</div>
+            <button class="btn btn-amber" id="pSave"><i class="fa-solid fa-check"></i>保存</button>
+        </div>
+        <form class="form" onsubmit="return false" autocomplete="off">
+            <div><label class="lbl" for="p-name">项目名称 *</label><input class="field" id="p-name" maxlength="120" placeholder="例如 Sunway Belfield Residence"></div>
+            <div>
+                <label class="lbl">户型：名称、对应的单位尾号、备注</label>
+                <p style="font-size:.7rem;color:#64748b;font-weight:600;line-height:1.5;margin:0 0 .6rem .15rem">单位尾号是单位号最后那一段，例如 B-48-03 的尾号是 03、B-48-03A 的尾号是 03A。同一个户型可以有好几个尾号，用逗号隔开。</p>
+                <div id="pTypes" style="display:grid;gap:.5rem"></div>
+                <button type="button" class="btn btn-soft" id="pAddType" style="width:100%;margin-top:.6rem"><i class="fa-solid fa-plus"></i>添加户型</button>
+            </div>
+            <label class="check" id="pApplyRow"><input type="checkbox" id="pApply" checked><span>保存时，按单位尾号重新给这个项目的所有单位分配户型</span></label>
+            <button id="pDel" type="button" class="btn btn-red hidden" style="width:100%"><i class="fa-solid fa-trash-can"></i>删除这个项目</button>
         </form>
     </div>
 </div>
@@ -253,8 +289,6 @@ async function api(method, path, body) {
 // ----- constants -----
 const STATUS = { tenant: ['租约中', '#fbbf24'], sale: ['想卖', '#38bdf8'], own: ['自住', '#34d399'], noanswer: ['联系不上', '#fb7185'], none: ['未联系', '#94a3b8'], listed: ['已上架', '#a78bfa'] };
 const STATUS_KEYS = ['tenant', 'sale', 'own', 'noanswer', 'none', 'listed'];
-const TYPES = ['C', 'D', 'E', 'F', 'C/E', 'D/F'];
-const LINES = { '2R': '2 房 (03 / 03A)', '4R': '4 房 (07 / 10)', BIG: 'Big unit' };
 const PAGE = 30;
 
 // ----- dates (the phone's own calendar day) -----
@@ -274,39 +308,56 @@ const waNumber = (p) => { const d = digits(p); return d.startsWith('0') ? '6' + 
 const showPhone = (p) => { const d = digits(p); return /^01\d{8,9}$/.test(d) ? `${d.slice(0, 3)}-${d.slice(3, 6)} ${d.slice(6)}` : (p || ''); };
 
 // ----- state -----
+let allOwners = [], projects = [];
+const savedProject = (() => { try { return Number(localStorage.getItem('upc-project')) || null; } catch (e) { return null; } })();
+const F = { project: savedProject, axis: null, month: null, block: 'all', type: 'all', view: 'all', q: '', mode: 'status', shown: PAGE };
+const curProject = () => projects.find((p) => p.id === F.project) || projects[0] || null;
+const projTypes = () => (curProject() ? curProject().types : []);
+// the owners of the project that is open; everything on the page (numbers, charts, list) is about these
 let owners = [];
-const F = { axis: null, month: null, block: 'all', line: 'all', view: 'all', q: '', mode: 'status', shown: PAGE };
+const suffixOf = (unit) => { const u = String(unit || '').trim().toUpperCase(); return u.includes('-') ? u.split('-').pop() : u.slice(-2); };
+const typeOf = (unit, types) => { const sfx = suffixOf(unit); const t = (types || []).find((x) => x.suffixes.includes(sfx)); return t ? t.code : ''; };
+const blockOf = (o) => (o.unit.includes('-') ? o.unit.split('-')[0] : '');
 const isLate = (o) => !!o.nextFollowup && daysTo(o.nextFollowup) <= 0 && o.status !== 'own' && o.status !== 'listed';
 
-// ----- hexagon -----
-const R = 118, pt = (i, r) => { const a = (-90 + i * 60) * Math.PI / 180; return [Math.cos(a) * r, Math.sin(a) * r]; };
-$('rings').innerHTML = [25, 50, 75, 100].map((p) => `<polygon class="ring ${p === 100 ? 'outer' : ''}" points="${[0, 1, 2, 3, 4, 5].map((i) => pt(i, R * p / 100).join(',')).join(' ')}"/>`).join('');
-$('spokes').innerHTML = [0, 1, 2, 3, 4, 5].map((i) => `<line class="spoke" x1="0" y1="0" x2="${pt(i, R)[0]}" y2="${pt(i, R)[1]}"/>`).join('');
-let shownPoly = [8, 8, 8, 8, 8, 8], raf;
+// ----- hexagon (status: always 6 corners; type: one corner per unit type of the open project) -----
+const R = 118, pt = (i, n, r) => { const a = (-90 + i * 360 / n) * Math.PI / 180; return [Math.cos(a) * r, Math.sin(a) * r]; };
+let shownPoly = [], raf;
 function axisDefs() {
     return F.mode === 'status'
         ? STATUS_KEYS.map((k) => ({ key: k, name: STATUS[k][0], n: owners.filter((o) => o.status === k).length }))
-        : TYPES.map((k) => ({ key: k, name: 'Type ' + k, n: owners.filter((o) => o.type === k).length }));
+        : projTypes().map((t) => ({ key: t.code, name: 'Type ' + t.code, n: owners.filter((o) => o.type === t.code).length }));
 }
 function drawPoly(v) {
-    $('poly').setAttribute('points', v.map((p, i) => pt(i, R * p / 100).map((n) => n.toFixed(1)).join(',')).join(' '));
-    $('dots').innerHTML = v.map((p, i) => `<circle class="dot" cx="${pt(i, R * p / 100)[0]}" cy="${pt(i, R * p / 100)[1]}" r="4"/>`).join('');
+    const n = v.length;
+    $('poly').setAttribute('points', v.map((p, i) => pt(i, n, R * p / 100).map((x) => x.toFixed(1)).join(',')).join(' '));
+    $('dots').innerHTML = v.map((p, i) => `<circle class="dot" cx="${pt(i, n, R * p / 100)[0]}" cy="${pt(i, n, R * p / 100)[1]}" r="4"/>`).join('');
 }
 function renderAxes(defs) {
-    $('axes').innerHTML = defs.map((d, i) => { const [x, y] = pt(i, R + 30); return `<g class="axis ${F.axis === d.key ? 'on' : ''}" data-k="${esc(d.key)}">
+    const n = defs.length;
+    $('rings').innerHTML = n < 3 ? '' : [25, 50, 75, 100].map((p) => `<polygon class="ring ${p === 100 ? 'outer' : ''}" points="${defs.map((_, i) => pt(i, n, R * p / 100).join(',')).join(' ')}"/>`).join('');
+    $('spokes').innerHTML = n < 3 ? '' : defs.map((_, i) => `<line class="spoke" x1="0" y1="0" x2="${pt(i, n, R)[0]}" y2="${pt(i, n, R)[1]}"/>`).join('');
+    $('axes').innerHTML = defs.map((d, i) => { const [x, y] = n < 3 ? [(i - (n - 1) / 2) * 90, 0] : pt(i, n, R + 30); return `<g class="axis ${F.axis === d.key ? 'on' : ''}" data-k="${esc(d.key)}">
         <rect class="hit" x="${x - 34}" y="${y - 22}" width="68" height="44" rx="10"/><text class="nm" x="${x}" y="${y - 5}">${esc(d.name)}</text><text class="ct" x="${x}" y="${y + 12}">${d.n.toLocaleString()}</text></g>`; }).join('');
 }
 function updateHex() {
-    const defs = axisDefs(), max = Math.max(1, ...defs.map((d) => d.n));
+    const defs = axisDefs(), max = Math.max(1, ...defs.map((d) => d.n)), n = defs.length, pr = curProject();
     $('hexTitle').textContent = F.mode === 'status' ? '业主状态分布' : '户型分布';
     renderAxes(defs);
+    const unsorted = F.mode === 'type' ? owners.filter((o) => !projTypes().some((t) => t.code === o.type)).length : 0;
+    $('hint').textContent = F.mode === 'type' && !n ? '这个项目还没有设定户型，点上面的 ⚙ 去设定'
+        : F.mode === 'type' && n < 3 ? `这个项目只有 ${n} 种户型` : '点六边形的任何一个角，下面的清单就只看那一类'
+        + (unsorted ? `（还有 ${unsorted} 户没有户型）` : '');
+    $('hexShape').style.display = n < 3 ? 'none' : '';
+    if (n < 3) { shownPoly = []; return; }
     const to = defs.map((d) => Math.max(8, Math.sqrt(d.n / max) * 100));
+    if (shownPoly.length !== n) shownPoly = to.map(() => 8);
     cancelAnimationFrame(raf); const from = shownPoly.slice(), t0 = performance.now();
     const step = (t) => { const k = Math.min(1, (t - t0) / 450), e = 1 - Math.pow(1 - k, 3); shownPoly = from.map((f, i) => f + (to[i] - f) * e); drawPoly(shownPoly); if (k < 1) raf = requestAnimationFrame(step); };
     raf = requestAnimationFrame(step);
 }
 $('axes').addEventListener('click', (e) => { const g = e.target.closest('.axis'); if (!g) return; F.axis = F.axis === g.dataset.k ? null : g.dataset.k; F.shown = PAGE; renderAxes(axisDefs()); renderList(); });
-$('mode').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.mode = b.dataset.m; F.axis = null; F.shown = PAGE; document.querySelectorAll('#mode button').forEach((x) => x.classList.toggle('on', x === b)); updateHex(); renderList(); });
+$('mode').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.mode = b.dataset.m; F.axis = null; F.shown = PAGE; shownPoly = []; document.querySelectorAll('#mode button').forEach((x) => x.classList.toggle('on', x === b)); updateHex(); renderList(); });
 
 // ----- timeline -----
 const monthIdx = (s) => (day(s).getFullYear() - TODAY.getFullYear()) * 12 + day(s).getMonth() - TODAY.getMonth();
@@ -328,12 +379,17 @@ function renderViews() {
 }
 $('views').addEventListener('click', (e) => { const b = e.target.closest('.f'); if (!b) return; F.view = b.dataset.v; F.shown = PAGE; renderViews(); renderList(); });
 const bindChips = (id, key, attr) => $(id).addEventListener('click', (e) => { const b = e.target.closest('.f'); if (!b) return; F[key] = b.dataset[attr]; document.querySelectorAll('#' + id + ' .f').forEach((x) => x.classList.toggle('on', x === b)); F.shown = PAGE; renderList(); });
-bindChips('blocks', 'block', 'b'); bindChips('lines', 'line', 'l');
+function renderChips() {
+    const blocks = [...new Set(owners.map(blockOf).filter(Boolean))].sort();
+    $('blocks').innerHTML = blocks.length > 1 ? [`<button class="f ${F.block === 'all' ? 'on' : ''}" data-b="all">全部栋</button>`, ...blocks.map((b) => `<button class="f ${F.block === b ? 'on' : ''}" data-b="${esc(b)}">${esc(b)} 栋</button>`)].join('') : '';
+    const types = projTypes();
+    $('types').innerHTML = types.length ? [`<button class="f ${F.type === 'all' ? 'on' : ''}" data-t="all">全部户型</button>`, ...types.map((t) => `<button class="f ${F.type === t.code ? 'on' : ''}" data-t="${esc(t.code)}">Type ${esc(t.code)}${t.note ? ' · ' + esc(t.note) : ''}</button>`)].join('') : '';
+}
+bindChips('blocks', 'block', 'b'); bindChips('types', 'type', 't');
 let qTimer; $('q').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(() => { F.q = $('q').value.trim().toLowerCase(); F.shown = PAGE; renderList(); }, 120); });
 $('clear').addEventListener('click', () => {
-    Object.assign(F, { axis: null, month: null, block: 'all', line: 'all', view: 'all', q: '', shown: PAGE }); $('q').value = '';
-    document.querySelectorAll('#blocks .f').forEach((x) => x.classList.toggle('on', x.dataset.b === 'all')); document.querySelectorAll('#lines .f').forEach((x) => x.classList.toggle('on', x.dataset.l === 'all'));
-    renderViews(); renderAxes(axisDefs()); renderTl(); renderList();
+    Object.assign(F, { axis: null, month: null, block: 'all', type: 'all', view: 'all', q: '', shown: PAGE }); $('q').value = '';
+    renderChips(); renderViews(); renderAxes(axisDefs()); renderTl(); renderList();
 });
 
 // ----- list -----
@@ -341,8 +397,8 @@ const rank = (o) => (isLate(o) ? 0 : o.nextFollowup ? 1 : o.tenancyEnd ? 2 : 3);
 function matches(o) {
     if (F.axis && (F.mode === 'status' ? o.status !== F.axis : o.type !== F.axis)) return false;
     if (F.month !== null && !(o.tenancyEnd && monthIdx(o.tenancyEnd) === F.month)) return false;
-    if (F.block !== 'all' && o.unit[0] !== F.block) return false;
-    if (F.line !== 'all' && o.line !== F.line) return false;
+    if (F.block !== 'all' && blockOf(o) !== F.block) return false;
+    if (F.type !== 'all' && o.type !== F.type) return false;
     if (F.view === 'late' && !isLate(o)) return false;
     if (F.view === 'dated' && !o.tenancyEnd) return false;
     if (F.q) {
@@ -356,7 +412,7 @@ function card(o) {
     const wa = digits(o.phone) ? `<a class="act wa" href="https://wa.me/${waNumber(o.phone)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i>WhatsApp</a><a class="act ic" href="tel:+${waNumber(o.phone)}" aria-label="Call"><i class="fa-solid fa-phone"></i></a>` : '';
     return `<article class="li glass" style="--c:${c};--s:${s[1]}" data-id="${o.id}">
         <div class="li-top"><div style="min-width:0;flex:1">
-            <div class="unit">${esc(o.unit)}${o.unit[0] ? `<span class="tag">${esc(o.unit[0])} 栋</span>` : ''}${o.type ? `<span class="tag type">Type ${esc(o.type)}</span>` : ''}</div>
+            <div class="unit">${esc(o.unit)}${blockOf(o) ? `<span class="tag">${esc(blockOf(o))} 栋</span>` : ''}${o.type ? `<span class="tag type">Type ${esc(o.type)}</span>` : ''}</div>
             <div class="own"><span><i class="fa-solid fa-user"></i>${esc(o.name) || '—'}</span>${o.phone ? `<span><i class="fa-solid fa-phone"></i>${esc(showPhone(o.phone))}</span>` : ''}</div></div>
             <span class="st">${s[0]}</span></div>
         ${o.tenancyEnd ? `<div class="li-mid"><i class="fa-solid fa-key" style="color:${c}"></i><span class="t">租约 ${fmt(o.tenancyEnd)} 到期</span><span class="x" style="color:${c}">${daysTo(o.tenancyEnd) < 0 ? left(daysTo(o.tenancyEnd)) : '还有 ' + left(daysTo(o.tenancyEnd))}</span></div>` : ''}
@@ -367,11 +423,11 @@ function card(o) {
     </article>`;
 }
 function renderList() {
-    const filtered = !!(F.axis || F.month !== null || F.block !== 'all' || F.line !== 'all' || F.view !== 'all' || F.q);
+    const filtered = !!(F.axis || F.month !== null || F.block !== 'all' || F.type !== 'all' || F.view !== 'all' || F.q);
     const rows = owners.filter(matches).sort((a, b) => rank(a) - rank(b) || (a.nextFollowup || a.tenancyEnd || '9').localeCompare(b.nextFollowup || b.tenancyEnd || '9') || a.unit.localeCompare(b.unit));
     $('clear').hidden = !filtered;
     $('listTitle').textContent = filtered ? `筛选结果 · ${rows.length.toLocaleString()} 户` : 'Follow-up 清单 · 先看该跟进的';
-    $('sub').textContent = `${owners.length.toLocaleString()} 位业主`;
+    $('sub').textContent = `${curProject() ? curProject().name + ' · ' : ''}${owners.length.toLocaleString()} 位业主`;
     const part = rows.slice(0, F.shown);
     $('list').innerHTML = part.map(card).join('')
         + (rows.length > part.length ? `<button class="more" id="more">再显示 ${Math.min(PAGE, rows.length - part.length)} 户（还有 ${(rows.length - part.length).toLocaleString()} 户）</button>` : '')
@@ -385,7 +441,9 @@ $('list').addEventListener('click', (e) => {
 });
 
 // ----- summary numbers -----
+function syncOwners() { const pr = curProject(); owners = pr ? allOwners.filter((o) => o.projectId === pr.id) : []; }
 function renderAll() {
+    syncOwners(); renderProjects(); renderChips();
     $('sTotal').textContent = owners.length.toLocaleString();
     $('sTrack').textContent = owners.filter((o) => o.tenancyEnd).length.toLocaleString();
     $('sLate').textContent = owners.filter(isLate).length.toLocaleString();
@@ -406,15 +464,25 @@ function askSave(text) {
 
 // ----- add / edit -----
 let current = null, formSnap = '';
-$('f-type').innerHTML = '<option value="">—</option>' + TYPES.map((t) => `<option value="${t}">Type ${t}</option>`).join('');
-$('f-line').innerHTML = '<option value="">—</option>' + Object.entries(LINES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+function fillTypeSelect(projectId, keep) {
+    const pr = projects.find((x) => x.id === Number(projectId)), types = pr ? pr.types : [];
+    $('f-type').innerHTML = '<option value="">—</option>' + types.map((t) => `<option value="${esc(t.code)}">Type ${esc(t.code)}${t.note ? ' · ' + esc(t.note) : ''}</option>`).join('')
+        + (keep && !types.some((t) => t.code === keep) ? `<option value="${esc(keep)}">Type ${esc(keep)}</option>` : '');
+    $('f-type').value = keep || '';
+}
+// typing the unit number picks the type from its ending (B-48-03 -> 03 -> A1)
+$('f-unit').addEventListener('input', () => { const pr = projects.find((x) => x.id === Number($('f-project').value)); const t = pr ? typeOf($('f-unit').value, pr.types) : ''; if (t) $('f-type').value = t; });
+$('f-project').addEventListener('change', () => { fillTypeSelect($('f-project').value, ''); const pr = projects.find((x) => x.id === Number($('f-project').value)); const t = pr ? typeOf($('f-unit').value, pr.types) : ''; if (t) $('f-type').value = t; });
 $('f-status').innerHTML = STATUS_KEYS.map((k) => `<option value="${k}">${STATUS[k][0]}</option>`).join('');
-const FIELDS = ['f-unit', 'f-type', 'f-line', 'f-name', 'f-phone', 'f-status', 'f-end', 'f-next', 'f-note'];
+const FIELDS = ['f-project', 'f-unit', 'f-type', 'f-name', 'f-phone', 'f-status', 'f-end', 'f-next', 'f-note'];
 const formState = () => JSON.stringify(FIELDS.map((k) => $(k).value));
 function openForm(o) {
     current = o || null; const v = o || { status: 'none' };
     $('fTitle').textContent = o ? 'Edit · ' + o.unit : 'New owner';
-    $('f-unit').value = v.unit || ''; $('f-type').value = v.type || ''; $('f-line').value = v.line || ''; $('f-name').value = v.name || ''; $('f-phone').value = v.phone || '';
+    $('f-project').innerHTML = projects.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+    $('f-project').value = String(v.projectId || (curProject() && curProject().id) || '');
+    fillTypeSelect($('f-project').value, v.type || '');
+    $('f-unit').value = v.unit || ''; $('f-name').value = v.name || ''; $('f-phone').value = v.phone || '';
     $('f-status').value = v.status || 'none'; $('f-end').value = v.tenancyEnd || ''; $('f-next').value = v.nextFollowup || ''; $('f-note').value = v.note || '';
     $('delBtn').classList.toggle('hidden', !o);
     $('sheet').classList.remove('hidden'); $('sheet').scrollTop = 0; document.body.style.overflow = 'hidden';
@@ -428,20 +496,21 @@ async function requestClose() {
     if (r === 'discard') return closeForm();
 }
 async function save() {
-    const body = { unit: $('f-unit').value, type: $('f-type').value, line: $('f-line').value, name: $('f-name').value, phone: $('f-phone').value, status: $('f-status').value,
+    const body = { projectId: Number($('f-project').value), unit: $('f-unit').value, type: $('f-type').value, name: $('f-name').value, phone: $('f-phone').value, status: $('f-status').value,
         tenancyEnd: $('f-end').value || null, nextFollowup: $('f-next').value || null, note: $('f-note').value };
     try {
         await trkSaving.run(async () => {
             const out = current ? await api('PUT', 'upcoming/' + current.id, body) : await api('POST', 'upcoming', body);
-            const i = owners.findIndex((x) => x.id === out.owner.id);
-            if (i >= 0) owners[i] = out.owner; else owners.push(out.owner);
+            const i = allOwners.findIndex((x) => x.id === out.owner.id);
+            if (i >= 0) allOwners[i] = out.owner; else allOwners.push(out.owner);
+            F.project = out.owner.projectId;
         });
         closeForm(); renderAll(); toast('Saved');
     } catch (e) { toast(e.message); }
 }
 async function removeOwner() {
     if (!current || !confirm(`Delete ${current.unit}? This cannot be undone.`)) return;
-    try { await api('DELETE', 'upcoming/' + current.id); owners = owners.filter((x) => x.id !== current.id); closeForm(); renderAll(); toast('Deleted'); } catch (e) { toast(e.message); }
+    try { await api('DELETE', 'upcoming/' + current.id); allOwners = allOwners.filter((x) => x.id !== current.id); closeForm(); renderAll(); toast('Deleted'); } catch (e) { toast(e.message); }
 }
 $('closeBtn').addEventListener('click', requestClose); $('saveBtn').addEventListener('click', save); $('delBtn').addEventListener('click', removeOwner);
 $('addTop').addEventListener('click', () => openForm()); $('fab').addEventListener('click', () => openForm());
@@ -467,16 +536,81 @@ $('fdOk').addEventListener('click', async () => {
     try {
         await trkSaving.run(async () => {
             const out = await api('POST', `upcoming/${fdOwner.id}/followed`, { nextFollowup: $('fd-next').value || null, note: $('fd-note').value });
-            const i = owners.findIndex((x) => x.id === out.owner.id); if (i >= 0) owners[i] = out.owner;
+            const i = allOwners.findIndex((x) => x.id === out.owner.id); if (i >= 0) allOwners[i] = out.owner;
         });
         $('fdlg').classList.add('hidden'); renderAll(); toast('已记下');
     } catch (e) { toast(e.message); }
 });
 
+// ----- projects: switch, add, edit the unit types -----
+function renderProjects() {
+    const cur = curProject();
+    $('projects').innerHTML = projects.map((p) => `<button class="proj ${cur && cur.id === p.id ? 'on' : ''}" data-id="${p.id}">${esc(p.name)}<b>${allOwners.filter((o) => o.projectId === p.id).length.toLocaleString()}</b></button>`).join('')
+        + (cur ? '<button class="proj-gear" id="projGear" aria-label="Edit project"><i class="fa-solid fa-gear"></i></button>' : '')
+        + '<button class="proj add" id="projAdd"><i class="fa-solid fa-plus"></i>项目</button>';
+}
+$('projects').addEventListener('click', (e) => {
+    const b = e.target.closest('.proj[data-id]');
+    if (b) {
+        F.project = Number(b.dataset.id); try { localStorage.setItem('upc-project', F.project); } catch (x) { /* private mode */ }
+        Object.assign(F, { axis: null, month: null, block: 'all', type: 'all', view: 'all', q: '', shown: PAGE }); $('q').value = ''; shownPoly = [];
+        renderAll(); return;
+    }
+    if (e.target.closest('#projGear')) openProject(curProject()); else if (e.target.closest('#projAdd')) openProject(null);
+});
+
+let editingProject = null, pSnap = '';
+const pState = () => JSON.stringify([$('p-name').value, $('pApply').checked, readTypeRows()]);
+function readTypeRows() { return [...document.querySelectorAll('#pTypes .trow')].map((r) => ({ code: r.querySelector('[data-f="code"]').value.trim(), suffixes: r.querySelector('[data-f="suffixes"]').value, note: r.querySelector('[data-f="note"]').value.trim() })); }
+function typeRow(t) {
+    return `<div class="trow"><input class="field" data-f="code" maxlength="8" placeholder="A1" value="${esc(t.code)}" autocapitalize="characters">
+        <input class="field" data-f="suffixes" placeholder="尾号，例如 03, 03A" value="${esc((t.suffixes || []).join(', '))}" autocapitalize="characters">
+        <button type="button" class="tdel" aria-label="删除这个户型"><i class="fa-solid fa-xmark"></i></button>
+        <input class="field tnote" data-f="note" maxlength="200" placeholder="备注，例如 2 房 · 788 sqft（可以不写）" value="${esc(t.note || '')}"></div>`;
+}
+function openProject(pr) {
+    editingProject = pr;
+    $('pTitle').textContent = pr ? 'Edit · ' + pr.name : 'New project';
+    $('p-name').value = pr ? pr.name : '';
+    $('pTypes').innerHTML = (pr && pr.types.length ? pr.types : [{ code: '', suffixes: [], note: '' }]).map(typeRow).join('');
+    $('pApply').checked = true; $('pApplyRow').classList.toggle('hidden', !pr);
+    $('pDel').classList.toggle('hidden', !pr);
+    $('psheet').classList.remove('hidden'); $('psheet').scrollTop = 0; document.body.style.overflow = 'hidden';
+    pSnap = pState();
+}
+function closeProject() { $('psheet').classList.add('hidden'); document.body.style.overflow = ''; }
+async function requestCloseProject() {
+    if (pState() === pSnap) return closeProject();
+    const r = await askSave('这个项目的设定你改过了，还没有保存。要保存吗？');
+    if (r === 'save') return saveProject();
+    if (r === 'discard') return closeProject();
+}
+async function saveProject() {
+    const body = { name: $('p-name').value, types: readTypeRows(), applyTypes: !!editingProject && $('pApply').checked };
+    try {
+        await trkSaving.run(async () => {
+            const out = editingProject ? await api('PUT', 'upcoming-projects/' + editingProject.id, body) : await api('POST', 'upcoming-projects', body);
+            F.project = out.project.id; try { localStorage.setItem('upc-project', F.project); } catch (x) { /* private mode */ }
+            const d = await api('GET', 'upcoming'); projects = d.projects; allOwners = d.owners;   // the types of many units may have changed
+        });
+        closeProject(); F.type = 'all'; F.axis = null; shownPoly = []; renderAll(); toast('Saved');
+    } catch (e) { toast(e.message); }
+}
+async function removeProject() {
+    if (!editingProject || !confirm(`Delete project ${editingProject.name}? This cannot be undone.`)) return;
+    try {
+        await api('DELETE', 'upcoming-projects/' + editingProject.id);
+        projects = projects.filter((p) => p.id !== editingProject.id); F.project = null; closeProject(); renderAll(); toast('Deleted');
+    } catch (e) { toast(e.message); }
+}
+$('pAddType').addEventListener('click', () => { $('pTypes').insertAdjacentHTML('beforeend', typeRow({ code: '', suffixes: [], note: '' })); $('pTypes').lastElementChild.querySelector('input').focus(); });
+$('pTypes').addEventListener('click', (e) => { const d = e.target.closest('.tdel'); if (d) d.closest('.trow').remove(); });
+$('pClose').addEventListener('click', requestCloseProject); $('pSave').addEventListener('click', saveProject); $('pDel').addEventListener('click', removeProject);
+
 // ----- start: skeleton while the list loads -----
 $('list').innerHTML = Array.from({ length: 3 }, () => '<div class="li glass"><div class="sk" style="height:1.2rem;width:45%"></div><div class="sk" style="height:.8rem;width:70%;margin-top:.6rem"></div><div class="sk" style="height:2.2rem;margin-top:.9rem;border-radius:.9rem"></div><div class="sk" style="height:2.4rem;margin-top:.8rem;border-radius:.9rem"></div></div>').join('');
 $('tl').innerHTML = Array.from({ length: 12 }, (_, i) => `<div class="m"><div class="sk" style="width:100%;height:${20 + (i * 37) % 55}%"></div></div>`).join('');
-api('GET', 'upcoming').then((d) => { owners = d.owners; renderAll(); })
+api('GET', 'upcoming').then((d) => { projects = d.projects; allOwners = d.owners; renderAll(); })
     .catch((e) => { $('list').innerHTML = `<p class="empty" style="color:#fca5a5">${esc(e.message)}</p>`; });
 </script>
 </body>

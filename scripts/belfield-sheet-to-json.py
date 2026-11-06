@@ -155,7 +155,8 @@ def sheet_rows(rows):
         yield {'unit': unit, 'name': clean_name(get('name'), unit), 'phone': get('tel'), 'type': get('type'), 'status': get('status'), 'notes': '\n'.join(extra)}
 
 
-TYPE_BY_SUFFIX = {}
+# Sunway Belfield Residence floor plan: the unit-number ending decides the type
+TYPE_BY_SUFFIX = {'03': 'A1', '03A': 'A2', '08': 'B', '09': 'B', '01': 'C', '06': 'C', '02': 'D', '05': 'D', '07': 'E', '10': 'E'}
 
 
 def main(src, dst):
@@ -178,13 +179,6 @@ def main(src, dst):
                 o['notes'].append(r['notes'])
             if line in ('2R', '4R') or not o['line']:
                 o['line'] = line if line != 'SEND' else o['line']
-    seen = {}
-    for o in owners.values():
-        t = o['type'].upper().replace(' ', '')
-        if t in ('C', 'D', 'E', 'F', 'C/E', 'D/F'):
-            seen.setdefault(o['unit'].split('-')[2], {}).setdefault(t, 0)
-            seen[o['unit'].split('-')[2]][t] += 1
-    TYPE_BY_SUFFIX.update({k: max(v, key=v.get) for k, v in seen.items() if max(v.values()) >= 0.95 * sum(v.values())})
     out = []
     for o in owners.values():
         notes = '\n'.join(o['notes'])
@@ -199,7 +193,7 @@ def main(src, dst):
         note = '\n'.join(x for x in [o['status_col'] if o['status_col'] and o['status_col'].lower() not in notes.lower() else '', notes] if x)
         nxt = (end - timedelta(days=60)).isoformat() if end and status == 'tenant' else None
         suffix = o['unit'].split('-')[2]
-        out.append({'unit': o['unit'], 'name': o['name'], 'phone': phone, 'type': t or TYPE_BY_SUFFIX.get(suffix, ''),
+        out.append({'unit': o['unit'], 'name': o['name'], 'phone': phone, 'type': TYPE_BY_SUFFIX.get(suffix, ''),
                     'line': '2R' if suffix in ('03', '03A') else '4R' if suffix in ('07', '10') else 'BIG',
                     'status': status, 'tenancyEnd': end.isoformat() if end else None, 'nextFollowup': nxt, 'note': note})
     out.sort(key=lambda x: x['unit'])
