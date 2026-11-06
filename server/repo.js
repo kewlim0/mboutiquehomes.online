@@ -30,7 +30,7 @@ const DEFAULT_HIGHLIGHTS = [
   { zh: '24小时安保', en: '24-hour Security' }, { zh: '直通 MRT 车站', en: 'Direct MRT Access' },
 ];
 
-function mapProperty(r, photos) {
+function mapProperty(r, photos, videos) {
   // Bedrooms / bathrooms come from the two dropdowns; older rows that could not be read keep their stored text
   const structured = r.bedrooms && r.bathrooms ? v.bedsText(r.bedrooms, r.bathrooms) : null;
   return {
@@ -52,6 +52,7 @@ function mapProperty(r, photos) {
     availableFrom: r.available_from_str || null,   // 'YYYY-MM-DD': the home can be moved into from this day (shown while it is still in the future)
     img: r.img,
     photos: photos && photos.length ? photos : [r.img],
+    videos: videos || [],   // [{ src, poster }]: converted MP4 files with a still picture
     status: pair(r.status_zh, r.status_en),
     desc: pair(r.description_zh || '', r.description_en),
   };
@@ -90,6 +91,34 @@ async function photosByProperty() {
   for (const row of rows) {
     if (!map.has(row.property_id)) map.set(row.property_id, []);
     map.get(row.property_id).push(row.img);
+  }
+  return map;
+}
+
+// Videos per listing (MP4 made by server/videos.js). Created on first use, like the photos table.
+let videosReady = null;
+
+function ensurePropertyVideos() {
+  if (videosReady) return videosReady;
+  videosReady = pool.query(`CREATE TABLE IF NOT EXISTS property_videos (
+    id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    property_id INT UNSIGNED NOT NULL,
+    src         VARCHAR(600) NOT NULL,
+    poster      VARCHAR(600) NOT NULL DEFAULT '',
+    sort_order  INT NOT NULL DEFAULT 0,
+    KEY idx_property_videos (property_id, sort_order),
+    CONSTRAINT fk_property_videos_property FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`).catch((err) => { videosReady = null; throw err; });
+  return videosReady;
+}
+
+async function videosByProperty() {
+  await ensurePropertyVideos();
+  const [rows] = await pool.query('SELECT property_id, src, poster FROM property_videos ORDER BY property_id, sort_order, id');
+  const map = new Map();
+  for (const row of rows) {
+    if (!map.has(row.property_id)) map.set(row.property_id, []);
+    map.get(row.property_id).push({ src: row.src, poster: row.poster });
   }
   return map;
 }
@@ -143,39 +172,55 @@ async function getPropertyByCode(code) { return getOneProperty('code', code); }
 async function getOneProperty(column, value) {
   await ensurePropertyColumns();
   await ensurePropertyPhotos();
+  await ensurePropertyVideos();
   const [rows] = await pool.query(`SELECT *, DATE_FORMAT(available_from, '%Y-%m-%d') AS available_from_str FROM properties WHERE ${column === 'code' ? 'code' : 'id'} = ?`, [value]);
   if (!rows.length) return null;
   const id = rows[0].id;
   const [photos] = await pool.query('SELECT img FROM property_photos WHERE property_id = ? ORDER BY sort_order, id', [id]);
-  return mapProperty(rows[0], photos.map((p) => p.img));
+  const [videos] = await pool.query('SELECT src, poster FROM property_videos WHERE property_id = ? ORDER BY sort_order, id', [id]);
+  return mapProperty(rows[0], photos.map((p) => p.img), videos);
 }
 
 async function getContent() {
   await ensurePropertyColumns();
   const [props] = await pool.query("SELECT *, DATE_FORMAT(available_from, '%Y-%m-%d') AS available_from_str FROM properties ORDER BY sort_order ASC, id DESC");
   const photoMap = await photosByProperty();
+  const videoMap = await videosByProperty();
   const [team] = await pool.query('SELECT * FROM team ORDER BY sort_order ASC, id ASC');
   // `img` is the default banner; `banners` are the active scheduled ones (the page picks one by date and day/night)
   const banners = (await listHeroBanners()).filter((b) => b.active);
-  return { hero: { img: await getHero(), banners }, properties: props.map((p) => mapProperty(p, photoMap.get(p.id))), team: team.map(mapTeam) };
+  return { hero: { img: await getHero(), banners }, properties: props.map((p) => mapProperty(p, photoMap.get(p.id), videoMap.get(p.id))), team: team.map(mapTeam) };
 }
 
 // ---------- uploaded-file cleanup ----------
 // Remove an uploaded file once nothing in the database points to it any more.
 async function removeIfOrphan(imgPath) {
-  if (!/^uploads\/[a-f0-9]+\.(jpg|png|webp|gif)$/.test(imgPath || '')) return;
+  if (!/^uploads\/[a-f0-9]+\.(jpg|png|webp|gif|mp4)$/.test(imgPath || '')) return;
   await ensureHeroBanners();
   await ensurePropertyPhotos();
+  await ensurePropertyVideos();
   const [rows] = await pool.query(
     `SELECT (SELECT COUNT(*) FROM properties WHERE img = ?)
           + (SELECT COUNT(*) FROM property_photos WHERE img = ?)
+          + (SELECT COUNT(*) FROM property_videos WHERE src = ? OR poster = ?)
           + (SELECT COUNT(*) FROM team WHERE img = ?)
           + (SELECT COUNT(*) FROM hero_banners WHERE img = ?)
           + (SELECT COUNT(*) FROM settings WHERE \`value\` = ?) AS n`,
-    [imgPath, imgPath, imgPath, imgPath, imgPath]
+    [imgPath, imgPath, imgPath, imgPath, imgPath, imgPath, imgPath]
   );
   if (Number(rows[0].n) === 0) {
     fs.promises.unlink(path.join(UPLOAD_DIR, path.basename(imgPath))).catch(() => {});
+  }
+}
+
+// Videos that were converted but never saved into a listing (the form was closed) are big: remove them after a day.
+async function sweepAbandonedVideos() {
+  const names = (await fs.promises.readdir(UPLOAD_DIR).catch(() => [])).filter((n) => /^[a-f0-9]{32}\.mp4$/.test(n));
+  for (const name of names) {
+    const stat = await fs.promises.stat(path.join(UPLOAD_DIR, name)).catch(() => null);
+    if (!stat || Date.now() - stat.mtimeMs < 24 * 3600 * 1000) continue;
+    await removeIfOrphan(`uploads/${name}`);
+    await removeIfOrphan(`uploads/${name.replace(/\.mp4$/, '.jpg')}`);
   }
 }
 
@@ -206,9 +251,19 @@ async function writePhotos(conn, propertyId, photos) {
   }
 }
 
+// a listing that did not send `videos` keeps the ones it has
+async function writeVideos(conn, propertyId, videos) {
+  if (videos === undefined) return;
+  await conn.query('DELETE FROM property_videos WHERE property_id = ?', [propertyId]);
+  for (const [i, vd] of videos.entries()) {
+    await conn.query('INSERT INTO property_videos (property_id, src, poster, sort_order) VALUES (?, ?, ?, ?)', [propertyId, vd.src, vd.poster, i]);
+  }
+}
+
 async function createProperty(p) {
   await ensurePropertyColumns();
   await ensurePropertyPhotos();
+  await ensurePropertyVideos();
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -223,6 +278,7 @@ async function createProperty(p) {
     await conn.query('UPDATE properties SET code = ? WHERE id = ?', [newCode(), res.insertId]);
     await writeExtras(conn, res.insertId, p);
     await writePhotos(conn, res.insertId, p.photos);
+    await writeVideos(conn, res.insertId, p.videos);
     await conn.commit();
     return res.insertId;
   } catch (err) {
@@ -236,10 +292,12 @@ async function createProperty(p) {
 async function updateProperty(id, p) {
   await ensurePropertyColumns();
   await ensurePropertyPhotos();
+  await ensurePropertyVideos();
   const [old] = await pool.query('SELECT img FROM properties WHERE id = ?', [id]);
   if (!old.length) return false;
   const [oldPhotos] = await pool.query('SELECT img FROM property_photos WHERE property_id = ?', [id]);
-  const before = new Set([old[0].img, ...oldPhotos.map((x) => x.img)]);
+  const [oldVideos] = await pool.query('SELECT src, poster FROM property_videos WHERE property_id = ?', [id]);
+  const before = new Set([old[0].img, ...oldPhotos.map((x) => x.img), ...oldVideos.flatMap((x) => [x.src, x.poster])]);
 
   const conn = await pool.getConnection();
   try {
@@ -252,6 +310,7 @@ async function updateProperty(id, p) {
     );
     await writeExtras(conn, id, p);
     await writePhotos(conn, id, p.photos);
+    await writeVideos(conn, id, p.videos);
     await conn.commit();
   } catch (err) {
     await conn.rollback();
@@ -260,7 +319,8 @@ async function updateProperty(id, p) {
     conn.release();
   }
   // delete the files of pictures that were taken out of the listing (when nothing else uses them)
-  for (const img of before) if (!p.photos.includes(img)) await removeIfOrphan(img);
+  const keep = new Set([...p.photos, ...(p.videos === undefined ? oldVideos : p.videos).flatMap((x) => [x.src, x.poster])]);
+  for (const img of before) if (!keep.has(img)) await removeIfOrphan(img);
   return true;
 }
 
@@ -287,10 +347,12 @@ async function setPropertyOrder(ids) {
 
 async function deleteProperty(id) {
   await ensurePropertyPhotos();
+  await ensurePropertyVideos();
   const [old] = await pool.query('SELECT img FROM properties WHERE id = ?', [id]);
   if (!old.length) return false;
   const [photos] = await pool.query('SELECT img FROM property_photos WHERE property_id = ?', [id]);
-  const files = new Set([old[0].img, ...photos.map((x) => x.img)]);
+  const [videos] = await pool.query('SELECT src, poster FROM property_videos WHERE property_id = ?', [id]);
+  const files = new Set([old[0].img, ...photos.map((x) => x.img), ...videos.flatMap((x) => [x.src, x.poster])]);
   await pool.query('DELETE FROM properties WHERE id = ?', [id]); // the photo rows go with it (ON DELETE CASCADE)
   for (const img of files) await removeIfOrphan(img);
   return true;
@@ -610,5 +672,5 @@ module.exports = {
   createTeamMember, updateTeamMember, deleteTeamMember, setHero, seedDefaults,
   ensureAdmins, listAdmins, getAdmin, getAdminsWithHash, createAdmin, updateAdmin, setAdminPasscode, deleteAdmin,
   touchAdminLogin, setOwnerPasscode,
-  ensurePropertyColumns, ensurePropertyPhotos, ensureHeroBanners, listHeroBanners, createHeroBanner, updateHeroBanner, deleteHeroBanner,
+  ensurePropertyColumns, ensurePropertyPhotos, ensurePropertyVideos, sweepAbandonedVideos, ensureHeroBanners, listHeroBanners, createHeroBanner, updateHeroBanner, deleteHeroBanner,
 };

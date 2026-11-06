@@ -310,6 +310,7 @@ const uiText = {
         sold: "已售出",
         rented: "已出租",
         linkCopied: "链接已复制，可以发给朋友了",
+        videoBtn: "视频",
         downloadPhotos: "下载全部照片",
         downloading: "正在打包照片…",
         photosPreparing: "照片准备中，稍等一下再点",
@@ -335,6 +336,7 @@ const uiText = {
         sold: "Sold",
         rented: "Rented",
         linkCopied: "Link copied. Send it to a friend!",
+        videoBtn: "Videos",
         downloadPhotos: "Download all photos",
         downloading: "Preparing photos…",
         photosPreparing: "Getting the photos ready, tap again in a moment",
@@ -879,6 +881,9 @@ function openDetailModal(item, instant = false) {
     document.getElementById('modalLocation').innerHTML = `<i class="fa-solid fa-location-dot text-gold-600 mr-1"></i> ${esc(item.address)}`;
     document.getElementById('shareBtnLabel').textContent = ui('copyLink');
     document.getElementById('dlPhotosBtn').setAttribute('aria-label', ui('downloadPhotos'));
+    const vids = item.videos || [], vBtn = document.getElementById('videoBtn');
+    vBtn.classList.toggle('hidden', !vids.length);
+    document.getElementById('videoBtnLabel').textContent = `${ui('videoBtn')}${vids.length > 1 ? ' · ' + vids.length : ''}`;
     document.getElementById('copyDescBtn').setAttribute('aria-label', ui('copyDesc'));
     document.getElementById('modalArea').innerText = formatArea(item.areaSqft);
     document.getElementById('modalBeds').innerHTML = bedsHtml(item, L);
@@ -943,14 +948,18 @@ function updateLightbox() {
     document.getElementById('lbCount').textContent = `${lightboxIndex + 1} / ${lightboxCount}`;
     document.getElementById('lbPrev').disabled = lightboxIndex === 0;
     document.getElementById('lbNext').disabled = lightboxIndex >= lightboxCount - 1;
+    pauseLightboxVideos(track.children[lightboxIndex]?.querySelector('video'));
 }
 
-function openLightbox(photos, index = 0) {
-    if (!lightboxEl || !photos || !photos.length) return;
+// `photos`: picture paths; `videos`: [{ src, poster }] shown after the pictures
+function openLightbox(photos, index = 0, videos = []) {
+    const media = [...(photos || []).map((p) => ({ photo: p })), ...(videos || []).map((vd) => ({ video: vd }))];
+    if (!lightboxEl || !media.length) return;
     const track = document.getElementById('lbTrack');
-    lightboxCount = photos.length;
-    track.innerHTML = photos.map((p, i) => `
-        <div class="lb-slide"><img src="${esc(Store.resolve(p))}" alt="" ${i === index ? '' : 'loading="lazy"'}
+    lightboxCount = media.length;
+    track.innerHTML = media.map((m, i) => m.video
+        ? `<div class="lb-slide lb-video"><video src="${esc(Store.resolve(m.video.src))}" poster="${esc(m.video.poster ? Store.resolve(m.video.poster) : '')}" controls playsinline preload="metadata" controlsList="nodownload"></video></div>`
+        : `<div class="lb-slide"><img src="${esc(Store.resolve(m.photo))}" alt="" ${i === index ? '' : 'loading="lazy"'}
             onerror="this.onerror=null;this.src='https://placehold.co/800x600/1e293b/ffffff?text=Luxe+Property'"></div>`).join('');
     lightboxEl.classList.remove('hidden', 'is-closing');
     track.style.scrollBehavior = 'auto';
@@ -959,8 +968,14 @@ function openLightbox(photos, index = 0) {
     updateLightbox();
 }
 
+// a video must stop when its slide is left or the viewer is closed
+function pauseLightboxVideos(except) {
+    document.querySelectorAll('#lbTrack video').forEach((el) => { if (el !== except) el.pause(); });
+}
+
 function closeLightbox() {
     if (!lightboxEl || lightboxEl.classList.contains('hidden') || lightboxEl.classList.contains('is-closing')) return;
+    pauseLightboxVideos();
     lightboxEl.classList.add('is-closing');
     setTimeout(() => { lightboxEl.classList.add('hidden'); lightboxEl.classList.remove('is-closing'); }, 200);
 }
@@ -973,7 +988,7 @@ if (lightboxEl) {
     document.getElementById('lbPrev').addEventListener('click', () => track.scrollBy({ left: -track.clientWidth, behavior: 'smooth' }));
     document.getElementById('lbNext').addEventListener('click', () => track.scrollBy({ left: track.clientWidth, behavior: 'smooth' }));
     // tapping the dark area around a picture closes the viewer
-    track.addEventListener('click', (e) => { if (e.target.tagName !== 'IMG') closeLightbox(); });
+    track.addEventListener('click', (e) => { if (e.target.tagName !== 'IMG' && e.target.tagName !== 'VIDEO') closeLightbox(); });
     // capture phase: while the viewer is open, Escape / arrows belong to it and not to the sheet underneath
     document.addEventListener('keydown', (e) => {
         if (lightboxEl.classList.contains('hidden')) return;
@@ -990,7 +1005,7 @@ if (modalGalleryEl) {
         const tile = e.target.closest('[data-photo]');
         if (!tile || !currentDetail) return;
         const photos = currentDetail.photos && currentDetail.photos.length ? currentDetail.photos : [currentDetail.img];
-        openLightbox(photos, Number(tile.dataset.photo));
+        openLightbox(photos, Number(tile.dataset.photo), currentDetail.videos);
     });
 }
 
@@ -1145,6 +1160,12 @@ async function downloadAllPhotos() {
 }
 document.getElementById('dlPhotosBtn')?.addEventListener('click', downloadAllPhotos);
 document.getElementById('copyDescBtn')?.addEventListener('click', copyDescription);
+
+document.getElementById('videoBtn')?.addEventListener('click', () => {
+    if (!currentDetail || !(currentDetail.videos || []).length) return;
+    const photos = currentDetail.photos && currentDetail.photos.length ? currentDetail.photos : [currentDetail.img];
+    openLightbox(photos, photos.length, currentDetail.videos);   // opens on the first video
+});
 
 const shareBtn = document.getElementById('shareBtn');
 if (shareBtn) shareBtn.addEventListener('click', shareCurrentListing);

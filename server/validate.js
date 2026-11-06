@@ -72,6 +72,24 @@ function photosFields(b) {
   return { photos: list, img: list[0] };
 }
 
+const MAX_VIDEOS = 10;
+
+// Videos are only the files our own converter made (uploads/<32 hex>.mp4 + poster .jpg); `videos` left out = unchanged
+function videosField(b) {
+  if (b.videos === undefined) return {};
+  if (!Array.isArray(b.videos)) throw new HttpError(400, '视频格式不对');
+  if (b.videos.length > MAX_VIDEOS) throw new HttpError(400, `最多 ${MAX_VIDEOS} 个视频`);
+  const seen = new Set();
+  const list = [];
+  for (const x of b.videos) {
+    const src = String(x && x.src || ''), poster = String(x && x.poster || '');
+    if (!/^uploads\/[a-f0-9]{32}\.mp4$/.test(src)) throw new HttpError(400, '视频文件无效，请重新上传');
+    if (poster && !/^uploads\/[a-f0-9]{32}\.jpg$/.test(poster)) throw new HttpError(400, '视频封面无效，请重新上传');
+    if (!seen.has(src)) { seen.add(src); list.push({ src, poster }); }
+  }
+  return { videos: list };
+}
+
 function bedsFields(b) {
   if (b.bedrooms !== undefined || b.bathrooms !== undefined) {
     const bedrooms = String(b.bedrooms ?? '');
@@ -140,6 +158,7 @@ function property(body) {
     location: bilingual(b.location, '地段显示名', 100),
     address: str(b.address, '地址', 255),
     ...photosFields(b),
+    ...videosField(b),
     status: bilingual(b.status, '亮点标签', 255),
     desc: bilingual(b.desc, '描述', 5000),
     highlights: highlights(b.highlights),

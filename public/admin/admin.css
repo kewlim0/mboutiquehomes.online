@@ -731,6 +731,21 @@ html {
     border: 3px solid #DECB93; border-top-color: transparent; animation: photo-spin 0.8s linear infinite;
 }
 @keyframes photo-spin { to { transform: rotate(360deg); } }
+.vid-tile { background: #111827; }
+.vid-play {
+    position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+}
+.vid-play i {
+    width: 2.1rem; height: 2.1rem; display: grid; place-items: center; padding-left: 0.1rem;
+    border-radius: 9999px; font-size: 0.8rem; color: #fff; background: rgba(0, 0, 0, 0.5); border: 1.5px solid rgba(255, 255, 255, 0.85);
+}
+.vid-job { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.4rem; text-align: center; background: #FAF7EE; border-color: #DECB93; }
+.vid-job-text { font-size: 0.65rem; font-weight: 700; color: #8A6A2E; line-height: 1.3; word-break: break-all; }
+.vid-bar { width: 80%; height: 0.3rem; border-radius: 9999px; background: #E9DDB7; overflow: hidden; }
+.vid-bar i { display: block; height: 100%; background: #C5A059; transition: width 0.4s; }
+.vid-job.is-error { background: #FEF2F2; border-color: #FECACA; }
+.vid-job.is-error > i { color: #b91c1c; font-size: 1.1rem; }
+.vid-job.is-error .vid-job-text { color: #b91c1c; font-size: 0.6rem; }
 .gallery-preview {
     position: relative;
     aspect-ratio: 16 / 10;

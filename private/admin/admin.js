@@ -506,6 +506,11 @@ $('lf-photos-wrap').innerHTML = `
             <input id="lf-photo-url" type="url" placeholder="或粘贴图片链接，再点「添加」" class="flex-1 min-w-0 text-xs px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-gold-500">
             <button type="button" id="lf-photo-url-add" class="btn-ghost flex-shrink-0">添加</button>
         </div>
+        <div class="space-y-2 pt-1">
+            <span class="block text-[11px] font-bold text-gray-700">房源视频 <span id="lf-video-count" class="text-gray-400 font-normal"></span></span>
+            <div id="lf-video-grid" class="photo-grid"></div>
+            <p class="text-[10.5px] text-gray-400 leading-relaxed">可以直接选手机拍的视频（最大 300MB）。上传后服务器会自动转成通用的 MP4，几分钟内完成；转换时可以先去编辑别的内容，但要等它完成了再点「保存」。</p>
+        </div>
         <div class="owner-card">
             <div class="owner-card-head">
                 <span class="owner-card-icon"><i class="fa-solid fa-user-lock"></i></span>
@@ -569,6 +574,107 @@ async function addLfFiles(files) {
         }
     }
 }
+
+// ----- listing videos: uploaded as they are, converted to MP4 by the server (see server/videos.js) -----
+const MAX_VIDEOS = 10;
+let lfVideos = [];      // finished: { src, poster }
+let lfVidJobs = [];     // in progress / failed: { key, name, phase: 'uploading' | 'converting' | 'error', pct, error }
+let lfVidGen = 0;       // changes every time the form is opened: answers of an earlier form are ignored
+
+function renderLfVideos() {
+    const total = lfVideos.length;
+    $('lf-video-grid').innerHTML = lfVideos.map((vd, i) => `
+        <div class="photo-tile vid-tile">
+            ${vd.poster ? `<img src="${esc(Store.resolve(vd.poster))}" alt="" onerror="this.removeAttribute('src')">` : ''}
+            <span class="vid-play"><i class="fa-solid fa-play"></i></span>
+            <button type="button" class="photo-del" data-vact="del" data-i="${i}" aria-label="删除这个视频"><i class="fa-solid fa-xmark"></i></button>
+            <div class="photo-bar">
+                <button type="button" data-vact="left" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="往前移"><i class="fa-solid fa-chevron-left"></i></button>
+                <button type="button" data-vact="right" data-i="${i}" ${i === total - 1 ? 'disabled' : ''} aria-label="往后移"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>`).join('')
+        + lfVidJobs.map((j) => `
+        <div class="photo-tile vid-job ${j.phase === 'error' ? 'is-error' : ''}">
+            ${j.phase === 'error'
+                ? `<i class="fa-solid fa-triangle-exclamation"></i><span class="vid-job-text">${esc(j.error)}</span>
+                   <button type="button" class="photo-del" data-vact="dismiss" data-key="${j.key}" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>`
+                : `<span class="photo-spinner"></span><span class="vid-job-text">${j.phase === 'uploading' ? '上传中' : '转换中'} ${j.pct}%</span>
+                   <span class="vid-bar"><i style="width:${j.pct}%"></i></span>`}
+        </div>`).join('')
+        + (total + lfVidJobs.length < MAX_VIDEOS
+            ? '<label class="photo-add"><i class="fa-solid fa-video"></i><span>添加视频</span><input id="lf-video-file" type="file" accept="video/*,.mov,.mp4,.m4v" multiple class="hidden"></label>'
+            : '');
+    $('lf-video-count').textContent = total || lfVidJobs.length ? `（${total} / ${MAX_VIDEOS}）` : '';
+}
+
+function uploadVideoFile(file, onProgress) {
+    return new Promise((resolve, reject) => {
+        const form = new FormData();
+        form.append('video', file, file.name);
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', API + 'admin/upload-video');
+        xhr.withCredentials = true;
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100)); };
+        xhr.onerror = () => reject(new Error('上传中断了，请检查网络后再试'));
+        xhr.onload = () => {
+            let data = {}; try { data = JSON.parse(xhr.responseText); } catch (e) { /* not JSON */ }
+            if (xhr.status === 401) { showLogin(); return reject(new UnauthorizedError('登录已过期，请重新登录')); }
+            if (xhr.status === 413) return reject(new Error('视频太大，服务器不接收（最大 300MB）'));
+            if (xhr.status !== 202) return reject(new Error(data.error || '视频上传失败'));
+            resolve(data.jobId);
+        };
+        xhr.send(form);
+    });
+}
+
+async function addLfVideos(files) {
+    const room = MAX_VIDEOS - lfVideos.length - lfVidJobs.length;
+    const list = [...files].slice(0, Math.max(0, room));
+    if (files.length > list.length) toast(`最多 ${MAX_VIDEOS} 个视频，多出来的没有添加`, true);
+    const gen = lfVidGen;
+    const jobs = list.map((file) => ({ key: Math.random().toString(36).slice(2), name: file.name, phase: 'uploading', pct: 0, error: '', file }));
+    lfVidJobs.push(...jobs);
+    renderLfVideos();
+    for (const job of jobs) {            // one after another: a phone's connection is slow, and the server converts one at a time anyway
+        if (gen !== lfVidGen) return;
+        try {
+            const id = await uploadVideoFile(job.file, (pct) => { job.pct = pct; if (gen === lfVidGen) renderLfVideos(); });
+            job.phase = 'converting'; job.pct = 0; renderLfVideos();
+            for (;;) {
+                await new Promise((r) => setTimeout(r, 1500));
+                if (gen !== lfVidGen) return;
+                const res = await fetch(API + 'admin/video-jobs/' + id, { credentials: 'same-origin' });
+                if (res.status === 401) { showLogin(); throw new UnauthorizedError('登录已过期，请重新登录'); }
+                const st = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(st.error || '视频转换状态读取失败');
+                if (st.state === 'error') throw new Error(st.error || '这个视频无法转换');
+                if (st.state === 'done') { lfVideos.push({ src: st.src, poster: st.poster || '' }); break; }
+                job.pct = st.progress || 0; renderLfVideos();
+            }
+            lfVidJobs = lfVidJobs.filter((j) => j !== job);
+        } catch (err) {
+            if (gen !== lfVidGen) return;
+            if (err instanceof UnauthorizedError) { lfVidJobs = lfVidJobs.filter((j) => j !== job); }
+            else { job.phase = 'error'; job.error = `${job.name}：${err.message}`; }
+        }
+        job.file = null;
+        if (gen === lfVidGen) renderLfVideos();
+    }
+}
+
+$('lf-video-grid').addEventListener('change', (e) => {
+    if (e.target.id === 'lf-video-file') { addLfVideos(e.target.files); e.target.value = ''; }
+});
+$('lf-video-grid').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-vact]');
+    if (!btn) return;
+    const i = Number(btn.dataset.i), act = btn.dataset.vact;
+    if (act === 'del') lfVideos.splice(i, 1);
+    else if (act === 'left' && i > 0) [lfVideos[i - 1], lfVideos[i]] = [lfVideos[i], lfVideos[i - 1]];
+    else if (act === 'right' && i < lfVideos.length - 1) [lfVideos[i + 1], lfVideos[i]] = [lfVideos[i], lfVideos[i + 1]];
+    else if (act === 'dismiss') lfVidJobs = lfVidJobs.filter((j) => j.key !== btn.dataset.key);
+    renderLfVideos();
+});
 
 $('lf-photo-grid').addEventListener('change', (e) => {
     if (e.target.id === 'lf-photo-file') { addLfFiles(e.target.files); e.target.value = ''; }
@@ -998,8 +1104,10 @@ function openListingForm(p) {
     $('lf-desc-en').value = v.desc.en || '';
     lfPhotos = p ? [...(p.photos && p.photos.length ? p.photos : [p.img])] : [];
     lfUploading = 0;
+    lfVidGen++; lfVideos = p && p.videos ? p.videos.map((x) => ({ ...x })) : []; lfVidJobs = [];
     $('lf-photo-url').value = '';
     renderLfPhotos();
+    renderLfVideos();
     setLfType(v.type);
     updatePriceFmt();
     setLfLang('zh');         // also draws the highlight tags
@@ -1086,6 +1194,7 @@ $('lf-area').addEventListener('change', (e) => {
 $('listingForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (lfUploading > 0) { toast('照片还在上传，请稍等一下', true); return; }
+    if (lfVidJobs.some((j) => j.phase !== 'error')) { toast('视频还在上传或转换，请等它完成再保存', true); return; }
     if (!lfPhotos.length) { toast('请至少添加一张房源照片', true); return; }
 
     const area = $('lf-area').value;
@@ -1103,6 +1212,7 @@ $('listingForm').addEventListener('submit', async (e) => {
         },
         address: $('lf-address').value,
         photos: lfPhotos,
+        videos: lfVideos,
         status: selectedRenovation(),
         highlights: lfHighlights.filter(h => h.zh.trim() || h.en.trim()),
         closed: $('lf-closed').checked,

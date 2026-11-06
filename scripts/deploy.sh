@@ -82,6 +82,11 @@ check "租约文件未登录拿不到 (401)" "[ \"\$(curl -s -o /dev/null -w '%{
 check "租约文件不能用普通链接取到" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/private-files/agreements/x.pdf')\" != 200 ]"
 check "配置文件没有暴露 (/.env = 404)"        "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/.env')\" = 404 ]"
 
+# videos need ffmpeg on the server (only a reminder: the rest of the site works without it)
+if ! ssh "${SSH_OPTS[@]}" "$HOST" "command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null"; then
+  echo "     ⚠ 服务器还没装 ffmpeg：后台上传视频会提示不能用。安装：apt-get install -y ffmpeg"
+fi
+
 echo
 if [ "$fail" = 0 ]; then echo "✅ 更新完成，一切正常：$URL"; else echo "⚠ 有检查没通过，请把上面的输出发给我。"; exit 1; fi
 

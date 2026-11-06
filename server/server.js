@@ -404,6 +404,29 @@ admin.post('/upload', (req, res, next) => {
   res.status(201).json({ url: `uploads/${finalName}` });
 });
 
+// Video upload: any phone video; the server converts it to MP4 in the background and the page asks for the progress.
+const videos = require('./videos');
+const videoUpload = multer({
+  storage: multer.diskStorage({
+    destination: videos.TMP_DIR,
+    filename: (req, file, cb) => cb(null, crypto.randomBytes(16).toString('hex') + '.upload'),
+  }),
+  limits: { fileSize: 300 * 1024 * 1024, files: 1 },
+});
+admin.post('/upload-video', (req, res, next) => {
+  if (REMOTE_DB) {
+    return res.status(403).json({ error: '当前连接的是线上数据库，本地不能上传视频。请到线上后台上传。' });
+  }
+  videos.isAvailable().then((ok) => (ok ? next() : res.status(503).json({ error: '服务器还没有安装视频转换工具（ffmpeg），暂时不能上传视频。' })), next);
+}, videoUpload.single('video'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: '没有收到视频' });
+  res.status(202).json({ jobId: videos.submit(req.file.path) });
+});
+admin.get('/video-jobs/:id', (req, res) => {
+  const st = /^[a-f0-9]{24}$/.test(req.params.id) ? videos.status(req.params.id) : null;
+  st ? res.json(st) : res.status(404).json({ error: '找不到这个视频任务（可能服务器重启过，请重新上传）' });
+});
+
 app.use('/api/admin', admin);
 app.use('/api', (req, res) => res.status(404).json({ error: '接口不存在' }));
 
@@ -604,13 +627,15 @@ app.use((req, res) => {
 // ---------- errors ----------
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
-    return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? '图片不能超过 6MB' : '上传失败' });
+    return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? (req.path === '/upload-video' ? '视频不能超过 300MB' : '图片不能超过 6MB') : '上传失败' });
   }
   if (err instanceof v.HttpError) return res.status(err.status).json({ error: err.message });
   console.error(err);
   res.status(500).json({ error: '服务器出错了，请稍后再试' });
 });
 
+repo.ensurePropertyVideos().then(() => repo.sweepAbandonedVideos()).catch(() => {});
+setInterval(() => repo.sweepAbandonedVideos().catch(() => {}), 6 * 3600 * 1000).unref();
 repo.ensurePropertyPhotos().catch((err) => console.warn('⚠ 照片表暂时无法准备（数据库连不上？）：', err.message));
 repo.ensurePropertyColumns().catch((err) => console.warn('⚠ 房型字段暂时无法准备（数据库连不上？）：', err.message));
 repo.ensureHeroBanners().catch((err) => console.warn('⚠ 横幅表暂时无法准备（数据库连不上？）：', err.message));

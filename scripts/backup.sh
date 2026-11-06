@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Nightly backup, run ON THE SERVER by cron (see scripts/BACKUP.md):
 #   1) the whole MySQL database           -> $BACKUP_DIR/db/db-<time>.sql.gz
-#   2) the uploaded pictures + contracts  -> $BACKUP_DIR/files/files-<time>.tar.gz   (uploads/ and private-files/)
+#   2) the uploaded pictures + contracts  -> $BACKUP_DIR/files/files-<time>.tar.gz   (uploads/ and private-files/, without the videos)
+#      the listing videos (.mp4)          -> $BACKUP_DIR/videos/   (one copy of each, added as they appear)
 # Backups older than KEEP_DAYS (default 14) are removed, but ONLY after a new backup was made and checked: when something
 # goes wrong the old backups stay untouched and the script exits with an error (logged in $BACKUP_DIR/backup.log).
 # The folder is readable by root only (the contracts and the tenant details are private).
@@ -55,9 +56,24 @@ mv "$DB_OUT.part" "$DB_OUT"
 FILES_OUT="$BACKUP_DIR/files/files-$STAMP.tar.gz"; PARTS+=("$FILES_OUT.part")
 DIRS=(); for d in uploads private-files; do [ -d "$APP_DIR/$d" ] && DIRS+=("$d"); done
 if [ "${#DIRS[@]}" -gt 0 ]; then
-  tar -czf "$FILES_OUT.part" -C "$APP_DIR" "${DIRS[@]}"
+  # listing videos are big and never change once made: they are kept in their own folder below, not packed into every nightly archive
+  tar -czf "$FILES_OUT.part" --exclude='*.mp4' --exclude='private-files/video-tmp' -C "$APP_DIR" "${DIRS[@]}"
   gzip -t "$FILES_OUT.part"
   mv "$FILES_OUT.part" "$FILES_OUT"
+fi
+
+# ---- 2b. listing videos: one shared copy (files are named by a random id and never change, so each is copied only once) ----
+if [ -d "$APP_DIR/uploads" ]; then
+  mkdir -p "$BACKUP_DIR/videos"; chmod 700 "$BACKUP_DIR/videos"
+  find "$APP_DIR/uploads" -maxdepth 1 -type f -name '*.mp4' | while read -r f; do
+    base="$(basename "$f")"
+    if [ ! -e "$BACKUP_DIR/videos/$base" ]; then
+      cp "$f" "$BACKUP_DIR/videos/.$base.part"
+      mv "$BACKUP_DIR/videos/.$base.part" "$BACKUP_DIR/videos/$base"
+    fi
+  done
+  # a copy of a video that no longer exists on the site is dropped after KEEP_DAYS
+  find "$BACKUP_DIR/videos" -maxdepth 1 -type f -name '*.mp4' -mtime +"$KEEP_DAYS" | while read -r f; do [ -e "$APP_DIR/uploads/$(basename "$f")" ] || rm -f "$f"; done
 fi
 
 # ---- 3. only now: forget the old ones ----
