@@ -47,7 +47,8 @@
         .tile-sim { background: linear-gradient(135deg, #16a34a 0%, #15803d 55%, #166534 100%); box-shadow: 0 18px 40px -16px rgba(34, 197, 94, 0.55); }
         .tile-bill { background: linear-gradient(135deg, #334155 0%, #1e293b 60%, #172033 100%); box-shadow: 0 18px 40px -18px rgba(15, 23, 42, 0.9); border: 1px solid rgba(255, 255, 255, 0.12); }
         .tile-ten { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 55%, #3730a3 100%); box-shadow: 0 18px 40px -16px rgba(99, 102, 241, 0.55); }
-        .go.go-dark { color: #1e293b; } .go.go-ind { color: #4338ca; }
+        .tile-up { background: linear-gradient(135deg, #f59e0b 0%, #d97706 55%, #b45309 100%); box-shadow: 0 18px 40px -16px rgba(245, 158, 11, 0.55); }
+        .go.go-dark { color: #1e293b; } .go.go-ind { color: #4338ca; } .go.go-amber { color: #b45309; }
         .tile::before { content: ''; position: absolute; width: 11rem; height: 11rem; right: -3.5rem; top: -4rem; border-radius: 50%; background: rgba(255, 255, 255, 0.1); }
         .tile::after { content: ''; position: absolute; width: 7rem; height: 7rem; right: 1.5rem; bottom: -4.2rem; border-radius: 50%; background: rgba(255, 255, 255, 0.07); }
         .tile > * { position: relative; z-index: 1; }
@@ -141,6 +142,16 @@
                 <p>Passport, email and phone for each tenant.</p>
                 <div id="tenChips" class="mt-4 flex flex-wrap gap-1.5"><span class="sk sk-white h-[22px] w-20 !rounded-full"></span><span class="sk sk-white h-[22px] w-24 !rounded-full"></span></div>
             </a>
+
+            <a href="/tracker/upcoming/" class="tile tile-up rise d4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="tile-icon"><i class="fa-solid fa-calendar-check"></i></div>
+                    <span class="go go-amber"><i class="fa-solid fa-arrow-right"></i></span>
+                </div>
+                <h2 class="mt-4">Upcoming Listing</h2>
+                <p>Owners to follow up, tenancies ending soon.</p>
+                <div id="upChips" class="mt-4 flex flex-wrap gap-1.5"><span class="sk sk-white h-[22px] w-20 !rounded-full"></span><span class="sk sk-white h-[22px] w-24 !rounded-full"></span></div>
+            </a>
         </div>
 
         <p class="rise d4 mt-8 text-center text-[11px] font-semibold text-slate-500">m.boutiquehomes · private</p>
@@ -208,8 +219,27 @@
                 $('billChips').innerHTML = $('tenChips').innerHTML = '<span class="chip bad"><i class="fa-solid fa-triangle-exclamation"></i>Could not load</span>';
             }
         }
+        // Upcoming Listing tile: how many owners, how many are due for a follow-up
+        async function loadUpcoming() {
+            try {
+                const res = await fetch('/api/admin/upcoming', { credentials: 'same-origin' });
+                if (res.status === 401) return;
+                if (!res.ok) throw new Error('bad status');
+                const owners = (await res.json()).owners;
+                const late = owners.filter((o) => o.nextFollowup && daysLeft(o.nextFollowup) <= 0 && o.status !== 'own' && o.status !== 'listed').length;
+                const soon = owners.filter((o) => o.tenancyEnd && daysLeft(o.tenancyEnd) >= 0 && daysLeft(o.tenancyEnd) <= 90).length;
+                const chips = [`<span class="chip"><i class="fa-solid fa-user-group"></i>${owners.length.toLocaleString()} ${owners.length === 1 ? 'owner' : 'owners'}</span>`];
+                if (late) chips.push(`<span class="chip bad"><i class="fa-solid fa-bell"></i>${late} to follow up</span>`);
+                if (soon) chips.push(`<span class="chip warn"><i class="fa-solid fa-clock"></i>${soon} ending ≤ 90d</span>`);
+                if (!late && !soon && owners.length) chips.push('<span class="chip"><i class="fa-solid fa-circle-check"></i>All good</span>');
+                $('upChips').innerHTML = chips.join('');
+            } catch (e) {
+                $('upChips').innerHTML = '<span class="chip bad"><i class="fa-solid fa-triangle-exclamation"></i>Could not load</span>';
+            }
+        }
         load();
         loadRentals();
+        loadUpcoming();
     </script>
 </body>
 </html>

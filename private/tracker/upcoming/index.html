@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <script src="/tracker-slide.js?v=5"></script>
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" type="image/x-icon" href="/tracker-icon/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/tracker-icon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/tracker-icon/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="/tracker-icon/apple-touch-icon.png">
+    <title>Upcoming Listings</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --ink: #0f172a; --line: rgba(255, 255, 255, 0.1); }
+        * { box-sizing: border-box; margin: 0; }
+        html { background: var(--ink); }
+        body { font-family: 'Inter', 'PingFang SC', sans-serif; color: #e2e8f0; min-height: 100vh; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+        body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+            background: radial-gradient(110% 55% at 100% -10%, rgba(245, 158, 11, 0.25) 0, transparent 55%), radial-gradient(90% 50% at -10% 12%, rgba(99, 102, 241, 0.25) 0, transparent 55%); }
+        .wrap { max-width: 480px; margin: 0 auto; padding: max(1.1rem, env(safe-area-inset-top)) 1.1rem 6rem; }
+        button, input, select, textarea { font: inherit; color: inherit; } button { background: none; border: 0; cursor: pointer; }
+        a { color: inherit; text-decoration: none; }
+        .glass { background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+        @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+        .rise { animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; } .d1 { animation-delay: 0.05s; } .d2 { animation-delay: 0.12s; } .d3 { animation-delay: 0.2s; }
+
+        /* skeleton shimmer */
+        .sk { position: relative; overflow: hidden; background: rgba(255, 255, 255, 0.09); border-radius: 0.6rem; }
+        .sk::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent); animation: sk-shimmer 1.3s ease-in-out infinite; }
+        @keyframes sk-shimmer { to { transform: translateX(100%); } }
+        @media (prefers-reduced-motion: reduce) { .sk::after { animation: none; } .rise { animation: none; } }
+
+        .top { display: flex; align-items: center; gap: 0.7rem; }
+        .back, .addtop { width: 2.5rem; height: 2.5rem; border-radius: 0.9rem; display: grid; place-items: center; font-size: 0.85rem; color: #cbd5e1; flex-shrink: 0; }
+        .top h1 { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.1; } .top p { font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-top: 0.15rem; }
+        .addtop { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; box-shadow: 0 8px 20px -8px rgba(245, 158, 11, 0.7); }
+
+        .search { position: relative; margin-top: 1rem; display: block; }
+        .search i { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.85rem; }
+        .search input { width: 100%; padding: 0.8rem 1rem 0.8rem 2.6rem; border-radius: 1.1rem; background: rgba(255, 255, 255, 0.07); border: 1px solid var(--line); outline: none; font-size: 16px; font-weight: 600; }
+        .search input::placeholder { color: #64748b; } .search input:focus { border-color: rgba(251, 191, 36, 0.6); box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15); }
+
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.25rem; padding: 0.45rem; border-radius: 1.4rem; margin-top: 0.9rem; }
+        .stat { text-align: center; padding: 0.75rem 0.3rem; border-radius: 1rem; }
+        .stat b { display: block; font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+        .stat span { display: block; margin-top: 0.25rem; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #94a3b8; }
+        .stat.warn { background: rgba(251, 191, 36, 0.09); } .stat.bad { background: rgba(248, 113, 113, 0.09); }
+
+        .card { border-radius: 1.7rem; padding: 1.1rem 1rem 1rem; margin-top: 1rem; }
+        .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem; }
+        .eyebrow { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(251, 191, 36, 0.9); }
+        .card h2 { font-size: 1.05rem; font-weight: 800; margin-top: 0.2rem; letter-spacing: -0.01em; }
+        .seg { display: inline-flex; background: rgba(255, 255, 255, 0.07); border-radius: 999px; padding: 0.18rem; flex-shrink: 0; }
+        .seg button { font-size: 0.68rem; font-weight: 800; padding: 0.32rem 0.75rem; border-radius: 999px; color: #94a3b8; transition: 0.2s; }
+        .seg button.on { background: #fff; color: #0f172a; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25); }
+
+        .hexbox { position: relative; margin: 0.2rem auto 0; width: 100%; max-width: 350px; aspect-ratio: 350 / 340; }
+        .hexbox svg { width: 100%; height: 100%; overflow: visible; }
+        .ring { fill: none; stroke: rgba(255, 255, 255, 0.12); } .ring.outer { stroke: rgba(255, 255, 255, 0.22); } .spoke { stroke: rgba(255, 255, 255, 0.1); }
+        .poly { fill: url(#hexfill); stroke: #fbbf24; stroke-width: 2.4; stroke-linejoin: round; filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.55)); }
+        .dot { fill: #0f172a; stroke: #fbbf24; stroke-width: 2.4; }
+        .axis { cursor: pointer; } .axis text { text-anchor: middle; } .axis .hit { fill: transparent; }
+        .axis .nm { font-size: 10.5px; font-weight: 700; fill: #cbd5e1; } .axis .ct { font-size: 13px; font-weight: 800; fill: #fff; }
+        .axis.on .nm, .axis.on .ct { fill: #fbbf24; }
+        .hint { text-align: center; font-size: 0.66rem; color: #64748b; font-weight: 600; margin-top: 0.4rem; }
+
+        .tl { display: grid; grid-template-columns: repeat(12, 1fr); gap: 0.28rem; align-items: end; height: 6rem; margin-top: 1.3rem; }
+        .tl .m { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 0.3rem; cursor: pointer; }
+        .tl .bar { width: 100%; border-radius: 0.45rem 0.45rem 0.2rem 0.2rem; background: rgba(255, 255, 255, 0.1); min-height: 0.35rem; position: relative; transition: 0.3s; }
+        .tl .bar.has { background: linear-gradient(180deg, #fbbf24, #d97706); box-shadow: 0 6px 14px -6px rgba(245, 158, 11, 0.8); }
+        .tl .bar.soon { background: linear-gradient(180deg, #fb7185, #e11d48); box-shadow: 0 6px 14px -6px rgba(244, 63, 94, 0.8); }
+        .tl .m.on .bar { outline: 2px solid #fff; outline-offset: 2px; }
+        .tl .bar b { position: absolute; top: -1.15rem; left: 0; right: 0; text-align: center; font-size: 0.64rem; font-weight: 800; }
+        .tl .lbl { font-size: 0.55rem; font-weight: 700; color: #64748b; text-align: center; line-height: 1.15; } .tl .m.now .lbl { color: #fbbf24; }
+        .tl-note { font-size: 0.64rem; color: #64748b; font-weight: 600; margin-top: 0.55rem; text-align: center; }
+
+        .sec { display: flex; align-items: center; justify-content: space-between; margin: 1.6rem 0.2rem 0.7rem; }
+        .sec h3 { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8; }
+        .sec .clear { font-size: 0.68rem; font-weight: 800; color: #fbbf24; }
+        .filters { display: flex; gap: 0.35rem; overflow-x: auto; scrollbar-width: none; padding-bottom: 0.2rem; margin-bottom: 0.35rem; }
+        .filters::-webkit-scrollbar { display: none; }
+        .f { flex-shrink: 0; font-size: 0.7rem; font-weight: 800; padding: 0.42rem 0.85rem; border-radius: 999px; background: rgba(255, 255, 255, 0.07); color: #94a3b8; border: 1px solid transparent; }
+        .f.on { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); }
+
+        .li { position: relative; border-radius: 1.4rem; padding: 0.95rem 0.95rem 0.85rem 1.15rem; margin-top: 0.7rem; overflow: hidden; }
+        .li::before { content: ''; position: absolute; left: 0; top: 0.9rem; bottom: 0.9rem; width: 0.28rem; border-radius: 0 0.3rem 0.3rem 0; background: var(--c); }
+        .li-top { display: flex; align-items: flex-start; gap: 0.7rem; }
+        .unit { font-size: 1.12rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+        .tag { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.04em; padding: 0.18rem 0.5rem; border-radius: 0.45rem; background: rgba(255, 255, 255, 0.1); color: #cbd5e1; }
+        .tag.type { background: rgba(167, 139, 250, 0.18); color: #c4b5fd; }
+        .own { font-size: 0.74rem; font-weight: 600; color: #94a3b8; margin-top: 0.25rem; display: flex; flex-wrap: wrap; gap: 0.15rem 0.7rem; word-break: break-word; }
+        .own i { margin-right: 0.3rem; opacity: 0.8; }
+        .st { margin-left: auto; flex-shrink: 0; font-size: 0.62rem; font-weight: 800; padding: 0.28rem 0.6rem; border-radius: 999px; background: color-mix(in srgb, var(--s) 18%, transparent); color: var(--s); white-space: nowrap; }
+        .li-mid { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem; padding: 0.55rem 0.7rem; border-radius: 0.9rem; background: rgba(0, 0, 0, 0.22); font-size: 0.7rem; font-weight: 700; }
+        .li-mid + .li-mid { margin-top: 0.4rem; }
+        .li-mid .t { color: #94a3b8; font-weight: 600; } .li-mid .x { margin-left: auto; font-weight: 800; white-space: nowrap; }
+        .note { font-size: 0.7rem; color: #94a3b8; font-weight: 600; margin-top: 0.55rem; padding-left: 0.2rem; line-height: 1.5; white-space: pre-line; word-break: break-word; }
+        .note i { margin-right: 0.3rem; }
+        .li-act { display: flex; gap: 0.45rem; margin-top: 0.75rem; }
+        .act { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-size: 0.7rem; font-weight: 800; padding: 0.6rem 0.4rem; border-radius: 0.85rem; background: rgba(255, 255, 255, 0.08); }
+        .act.wa { background: rgba(34, 197, 94, 0.16); color: #4ade80; } .act.done { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; box-shadow: 0 8px 18px -10px rgba(245, 158, 11, 0.9); }
+        .act.ic { flex: 0 0 2.6rem; } .act:active { transform: scale(0.97); }
+        .empty { text-align: center; color: #64748b; font-size: 0.8rem; padding: 2.2rem 0; line-height: 1.7; }
+        .more { display: block; width: 100%; margin-top: 0.8rem; padding: 0.85rem; border-radius: 1rem; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); font-size: 0.75rem; font-weight: 800; color: #cbd5e1; }
+
+        .fab { position: fixed; right: max(1.1rem, calc(50% - 240px + 1.1rem)); bottom: max(1.4rem, env(safe-area-inset-bottom)); width: 3.6rem; height: 3.6rem; border-radius: 50%; display: grid; place-items: center; font-size: 1.2rem; color: #fff; background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 14px 30px -10px rgba(245, 158, 11, 0.85); z-index: 5; }
+
+        /* edit sheet + follow-up dialog */
+        .sheet { position: fixed; inset: 0; z-index: 40; background: var(--ink); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .sheet.hidden, .dlg.hidden { display: none; }
+        .sheet::before { content: ''; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(110% 40% at 100% -10%, rgba(245, 158, 11, 0.18) 0, transparent 55%); }
+        @keyframes slideup { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+        .sheet:not(.hidden) > .inner { animation: slideup 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
+        .inner { position: relative; max-width: 480px; margin: 0 auto; min-height: 100vh; }
+        .sheet-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 0.7rem; padding: max(0.8rem, env(safe-area-inset-top)) 1.1rem 0.8rem; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+        .sheet-top .ttl { flex: 1; font-weight: 800; font-size: 0.95rem; min-width: 0; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 800; font-size: 0.78rem; padding: 0.7rem 1.1rem; border-radius: 0.9rem; transition: transform 0.1s; }
+        .btn:active { transform: scale(0.97); }
+        .btn-amber { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; box-shadow: 0 8px 18px -8px rgba(245, 158, 11, 0.8); }
+        .btn-soft { background: rgba(255, 255, 255, 0.08); color: #e2e8f0; border: 1px solid var(--line); }
+        .btn-red { background: rgba(248, 113, 113, 0.12); color: #fca5a5; border: 1px solid rgba(248, 113, 113, 0.3); }
+        .btn-green { background: linear-gradient(135deg, #22c55e, #15803d); color: #fff; }
+        .form { padding: 1rem 1.1rem 6rem; display: grid; gap: 0.8rem; }
+        .lbl { display: block; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.04em; color: #94a3b8; margin: 0 0 0.3rem 0.15rem; }
+        .field { width: 100%; padding: 0.7rem 0.85rem; background: rgba(255, 255, 255, 0.07); border: 1px solid var(--line); border-radius: 0.9rem; font-weight: 600; outline: none; font-size: 16px; color: #f1f5f9; appearance: none; -webkit-appearance: none; }
+        select.field { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.9rem center; padding-right: 2.2rem; }
+        select.field option { color: #0f172a; }
+        .field:focus { border-color: rgba(251, 191, 36, 0.6); box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15); }
+        input[type="date"].field { min-height: 2.9rem; }
+        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+        .dlg { position: fixed; inset: 0; z-index: 90; background: rgba(2, 6, 23, 0.7); display: flex; align-items: flex-end; justify-content: center; padding: 1rem; }
+        @media (min-width: 520px) { .dlg { align-items: center; } }
+        .dlg-card { width: 100%; max-width: 380px; background: #1b2436; border: 1px solid var(--line); border-radius: 1.6rem; padding: 1.4rem 1.2rem 1.1rem; box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.7); animation: dlg-pop 0.22s cubic-bezier(0.22, 1, 0.36, 1); }
+        @keyframes dlg-pop { from { transform: translateY(14px) scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
+        .dlg-card h3 { font-size: 1.05rem; font-weight: 800; } .dlg-card p.sub { font-size: 0.78rem; font-weight: 600; color: #94a3b8; margin: 0.3rem 0 1rem; line-height: 1.5; }
+        .dlg-card .btn { width: 100%; } .dlg-card .btn + .btn { margin-top: 0.55rem; }
+        .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.7rem; }
+        #toast { position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 4rem); opacity: 0; z-index: 120; transition: all 0.3s; background: rgba(15, 23, 42, 0.95); border: 1px solid var(--line); color: #fff; font-size: 12px; font-weight: 700; padding: 0.65rem 1.1rem; border-radius: 999px; pointer-events: none; max-width: 90vw; }
+        #toast.show { transform: translate(-50%, 0); opacity: 1; }
+    </style>
+</head>
+<body>
+<main class="wrap">
+    <header class="top rise">
+        <a href="/tracker/" class="back glass" aria-label="Back"><i class="fa-solid fa-chevron-left"></i></a>
+        <div style="flex: 1; min-width: 0"><h1>Upcoming Listings</h1><p id="sub">Owners to follow up</p></div>
+        <button class="addtop" id="addTop" aria-label="Add owner"><i class="fa-solid fa-plus"></i></button>
+    </header>
+
+    <label class="search rise d1"><i class="fa-solid fa-magnifying-glass"></i><input id="q" type="search" placeholder="搜单位、姓名、电话，例如 B-48-03" autocomplete="off"></label>
+
+    <section class="stats glass rise d1">
+        <div class="stat"><b id="sTotal"><span class="sk" style="display:inline-block;width:2.4rem;height:1.4rem;vertical-align:middle"></span></b><span>业主联络</span></div>
+        <div class="stat warn"><b id="sTrack" style="color:#fcd34d"><span class="sk" style="display:inline-block;width:2rem;height:1.4rem;vertical-align:middle"></span></b><span>租约已记录</span></div>
+        <div class="stat bad"><b id="sLate" style="color:#fda4af"><span class="sk" style="display:inline-block;width:2rem;height:1.4rem;vertical-align:middle"></span></b><span>该跟进了</span></div>
+    </section>
+
+    <section class="card glass rise d2">
+        <div class="card-head">
+            <div><p class="eyebrow">Overview</p><h2 id="hexTitle">业主状态分布</h2></div>
+            <div class="seg" id="mode"><button class="on" data-m="status">按状态</button><button data-m="type">按户型</button></div>
+        </div>
+        <div class="hexbox"><svg viewBox="-175 -170 350 340" id="hex" aria-label="六边形图表">
+            <defs><radialGradient id="hexfill" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#fbbf24" stop-opacity=".55"/><stop offset="1" stop-color="#d97706" stop-opacity=".22"/></radialGradient></defs>
+            <g id="rings"></g><g id="spokes"></g><polygon class="poly" id="poly"/><g id="dots"></g><g id="axes"></g></svg></div>
+        <p class="hint">点六边形的任何一个角，下面的清单就只看那一类</p>
+    </section>
+
+    <section class="card glass rise d3">
+        <div class="card-head"><div><p class="eyebrow">Timeline</p><h2>未来 12 个月，哪些租约到期</h2></div></div>
+        <div class="tl" id="tl"></div>
+        <p class="tl-note" id="tlNote">点柱子只看那个月 · 红色 = 90 天内到期</p>
+    </section>
+
+    <div class="sec"><h3 id="listTitle">Follow-up 清单</h3><button class="clear" id="clear" hidden>清除筛选 ✕</button></div>
+    <div class="filters" id="views"></div>
+    <div class="filters" id="blocks"><button class="f on" data-b="all">全部栋</button><button class="f" data-b="A">A 栋</button><button class="f" data-b="B">B 栋</button><button class="f" data-b="C">C 栋</button></div>
+    <div class="filters" id="lines"><button class="f on" data-l="all">全部单位</button><button class="f" data-l="2R">2 房 (03 / 03A)</button><button class="f" data-l="4R">4 房 (07 / 10)</button><button class="f" data-l="BIG">Big unit</button></div>
+    <div id="list"></div>
+</main>
+<button class="fab" id="fab" aria-label="Add owner"><i class="fa-solid fa-plus"></i></button>
+
+<!-- add / edit -->
+<div id="sheet" class="sheet hidden">
+    <div class="inner">
+        <div class="sheet-top">
+            <button class="back glass" id="closeBtn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            <div class="ttl" id="fTitle">业主</div>
+            <button class="btn btn-amber" id="saveBtn"><i class="fa-solid fa-check"></i>保存</button>
+        </div>
+        <form class="form" onsubmit="return false" autocomplete="off">
+            <div><label class="lbl" for="f-unit">单位 *</label><input class="field" id="f-unit" maxlength="30" placeholder="例如 B-48-03" autocapitalize="characters"></div>
+            <div class="row2">
+                <div><label class="lbl" for="f-type">户型</label><select class="field" id="f-type"></select></div>
+                <div><label class="lbl" for="f-line">单位类别</label><select class="field" id="f-line"></select></div>
+            </div>
+            <div><label class="lbl" for="f-name">业主姓名</label><input class="field" id="f-name" maxlength="160"></div>
+            <div><label class="lbl" for="f-phone">电话</label><input class="field" id="f-phone" type="tel" inputmode="tel" maxlength="40" placeholder="0123456789"></div>
+            <div><label class="lbl" for="f-status">状态</label><select class="field" id="f-status"></select></div>
+            <div class="row2">
+                <div><label class="lbl" for="f-end">租约到期日</label><input class="field" id="f-end" type="date"></div>
+                <div><label class="lbl" for="f-next">下次跟进日</label><input class="field" id="f-next" type="date"></div>
+            </div>
+            <div><label class="lbl" for="f-note">备注</label><textarea class="field" id="f-note" rows="5" maxlength="4000"></textarea></div>
+            <button id="delBtn" type="button" class="btn btn-red hidden" style="width:100%"><i class="fa-solid fa-trash-can"></i>删除这位业主</button>
+        </form>
+    </div>
+</div>
+
+<!-- followed up: when is the next one? -->
+<div id="fdlg" class="dlg hidden" role="dialog" aria-modal="true">
+    <div class="dlg-card">
+        <h3 id="fdTitle">已跟进</h3>
+        <p class="sub" id="fdSub">什么时候再跟进？</p>
+        <div class="chips" id="fdChips"></div>
+        <label class="lbl" for="fd-next">下次跟进日（可以不设）</label>
+        <input class="field" id="fd-next" type="date" style="margin-bottom:.7rem">
+        <label class="lbl" for="fd-note">这次聊了什么（可以不写）</label>
+        <textarea class="field" id="fd-note" rows="2" maxlength="500" style="margin-bottom:1rem" placeholder="例如：屋主说明年 8 月到期，想续租"></textarea>
+        <button class="btn btn-amber" id="fdOk"><i class="fa-solid fa-check"></i>确定</button>
+        <button class="btn btn-soft" id="fdCancel">取消</button>
+    </div>
+</div>
+
+<!-- unsaved changes -->
+<div id="dlg" class="dlg hidden" role="dialog" aria-modal="true">
+    <div class="dlg-card" style="text-align:center">
+        <h3>要保存更改吗？</h3>
+        <p class="sub" id="dlgText">你修改了内容，还没有保存。</p>
+        <button id="dlgSave" type="button" class="btn btn-green"><i class="fa-solid fa-check"></i>保存</button>
+        <button id="dlgDiscard" type="button" class="btn btn-red"><i class="fa-solid fa-trash-can"></i>不保存，直接关闭</button>
+        <button id="dlgKeep" type="button" class="btn btn-soft">继续编辑</button>
+    </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let toastTimer;
+function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600); }
+async function api(method, path, body) {
+    const res = await fetch('/api/admin/' + path, { method, credentials: 'same-origin', headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
+    const out = await res.json().catch(() => ({}));
+    if (res.status === 401) { location.replace('/admin/?next=%2Ftracker%2Fupcoming%2F'); throw new Error('Please sign in'); }
+    if (!res.ok) throw new Error(out.error || 'Something went wrong');
+    return out;
+}
+
+// ----- constants -----
+const STATUS = { tenant: ['租约中', '#fbbf24'], sale: ['想卖', '#38bdf8'], own: ['自住', '#34d399'], noanswer: ['联系不上', '#fb7185'], none: ['未联系', '#94a3b8'], listed: ['已上架', '#a78bfa'] };
+const STATUS_KEYS = ['tenant', 'sale', 'own', 'noanswer', 'none', 'listed'];
+const TYPES = ['C', 'D', 'E', 'F', 'C/E', 'D/F'];
+const LINES = { '2R': '2 房 (03 / 03A)', '4R': '4 房 (07 / 10)', BIG: 'Big unit' };
+const PAGE = 30;
+
+// ----- dates (the phone's own calendar day) -----
+const TODAY = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
+const day = (s) => new Date(s + 'T00:00:00');
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const daysTo = (s) => Math.round((day(s) - TODAY) / 86400000);
+const fmt = (s) => { const d = day(s); return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; };
+const left = (d) => d < 0 ? `已过 ${-d} 天` : d === 0 ? '今天' : d < 31 ? `${d} 天` : d < 365 ? `${Math.round(d / 30.4)} 个月` : `${(d / 365).toFixed(1)} 年`;
+const colorOf = (d) => d <= 90 ? '#fb7185' : d <= 180 ? '#fbbf24' : '#34d399';
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const addMonths = (d, n) => { const x = new Date(d); x.setMonth(x.getMonth() + n); return x; };
+
+// ----- phone helpers -----
+const digits = (p) => String(p || '').replace(/\D/g, '');
+const waNumber = (p) => { const d = digits(p); return d.startsWith('0') ? '6' + d : d; };
+const showPhone = (p) => { const d = digits(p); return /^01\d{8,9}$/.test(d) ? `${d.slice(0, 3)}-${d.slice(3, 6)} ${d.slice(6)}` : (p || ''); };
+
+// ----- state -----
+let owners = [];
+const F = { axis: null, month: null, block: 'all', line: 'all', view: 'all', q: '', mode: 'status', shown: PAGE };
+const isLate = (o) => !!o.nextFollowup && daysTo(o.nextFollowup) <= 0 && o.status !== 'own' && o.status !== 'listed';
+
+// ----- hexagon -----
+const R = 118, pt = (i, r) => { const a = (-90 + i * 60) * Math.PI / 180; return [Math.cos(a) * r, Math.sin(a) * r]; };
+$('rings').innerHTML = [25, 50, 75, 100].map((p) => `<polygon class="ring ${p === 100 ? 'outer' : ''}" points="${[0, 1, 2, 3, 4, 5].map((i) => pt(i, R * p / 100).join(',')).join(' ')}"/>`).join('');
+$('spokes').innerHTML = [0, 1, 2, 3, 4, 5].map((i) => `<line class="spoke" x1="0" y1="0" x2="${pt(i, R)[0]}" y2="${pt(i, R)[1]}"/>`).join('');
+let shownPoly = [8, 8, 8, 8, 8, 8], raf;
+function axisDefs() {
+    return F.mode === 'status'
+        ? STATUS_KEYS.map((k) => ({ key: k, name: STATUS[k][0], n: owners.filter((o) => o.status === k).length }))
+        : TYPES.map((k) => ({ key: k, name: 'Type ' + k, n: owners.filter((o) => o.type === k).length }));
+}
+function drawPoly(v) {
+    $('poly').setAttribute('points', v.map((p, i) => pt(i, R * p / 100).map((n) => n.toFixed(1)).join(',')).join(' '));
+    $('dots').innerHTML = v.map((p, i) => `<circle class="dot" cx="${pt(i, R * p / 100)[0]}" cy="${pt(i, R * p / 100)[1]}" r="4"/>`).join('');
+}
+function renderAxes(defs) {
+    $('axes').innerHTML = defs.map((d, i) => { const [x, y] = pt(i, R + 30); return `<g class="axis ${F.axis === d.key ? 'on' : ''}" data-k="${esc(d.key)}">
+        <rect class="hit" x="${x - 34}" y="${y - 22}" width="68" height="44" rx="10"/><text class="nm" x="${x}" y="${y - 5}">${esc(d.name)}</text><text class="ct" x="${x}" y="${y + 12}">${d.n.toLocaleString()}</text></g>`; }).join('');
+}
+function updateHex() {
+    const defs = axisDefs(), max = Math.max(1, ...defs.map((d) => d.n));
+    $('hexTitle').textContent = F.mode === 'status' ? '业主状态分布' : '户型分布';
+    renderAxes(defs);
+    const to = defs.map((d) => Math.max(8, Math.sqrt(d.n / max) * 100));
+    cancelAnimationFrame(raf); const from = shownPoly.slice(), t0 = performance.now();
+    const step = (t) => { const k = Math.min(1, (t - t0) / 450), e = 1 - Math.pow(1 - k, 3); shownPoly = from.map((f, i) => f + (to[i] - f) * e); drawPoly(shownPoly); if (k < 1) raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step);
+}
+$('axes').addEventListener('click', (e) => { const g = e.target.closest('.axis'); if (!g) return; F.axis = F.axis === g.dataset.k ? null : g.dataset.k; F.shown = PAGE; renderAxes(axisDefs()); renderList(); });
+$('mode').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.mode = b.dataset.m; F.axis = null; F.shown = PAGE; document.querySelectorAll('#mode button').forEach((x) => x.classList.toggle('on', x === b)); updateHex(); renderList(); });
+
+// ----- timeline -----
+const monthIdx = (s) => (day(s).getFullYear() - TODAY.getFullYear()) * 12 + day(s).getMonth() - TODAY.getMonth();
+function renderTl() {
+    const months = Array.from({ length: 12 }, (_, i) => { const d = new Date(TODAY.getFullYear(), TODAY.getMonth() + i, 1); return { y: d.getFullYear(), m: d.getMonth(), n: 0, soon: false, i }; });
+    owners.forEach((o) => { if (o.tenancyEnd) { const m = months[monthIdx(o.tenancyEnd)]; if (m) { m.n++; if (daysTo(o.tenancyEnd) <= 90) m.soon = true; } } });
+    const max = Math.max(1, ...months.map((m) => m.n));
+    $('tl').innerHTML = months.map((m) => `<div class="m ${m.i === 0 ? 'now' : ''} ${F.month === m.i ? 'on' : ''}" data-i="${m.i}"><div class="bar ${m.n ? (m.soon ? 'soon' : 'has') : ''}" style="height:${m.n ? 22 + m.n / max * 62 : 6}%">${m.n ? `<b>${m.n}</b>` : ''}</div><span class="lbl">${m.m + 1}月${m.m === 0 || m.i === 0 ? '<br>' + m.y : ''}</span></div>`).join('');
+    const past = owners.filter((o) => o.tenancyEnd && daysTo(o.tenancyEnd) < 0 && o.status === 'tenant').length;
+    $('tlNote').textContent = '点柱子只看那个月 · 红色 = 90 天内到期' + (past ? ` · 已过期还没处理：${past} 户` : '');
+}
+$('tl').addEventListener('click', (e) => { const m = e.target.closest('.m'); if (!m) return; const i = Number(m.dataset.i); F.month = F.month === i ? null : i; F.shown = PAGE; renderTl(); renderList(); });
+
+// ----- filters -----
+function renderViews() {
+    const late = owners.filter(isLate).length, dated = owners.filter((o) => o.tenancyEnd).length;
+    const defs = [['all', `全部 · ${owners.length.toLocaleString()}`], ['late', `该跟进了 · ${late}`], ['dated', `有租约日期 · ${dated}`]];
+    $('views').innerHTML = defs.map(([k, label]) => `<button class="f ${F.view === k ? 'on' : ''}" data-v="${k}">${label}</button>`).join('');
+}
+$('views').addEventListener('click', (e) => { const b = e.target.closest('.f'); if (!b) return; F.view = b.dataset.v; F.shown = PAGE; renderViews(); renderList(); });
+const bindChips = (id, key, attr) => $(id).addEventListener('click', (e) => { const b = e.target.closest('.f'); if (!b) return; F[key] = b.dataset[attr]; document.querySelectorAll('#' + id + ' .f').forEach((x) => x.classList.toggle('on', x === b)); F.shown = PAGE; renderList(); });
+bindChips('blocks', 'block', 'b'); bindChips('lines', 'line', 'l');
+let qTimer; $('q').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(() => { F.q = $('q').value.trim().toLowerCase(); F.shown = PAGE; renderList(); }, 120); });
+$('clear').addEventListener('click', () => {
+    Object.assign(F, { axis: null, month: null, block: 'all', line: 'all', view: 'all', q: '', shown: PAGE }); $('q').value = '';
+    document.querySelectorAll('#blocks .f').forEach((x) => x.classList.toggle('on', x.dataset.b === 'all')); document.querySelectorAll('#lines .f').forEach((x) => x.classList.toggle('on', x.dataset.l === 'all'));
+    renderViews(); renderAxes(axisDefs()); renderTl(); renderList();
+});
+
+// ----- list -----
+const rank = (o) => (isLate(o) ? 0 : o.nextFollowup ? 1 : o.tenancyEnd ? 2 : 3);
+function matches(o) {
+    if (F.axis && (F.mode === 'status' ? o.status !== F.axis : o.type !== F.axis)) return false;
+    if (F.month !== null && !(o.tenancyEnd && monthIdx(o.tenancyEnd) === F.month)) return false;
+    if (F.block !== 'all' && o.unit[0] !== F.block) return false;
+    if (F.line !== 'all' && o.line !== F.line) return false;
+    if (F.view === 'late' && !isLate(o)) return false;
+    if (F.view === 'dated' && !o.tenancyEnd) return false;
+    if (F.q) {
+        const hay = [o.unit, o.name, o.phone, o.note].join(' ').toLowerCase(), qd = digits(F.q);
+        if (!F.q.split(/\s+/).every((w) => hay.includes(w)) && !(qd.length >= 3 && digits(o.phone).includes(qd))) return false;
+    }
+    return true;
+}
+function card(o) {
+    const s = STATUS[o.status] || STATUS.none, c = o.tenancyEnd ? colorOf(daysTo(o.tenancyEnd)) : s[1], nd = o.nextFollowup ? daysTo(o.nextFollowup) : null;
+    const wa = digits(o.phone) ? `<a class="act wa" href="https://wa.me/${waNumber(o.phone)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i>WhatsApp</a><a class="act ic" href="tel:+${waNumber(o.phone)}" aria-label="Call"><i class="fa-solid fa-phone"></i></a>` : '';
+    return `<article class="li glass" style="--c:${c};--s:${s[1]}" data-id="${o.id}">
+        <div class="li-top"><div style="min-width:0;flex:1">
+            <div class="unit">${esc(o.unit)}${o.unit[0] ? `<span class="tag">${esc(o.unit[0])} 栋</span>` : ''}${o.type ? `<span class="tag type">Type ${esc(o.type)}</span>` : ''}</div>
+            <div class="own"><span><i class="fa-solid fa-user"></i>${esc(o.name) || '—'}</span>${o.phone ? `<span><i class="fa-solid fa-phone"></i>${esc(showPhone(o.phone))}</span>` : ''}</div></div>
+            <span class="st">${s[0]}</span></div>
+        ${o.tenancyEnd ? `<div class="li-mid"><i class="fa-solid fa-key" style="color:${c}"></i><span class="t">租约 ${fmt(o.tenancyEnd)} 到期</span><span class="x" style="color:${c}">${daysTo(o.tenancyEnd) < 0 ? left(daysTo(o.tenancyEnd)) : '还有 ' + left(daysTo(o.tenancyEnd))}</span></div>` : ''}
+        ${nd !== null ? `<div class="li-mid"><i class="fa-solid ${nd <= 0 ? 'fa-bell' : 'fa-calendar-day'}" style="color:${nd <= 0 ? '#fb7185' : '#94a3b8'}"></i><span class="t">下次跟进 ${fmt(o.nextFollowup)}</span><span class="x" style="color:${nd <= 0 ? '#fb7185' : '#fbbf24'}">${nd <= 0 ? '该跟进了' : left(nd) + '后'}</span></div>` : ''}
+        ${o.lastFollowup ? `<div class="note" style="margin-top:.45rem"><i class="fa-solid fa-clock-rotate-left"></i>上次跟进 ${fmt(o.lastFollowup)}</div>` : ''}
+        ${o.note ? `<p class="note"><i class="fa-regular fa-note-sticky"></i>${esc(o.note.length > 240 ? o.note.slice(0, 240) + '…' : o.note)}</p>` : ''}
+        <div class="li-act">${wa}<button class="act done" data-act="done"><i class="fa-solid fa-check"></i>已跟进</button><button class="act ic" data-act="edit" aria-label="Edit"><i class="fa-solid fa-pen"></i></button></div>
+    </article>`;
+}
+function renderList() {
+    const filtered = !!(F.axis || F.month !== null || F.block !== 'all' || F.line !== 'all' || F.view !== 'all' || F.q);
+    const rows = owners.filter(matches).sort((a, b) => rank(a) - rank(b) || (a.nextFollowup || a.tenancyEnd || '9').localeCompare(b.nextFollowup || b.tenancyEnd || '9') || a.unit.localeCompare(b.unit));
+    $('clear').hidden = !filtered;
+    $('listTitle').textContent = filtered ? `筛选结果 · ${rows.length.toLocaleString()} 户` : 'Follow-up 清单 · 先看该跟进的';
+    $('sub').textContent = `${owners.length.toLocaleString()} 位业主`;
+    const part = rows.slice(0, F.shown);
+    $('list').innerHTML = part.map(card).join('')
+        + (rows.length > part.length ? `<button class="more" id="more">再显示 ${Math.min(PAGE, rows.length - part.length)} 户（还有 ${(rows.length - part.length).toLocaleString()} 户）</button>` : '')
+        || '<p class="empty"><i class="fa-regular fa-face-smile" style="font-size:1.6rem;display:block;margin-bottom:.5rem"></i>这一类现在没有业主</p>';
+}
+$('list').addEventListener('click', (e) => {
+    if (e.target.closest('#more')) { F.shown += PAGE; renderList(); return; }
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const o = owners.find((x) => x.id === Number(b.closest('.li').dataset.id)); if (!o) return;
+    b.dataset.act === 'edit' ? openForm(o) : openFollowed(o);
+});
+
+// ----- summary numbers -----
+function renderAll() {
+    $('sTotal').textContent = owners.length.toLocaleString();
+    $('sTrack').textContent = owners.filter((o) => o.tenancyEnd).length.toLocaleString();
+    $('sLate').textContent = owners.filter(isLate).length.toLocaleString();
+    renderViews(); updateHex(); renderTl(); renderList();
+}
+
+// ----- dialogs -----
+function askSave(text) {
+    return new Promise((resolve) => {
+        const box = $('dlg'); $('dlgText').textContent = text; box.classList.remove('hidden');
+        const done = (v) => { box.classList.add('hidden'); box.onclick = null; document.removeEventListener('keydown', onKey); resolve(v); };
+        const onKey = (e) => { if (e.key === 'Escape') done('keep'); };
+        $('dlgSave').onclick = () => done('save'); $('dlgDiscard').onclick = () => done('discard'); $('dlgKeep').onclick = () => done('keep');
+        box.onclick = (e) => { if (e.target === box) done('keep'); };
+        document.addEventListener('keydown', onKey);
+    });
+}
+
+// ----- add / edit -----
+let current = null, formSnap = '';
+$('f-type').innerHTML = '<option value="">—</option>' + TYPES.map((t) => `<option value="${t}">Type ${t}</option>`).join('');
+$('f-line').innerHTML = '<option value="">—</option>' + Object.entries(LINES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+$('f-status').innerHTML = STATUS_KEYS.map((k) => `<option value="${k}">${STATUS[k][0]}</option>`).join('');
+const FIELDS = ['f-unit', 'f-type', 'f-line', 'f-name', 'f-phone', 'f-status', 'f-end', 'f-next', 'f-note'];
+const formState = () => JSON.stringify(FIELDS.map((k) => $(k).value));
+function openForm(o) {
+    current = o || null; const v = o || { status: 'none' };
+    $('fTitle').textContent = o ? 'Edit · ' + o.unit : 'New owner';
+    $('f-unit').value = v.unit || ''; $('f-type').value = v.type || ''; $('f-line').value = v.line || ''; $('f-name').value = v.name || ''; $('f-phone').value = v.phone || '';
+    $('f-status').value = v.status || 'none'; $('f-end').value = v.tenancyEnd || ''; $('f-next').value = v.nextFollowup || ''; $('f-note').value = v.note || '';
+    $('delBtn').classList.toggle('hidden', !o);
+    $('sheet').classList.remove('hidden'); $('sheet').scrollTop = 0; document.body.style.overflow = 'hidden';
+    formSnap = formState();
+}
+function closeForm() { $('sheet').classList.add('hidden'); document.body.style.overflow = ''; }
+async function requestClose() {
+    if (formState() === formSnap) return closeForm();
+    const r = await askSave('这位业主的资料你改过了，还没有保存。要保存吗？');
+    if (r === 'save') return save();
+    if (r === 'discard') return closeForm();
+}
+async function save() {
+    const body = { unit: $('f-unit').value, type: $('f-type').value, line: $('f-line').value, name: $('f-name').value, phone: $('f-phone').value, status: $('f-status').value,
+        tenancyEnd: $('f-end').value || null, nextFollowup: $('f-next').value || null, note: $('f-note').value };
+    try {
+        await trkSaving.run(async () => {
+            const out = current ? await api('PUT', 'upcoming/' + current.id, body) : await api('POST', 'upcoming', body);
+            const i = owners.findIndex((x) => x.id === out.owner.id);
+            if (i >= 0) owners[i] = out.owner; else owners.push(out.owner);
+        });
+        closeForm(); renderAll(); toast('Saved');
+    } catch (e) { toast(e.message); }
+}
+async function removeOwner() {
+    if (!current || !confirm(`Delete ${current.unit}? This cannot be undone.`)) return;
+    try { await api('DELETE', 'upcoming/' + current.id); owners = owners.filter((x) => x.id !== current.id); closeForm(); renderAll(); toast('Deleted'); } catch (e) { toast(e.message); }
+}
+$('closeBtn').addEventListener('click', requestClose); $('saveBtn').addEventListener('click', save); $('delBtn').addEventListener('click', removeOwner);
+$('addTop').addEventListener('click', () => openForm()); $('fab').addEventListener('click', () => openForm());
+
+// ----- followed up -----
+let fdOwner = null;
+function openFollowed(o) {
+    fdOwner = o; $('fdTitle').textContent = o.unit + ' · 已跟进'; $('fd-note').value = '';
+    const opts = [['1 个月后', iso(addMonths(TODAY, 1))], ['3 个月后', iso(addMonths(TODAY, 3))], ['6 个月后', iso(addMonths(TODAY, 6))]];
+    if (o.tenancyEnd && daysTo(o.tenancyEnd) > 70) opts.push(['租约前 60 天', iso(addDays(day(o.tenancyEnd), -60))]);
+    $('fdChips').innerHTML = opts.map(([l, d]) => `<button class="f" type="button" data-d="${d}">${l}</button>`).join('') + '<button class="f" type="button" data-d="">不设</button>';
+    $('fd-next').value = o.tenancyEnd && daysTo(o.tenancyEnd) > 70 ? iso(addDays(day(o.tenancyEnd), -60)) : iso(addMonths(TODAY, 3));
+    document.querySelectorAll('#fdChips .f').forEach((x) => x.classList.toggle('on', x.dataset.d === $('fd-next').value));
+    $('fdSub').textContent = '记下今天已经联系过，然后选下次什么时候再跟进。';
+    $('fdlg').classList.remove('hidden');
+}
+$('fdChips').addEventListener('click', (e) => { const b = e.target.closest('.f'); if (!b) return; $('fd-next').value = b.dataset.d; document.querySelectorAll('#fdChips .f').forEach((x) => x.classList.toggle('on', x === b)); });
+$('fd-next').addEventListener('input', () => document.querySelectorAll('#fdChips .f').forEach((x) => x.classList.toggle('on', x.dataset.d === $('fd-next').value)));
+$('fdCancel').addEventListener('click', () => $('fdlg').classList.add('hidden'));
+$('fdlg').addEventListener('click', (e) => { if (e.target === $('fdlg')) $('fdlg').classList.add('hidden'); });
+$('fdOk').addEventListener('click', async () => {
+    if (!fdOwner) return;
+    try {
+        await trkSaving.run(async () => {
+            const out = await api('POST', `upcoming/${fdOwner.id}/followed`, { nextFollowup: $('fd-next').value || null, note: $('fd-note').value });
+            const i = owners.findIndex((x) => x.id === out.owner.id); if (i >= 0) owners[i] = out.owner;
+        });
+        $('fdlg').classList.add('hidden'); renderAll(); toast('已记下');
+    } catch (e) { toast(e.message); }
+});
+
+// ----- start: skeleton while the list loads -----
+$('list').innerHTML = Array.from({ length: 3 }, () => '<div class="li glass"><div class="sk" style="height:1.2rem;width:45%"></div><div class="sk" style="height:.8rem;width:70%;margin-top:.6rem"></div><div class="sk" style="height:2.2rem;margin-top:.9rem;border-radius:.9rem"></div><div class="sk" style="height:2.4rem;margin-top:.8rem;border-radius:.9rem"></div></div>').join('');
+$('tl').innerHTML = Array.from({ length: 12 }, (_, i) => `<div class="m"><div class="sk" style="width:100%;height:${20 + (i * 37) % 55}%"></div></div>`).join('');
+api('GET', 'upcoming').then((d) => { owners = d.owners; renderAll(); })
+    .catch((e) => { $('list').innerHTML = `<p class="empty" style="color:#fca5a5">${esc(e.message)}</p>`; });
+</script>
+</body>
+</html>

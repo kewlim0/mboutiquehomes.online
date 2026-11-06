@@ -12,6 +12,7 @@ const jwt = require('jsonwebtoken');
 
 const repo = require('./repo');
 const rentals = require('./rentals');
+const upcoming = require('./upcoming');
 const v = require('./validate');
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -279,6 +280,21 @@ admin.delete('/sims/:id', wrap(async (req, res) => {
   (await repo.deleteSim(idParam(req))) ? res.json({ ok: true }) : notFound(res);
 }));
 
+// Owners to follow up for /tracker/upcoming/ (any signed-in admin)
+admin.get('/upcoming', wrap(async (req, res) => { noStore(res); res.json(await upcoming.listAll()); }));
+admin.post('/upcoming', wrap(async (req, res) => { res.status(201).json({ owner: await upcoming.create(upcoming.owner(req.body)) }); }));
+admin.put('/upcoming/:id', wrap(async (req, res) => {
+  const o = await upcoming.update(idParam(req), upcoming.owner(req.body));
+  o ? res.json({ owner: o }) : notFound(res);
+}));
+admin.post('/upcoming/:id/followed', wrap(async (req, res) => {
+  const b = req.body && typeof req.body === 'object' ? req.body : {};
+  const note = typeof b.note === 'string' ? b.note.trim().slice(0, 500) : '';
+  const o = await upcoming.markFollowed(idParam(req), { nextFollowup: upcoming.dateOrNull(b.nextFollowup, '下次跟进日'), note });
+  o ? res.json({ owner: o }) : notFound(res);
+}));
+admin.delete('/upcoming/:id', wrap(async (req, res) => { (await upcoming.remove(idParam(req))) ? res.json({ ok: true }) : notFound(res); }));
+
 // Rental units, tenants and monthly bills for /tracker/bill/ and /tracker/tenants/ (any signed-in admin)
 admin.get('/rentals', wrap(async (req, res) => { noStore(res); res.json(await rentals.listAll()); }));
 admin.post('/rental-units', wrap(async (req, res) => { res.status(201).json({ unit: await rentals.createUnit(rentals.unit(req.body)) }); }));
@@ -516,7 +532,7 @@ const PRIVATE_ADMIN_DIR = path.join(__dirname, '..', 'private', 'admin');
 const noStore = (res) => res.set('Cache-Control', 'no-store');
 
 // pages that send you to the login page first and bring you back after you sign in (/admin/?next=/tracker/)
-const NEXT_PAGES = ['/tracker/', '/tracker/sim/', '/tracker/bill/', '/tracker/tenants/', '/db'];
+const NEXT_PAGES = ['/tracker/', '/tracker/sim/', '/tracker/bill/', '/tracker/tenants/', '/tracker/upcoming/', '/db'];
 
 app.get('/admin', wrap(async (req, res) => {
   noStore(res);
@@ -606,7 +622,7 @@ app.get('/tracker/sim', wrap(async (req, res) => {
 }));
 
 // /tracker/bill/ and /tracker/tenants/: rental bills and tenant details (same sign-in as the rest of /tracker/)
-for (const page of ['bill', 'tenants']) {
+for (const page of ['bill', 'tenants', 'upcoming']) {
   app.get('/tracker/' + page, wrap(async (req, res) => {
     noStore(res);
     if (!req.originalUrl.startsWith(`/tracker/${page}/`)) return res.redirect(301, `/tracker/${page}/`);
@@ -639,6 +655,7 @@ setInterval(() => repo.sweepAbandonedVideos().catch(() => {}), 6 * 3600 * 1000).
 repo.ensurePropertyPhotos().catch((err) => console.warn('⚠ 照片表暂时无法准备（数据库连不上？）：', err.message));
 repo.ensurePropertyColumns().catch((err) => console.warn('⚠ 房型字段暂时无法准备（数据库连不上？）：', err.message));
 repo.ensureHeroBanners().catch((err) => console.warn('⚠ 横幅表暂时无法准备（数据库连不上？）：', err.message));
+upcoming.ensureUpcoming().catch((err) => console.warn('⚠ 业主跟进表暂时无法准备（数据库连不上？）：', err.message));
 rentals.ensureRentals().catch((err) => console.warn('⚠ 租赁账单表暂时无法准备（数据库连不上？）：', err.message));
 repo.ensureSims().catch((err) => console.warn('⚠ SIM 表暂时无法准备（数据库连不上？）：', err.message));
 repo.ensureAdmins().catch((err) => console.warn('⚠ 管理员表暂时无法准备（数据库连不上？）：', err.message));

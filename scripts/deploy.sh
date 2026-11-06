@@ -77,6 +77,8 @@ check "Tracker 总览页对未登录访客不可见 (/tracker/ 跳转)" "[ \"\$(
 check "SIM 页对未登录访客不可见 (/tracker/sim/ 跳转)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/tracker/sim/')\" = 302 ]"
 check "Bill 页对未登录访客不可见 (/tracker/bill/ 跳转)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/tracker/bill/')\" = 302 ]"
 check "租客页对未登录访客不可见 (/tracker/tenants/ 跳转)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/tracker/tenants/')\" = 302 ]"
+check "业主跟进页对未登录访客不可见 (/tracker/upcoming/ 跳转)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/tracker/upcoming/')\" = 302 ]"
+check "业主跟进数据接口未登录 401" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/api/admin/upcoming')\" = 401 ]"
 check "租赁数据接口未登录 401" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/api/admin/rentals')\" = 401 ]"
 check "租约文件未登录拿不到 (401)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/api/admin/rental-units/1/agreement')\" = 401 ]"
 check "租约文件不能用普通链接取到" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/private-files/agreements/x.pdf')\" != 200 ]"
