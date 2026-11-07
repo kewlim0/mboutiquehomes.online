@@ -169,7 +169,7 @@
         @media (max-width: 899px) { #tFull { display: inline-flex; } }
         #tFullExit { display: none; position: absolute; right: 0.6rem; bottom: calc(0.6rem + env(safe-area-inset-bottom)); z-index: 10; width: 2.7rem; height: 2.7rem; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.94); color: var(--ink); box-shadow: 0 6px 18px -6px rgba(15,23,42,.45); align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
         .tinner > .sheet-top, .tinner > .tbar, .tinner > .thint { transition: height 0.38s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s ease, padding 0.38s cubic-bezier(0.32, 0.72, 0, 1), border-width 0.38s; }
-        .tinner.tfull > .sheet-top, .tinner.tfull > .tbar, .tinner.tfull > .thint { overflow: hidden; height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; border-width: 0; pointer-events: none; }
+        .tinner.tfull > .sheet-top, .tinner.tfull > .tbar, .tinner.tfull > .thint { overflow: hidden !important; height: 0 !important; opacity: 0; padding-top: 0; padding-bottom: 0; border-width: 0; pointer-events: none; }
         #tFullExit { animation: none; }
         .tinner.tfull #tFullExit { animation: fx-in 0.3s 0.2s ease-out both; }
         @keyframes fx-in { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
