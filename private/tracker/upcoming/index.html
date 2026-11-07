@@ -120,6 +120,12 @@
         /* the table: every column and every row at once, like the spreadsheet */
         .tbtn { background: #fff; border: 1.5px solid var(--line); color: var(--g3); }
         .tsheet { z-index: 35; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+        /* the table is a whole page: it slides in from the right, and slides back out to the right */
+        @keyframes sheet-in-right { from { transform: translate3d(100%, 0, 0); } to { transform: translate3d(0, 0, 0); } }
+        @keyframes sheet-out-right { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(100%, 0, 0); } }
+        .tsheet:not(.hidden) { animation: sheet-in-right 0.36s cubic-bezier(0.22, 1, 0.36, 1) both; will-change: transform; box-shadow: -18px 0 40px -20px rgba(15, 23, 42, 0.35); }
+        .tsheet.sheet-out { animation: sheet-out-right 0.22s ease-in both; pointer-events: none; }
+        @media (prefers-reduced-motion: reduce) { .tsheet:not(.hidden), .tsheet.sheet-out { animation: none; } }
         .tsheet.hidden { display: none; }
         .tsheet .sheet-top { position: static; gap: 0.5rem; }
         .tsheet .sheet-top .ttl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -786,10 +792,14 @@ function fillTableFilters() {
 function openTable() {
     T.proj = 'cur'; T.status = 'all'; T.type = 'all'; T.block = 'all'; T.q = ''; $('t-q').value = '';
     fillTableFilters(); renderTable();
-    $('tsheet').classList.remove('hidden'); document.body.style.overflow = 'hidden';
+    $('tsheet').classList.remove('sheet-out', 'hidden'); document.body.style.overflow = 'hidden';
     $('tsheet').querySelector('.twrap').scrollTop = 0;
 }
-function closeTable() { $('tsheet').classList.add('hidden'); document.body.style.overflow = ''; }
+function closeTable() {
+    const el = $('tsheet'); if (el.classList.contains('hidden') || el.classList.contains('sheet-out')) return;
+    el.classList.add('sheet-out');   // slide out first, then hide
+    setTimeout(() => { el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.style.overflow = ''; }, 230);
+}
 $('tblBtn').addEventListener('click', openTable); $('tClose').addEventListener('click', closeTable);
 $('t-proj').addEventListener('change', () => { T.proj = $('t-proj').value; T.type = 'all'; T.block = 'all'; fillTableFilters(); renderTable(); });
 for (const [id, key] of [['t-status', 'status'], ['t-type', 'type'], ['t-block', 'block']]) $(id).addEventListener('change', () => { T[key] = $(id).value; renderTable(); });
