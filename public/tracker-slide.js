@@ -117,3 +117,19 @@
         setTimeout(function () { location.href = url.href; }, OUT_MS);
     });
 })();
+
+// ---- the Tracker as an installed app ----
+// service worker: makes it installable and shows a page when offline (it stores nothing private, see /tracker-sw.js)
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('/tracker-sw.js', { scope: '/tracker/' }).catch(function () { /* the site works without it */ }); });
+}
+// Chrome (Android / desktop) offers "install" once through this event: keep it for the install button on the overview page
+window.trkInstall = { prompt: null, onChange: null, installed: false };
+window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window.trkInstall.prompt = e; if (window.trkInstall.onChange) window.trkInstall.onChange(); });
+window.addEventListener('appinstalled', function () { window.trkInstall.prompt = null; window.trkInstall.installed = true; if (window.trkInstall.onChange) window.trkInstall.onChange(); });
+// app feel: no pull-to-refresh bounce, no grey flash on taps, no long-press menu on buttons and icons
+(function () {
+    var st = document.createElement('style');
+    st.textContent = 'html,body{overscroll-behavior-y:contain;-webkit-tap-highlight-color:transparent}button,a,.tile,.btn{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}input,textarea,select,td{-webkit-user-select:text;user-select:text}';
+    document.head.appendChild(st);
+})();
