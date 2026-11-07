@@ -124,7 +124,7 @@
         @keyframes sheet-in-right { from { transform: translate3d(100%, 0, 0); } to { transform: translate3d(0, 0, 0); } }
         @keyframes sheet-out-right { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(100%, 0, 0); } }
         .tsheet:not(.hidden) { animation: sheet-in-right 0.36s cubic-bezier(0.22, 1, 0.36, 1) both; will-change: transform; box-shadow: -18px 0 40px -20px rgba(15, 23, 42, 0.35); }
-        .tsheet.sheet-out { animation: sheet-out-right 0.22s ease-in both; pointer-events: none; }
+        .tsheet.sheet-out { animation: sheet-out-right 0.24s ease-in both; }   /* (no pointer-events here: it is inherited and would restyle every cell of the table before the slide even starts) */
         @media (prefers-reduced-motion: reduce) { .tsheet:not(.hidden), .tsheet.sheet-out { animation: none; } }
         .tsheet.hidden { display: none; }
         .tsheet .sheet-top { position: static; gap: 0.5rem; }
@@ -799,8 +799,13 @@ function openTable() {
 }
 function closeTable() {
     const el = $('tsheet'); if (el.classList.contains('hidden') || el.classList.contains('sheet-out')) return;
-    el.classList.add('sheet-out');   // slide out first, then hide
-    setTimeout(() => { el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.style.overflow = ''; }, 230);
+    const finish = () => { el.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.style.overflow = ''; };
+    // hide when the slide-out has really finished (not after a fixed time: on a phone the animation can start late, and a timer would hide the page in the middle of it)
+    const onEnd = (e) => { if (e.target === el && e.animationName === 'sheet-out-right') finish(); };
+    const safety = setTimeout(finish, 1500);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return finish();
+    el.addEventListener('animationend', onEnd);
+    el.classList.add('sheet-out');
 }
 $('tblBtn').addEventListener('click', openTable); $('tClose').addEventListener('click', closeTable);
 $('t-proj').addEventListener('change', () => { T.proj = $('t-proj').value; T.type = 'all'; T.block = 'all'; fillTableFilters(); renderTable(); });
