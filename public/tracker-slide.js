@@ -40,10 +40,12 @@
         var st = document.createElement('style');
         st.textContent =
             '.trk-hud { position: fixed; inset: 0; z-index: 120; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.38); -webkit-tap-highlight-color: transparent; }' +
-            '.trk-hud.on { display: flex; }' +
+            '.trk-hud.on { display: flex; animation: trk-hud-fade 0.18s ease-out both; }' +
+            '.trk-hud.still, .trk-hud.still .trk-hud-box { animation: none; }' +
+            '@keyframes trk-hud-fade { from { opacity: 0; } to { opacity: 1; } }' +
             '.trk-hud-box { min-width: 150px; padding: 22px 26px 18px; border-radius: 22px; background: #fff; text-align: center; box-shadow: 0 30px 60px -18px rgba(15, 23, 42, 0.55); animation: trk-hud-pop 0.2s cubic-bezier(0.22, 1, 0.36, 1) both; }' +
             '@keyframes trk-hud-pop { from { transform: scale(0.9); opacity: 0; } to { transform: none; opacity: 1; } }' +
-            '.trk-hud-spin { width: 48px; height: 48px; display: block; margin: 0 auto; animation: trk-hud-turn 0.96s steps(12) infinite; }' +
+            '.trk-hud-spin { width: 48px; height: 48px; display: block; margin: 0 auto; animation: trk-hud-turn 0.9s linear infinite; will-change: transform; }' +
             '@keyframes trk-hud-turn { to { transform: rotate(360deg); } }' +
             '.trk-hud-text { margin-top: 12px; font: 700 14px/1.2 Inter, "PingFang SC", "Noto Sans SC", system-ui, sans-serif; color: #334155; letter-spacing: 0.02em; }' +
             '@media (prefers-reduced-motion: reduce) { .trk-hud-spin { animation-duration: 2.4s; } }';
@@ -55,7 +57,7 @@
         return hud;
     }
     window.trkSaving = {
-        show: function (text) { var el = hudEl(); el.querySelector('.trk-hud-text').textContent = text || '保存中…'; el.classList.add('on'); },
+        show: function (text, still) { var el = hudEl(); el.querySelector('.trk-hud-text').textContent = text || '保存中…'; el.classList.toggle('still', !!still); el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); },
         hide: function () { if (hud) hud.classList.remove('on'); },
         run: function (work, text) {
             var el = hudEl(); el.querySelector('.trk-hud-text').textContent = text || '保存中…';
@@ -76,13 +78,13 @@
         var f = raw && JSON.parse(raw);
         if (f && Date.now() - f.t < 4000 && (f.dir === 'fwd' || f.dir === 'back')) dir = f.dir;
     } catch (e) { /* storage blocked: no animation */ }
-    if (dir === 'fwd') {
-        // going deeper: the "加载中…" box (already shown by the page we came from) stays until the first skeleton shimmer is on screen
+    if (dir) {
+        // going deeper or back: the "加载中…" box (already shown by the page we came from) stays until the first skeleton shimmer is on screen
         var shown = false;
         var done = function () { if (shown) return; shown = true; if (mo) mo.disconnect(); window.trkSaving.hide(); };
         var look = function () { if (document.querySelector('.sk')) done(); };
         var mo = window.MutationObserver ? new MutationObserver(look) : null;
-        window.trkSaving.show('加载中…');
+        window.trkSaving.show('加载中…', true);
         if (mo) mo.observe(root, { childList: true, subtree: true });
         document.addEventListener('DOMContentLoaded', look);
         window.addEventListener('load', function () { setTimeout(done, 300); });   // no skeleton on this page: hide once loaded
@@ -123,18 +125,9 @@
         if (busy) return;                                         // a second tap while leaving does nothing
         busy = true;
         var direction = to > from ? 'fwd' : 'back';
-        if (direction === 'fwd') {
-            try { sessionStorage.setItem(KEY, JSON.stringify({ dir: 'fwd', t: Date.now() })); } catch (err) { /* ignore */ }
-            window.trkSaving.show('加载中…');
-            setTimeout(function () { location.href = url.href; }, 60);
-            return;
-        }
-        if (reduce) { location.href = url.href; return; }
-        var icon = a.querySelector('.go i, i.fa-chevron-left');
-        if (icon) { spun = { icon: icon, cls: icon.className }; icon.className = 'fa-solid fa-circle-notch fa-spin'; }
         try { sessionStorage.setItem(KEY, JSON.stringify({ dir: direction, t: Date.now() })); } catch (err) { /* ignore */ }
-        root.classList.add('trk-anim', 'trk-out-' + direction);
-        setTimeout(function () { location.href = url.href; }, OUT_MS);
+        window.trkSaving.show('加载中…');
+        setTimeout(function () { location.href = url.href; }, 120);
     });
 })();
 
