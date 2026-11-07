@@ -168,19 +168,21 @@
         #tFull { display: none; }
         @media (max-width: 899px) { #tFull { display: inline-flex; } }
         #tFullExit { display: none; position: absolute; right: 0.6rem; bottom: calc(0.6rem + env(safe-area-inset-bottom)); z-index: 10; width: 2.7rem; height: 2.7rem; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.94); color: var(--ink); box-shadow: 0 6px 18px -6px rgba(15,23,42,.45); align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
-        .tbars { position: relative; z-index: 5; flex: 0 0 auto; background: #fff; }
-        .tinner.tfull > .tbars { position: absolute; left: 0; right: 0; top: 0; pointer-events: none; }
-        .tinner.tfull:not(.tanim) > .tbars { display: none; }
-        .tinner.tfull .twrap, .tinner.tanim .twrap { will-change: transform; }
+        /* the bars sit on top of the table, which is always laid out the same way: full screen is then just a slide of both with transforms (no re-layout of 1,000+ rows, so it stays smooth) */
+        .tbars { position: absolute; left: 0; right: 0; top: 0; z-index: 5; background: #fff; transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1); }
+        .tinner.tfull > .tbars { transform: translateY(-100%); pointer-events: none; }
+        .tinner > .twrap { transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1); will-change: transform; }
+        .tinner.tfull > .twrap { transform: translateY(calc(var(--bh, 0px) * -1)); }
         #tFullExit { animation: none; }
         .tinner.tfull #tFullExit { animation: fx-in 0.3s 0.2s ease-out both; }
         @keyframes fx-in { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
+        @media (prefers-reduced-motion: reduce) { .tbars, .tinner > .twrap { transition: none; } }
         .tinner.tfull #tFullExit { display: flex; }
         .tinner.tfull .twrap { padding-top: env(safe-area-inset-top); }
-        .twrap { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; background: #fff; }
-        table.t { border-collapse: separate; border-spacing: 0; font-size: 12.5px; font-variant-numeric: tabular-nums; min-width: 100%; }
+        .twrap { position: absolute; left: 0; right: 0; top: 0; height: calc(100% + var(--bh, 0px)); overflow: auto; -webkit-overflow-scrolling: touch; background: #fff; }
+        table.t { margin: var(--bh, 0px) 0; border-collapse: separate; border-spacing: 0; font-size: 12.5px; font-variant-numeric: tabular-nums; min-width: 100%; }
         table.t th, table.t td { padding: 0.5rem 0.7rem; border-bottom: 1px solid #eef2f7; border-right: 1px solid #f1f5f9; white-space: nowrap; text-align: left; background: #fff; }
-        table.t th { position: sticky; top: 0; z-index: 3; background: #ecfdf5; color: #166534; font-size: 11px; font-weight: 800; letter-spacing: 0.03em; cursor: pointer; user-select: none; border-bottom: 2px solid #bbf7d0; }
+        table.t th { position: sticky; top: var(--bh, 0px); z-index: 3; background: #ecfdf5; color: #166534; font-size: 11px; font-weight: 800; letter-spacing: 0.03em; cursor: pointer; user-select: none; border-bottom: 2px solid #bbf7d0; }
         table.t th.nosort { cursor: default; }
         table.t th .ar { display: inline-block; width: 0.8rem; color: var(--g2); }
         table.t tbody tr:nth-child(even) td { background: #fafcfb; }
@@ -861,7 +863,7 @@ function openTable() {
 }
 function closeTable() {
     const el = $('tsheet'), inner = el.querySelector('.tinner'); if (el.classList.contains('hidden') || el.classList.contains('sheet-out')) return;
-    const finish = () => { inner.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.classList.remove('tbl-open', 'tbl-closing'); document.body.style.overflow = ''; inner.classList.remove('tfull'); inner.classList.remove('tanim'); };
+    const finish = () => { inner.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.classList.remove('tbl-open', 'tbl-closing'); document.body.style.overflow = ''; inner.classList.remove('tfull'); };
     const onEnd = (e) => { if (e.target === inner && e.animationName === 'sheet-out-right') finish(); };   // hide when the slide-out has really finished
     const safety = setTimeout(finish, 1100);
     refreshFromServer();   // the page behind shows its skeleton while the table slides away
@@ -870,25 +872,12 @@ function closeTable() {
     document.body.classList.remove('tbl-open'); document.body.classList.add('tbl-closing');
     el.classList.add('sheet-out');
 }
-const setFull = (on) => {   // only transforms are animated (cheap): the table is laid out once, then slid into place
-    const inner = $('tsheet').querySelector('.tinner'), bars = inner.querySelector('.tbars'), wrap = inner.querySelector('.twrap');
-    if (inner.classList.contains('tfull') === on) return;
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const ease = { duration: 380, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' };
-    if (on) {
-        const H = bars.offsetHeight;
-        inner.classList.add('tfull'); if (still) return;
-        inner.classList.add('tanim');
-        const done = () => inner.classList.remove('tanim');
-        bars.animate([{ transform: 'translateY(0)' }, { transform: `translateY(${-H}px)` }], ease).onfinish = done;
-        wrap.animate([{ transform: `translateY(${H}px)` }, { transform: 'translateY(0)' }], ease);
-    } else {
-        inner.classList.remove('tfull', 'tanim'); if (still) return;
-        const H = bars.offsetHeight;
-        bars.animate([{ transform: `translateY(${-H}px)` }, { transform: 'translateY(0)' }], ease);
-        wrap.animate([{ transform: `translateY(${-H}px)` }, { transform: 'translateY(0)' }], ease);
-    }
-};
+const setFull = (on) => { $('tsheet').querySelector('.tinner').classList.toggle('tfull', on); };
+{   // the bars' height (it changes with the phone's width) tells the table how far to start below them
+    const inner = $('tsheet').querySelector('.tinner'), bars = inner.querySelector('.tbars');
+    const measure = () => { const h = bars.offsetHeight; if (h) inner.style.setProperty('--bh', h + 'px'); };
+    if (window.ResizeObserver) new ResizeObserver(measure).observe(bars); window.addEventListener('resize', measure);
+}
 $('tFull').addEventListener('click', () => setFull(true)); $('tFullExit').addEventListener('click', () => setFull(false));
 $('tblBtn').addEventListener('click', openTable); $('tClose').addEventListener('click', closeTable);
 $('t-proj').addEventListener('change', () => { T.proj = $('t-proj').value; T.type = 'all'; T.block = 'all'; fillTableFilters(); renderTable(); });
