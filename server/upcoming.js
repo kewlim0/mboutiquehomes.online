@@ -254,4 +254,58 @@ async function importAll(rows, projectName) {
   }
 }
 
-module.exports = { ensureUpcoming, owner, project, listAll, create, update, markFollowed, remove, createProject, updateProject, removeProject, importAll, dateOrNull, STATUSES };
+// Rows from an uploaded file (already matched to our columns by the page). Units that are not in the project yet are added.
+// A unit that is already there is skipped (mode "skip") or filled in from the file (mode "update": only what the file has,
+// and a note that is not in the notes yet is added as a new line). Bad rows are left out and reported; the rest goes in as one transaction.
+const MAX_IMPORT_ROWS = 5000;
+async function importRows(projectId, rows, mode) {
+  await ensureUpcoming();
+  const proj = await getProject(projectId);
+  if (!proj) throw new HttpError(400, '找不到这个项目');
+  if (!Array.isArray(rows) || !rows.length) throw new HttpError(400, '没有要导入的行');
+  if (rows.length > MAX_IMPORT_ROWS) throw new HttpError(400, `一次最多导入 ${MAX_IMPORT_ROWS} 行`);
+  const update = mode === 'update';
+  const conn = await pool.getConnection();
+  const out = { added: 0, updated: 0, skipped: 0, errors: [] };
+  try {
+    await conn.beginTransaction();
+    const [existing] = await conn.query(`SELECT ${COLS} FROM upcoming_owners WHERE project_id = ?`, [projectId]);
+    const byUnit = new Map(existing.map((r) => [r.unit, map(r)]));
+    for (const [i, raw] of rows.entries()) {
+      let o;
+      try { o = owner({ ...raw, projectId }); } catch (err) {
+        if (!(err instanceof HttpError)) throw err;
+        out.skipped++; if (out.errors.length < 20) out.errors.push(`第 ${i + 1} 行（${String((raw && raw.unit) || '').slice(0, 30)}）：${err.message}`); continue;
+      }
+      o.type = o.type || typeOf(o.unit, proj.types);
+      const old = byUnit.get(o.unit);
+      if (!old) {
+        const [r] = await conn.query(
+          `INSERT INTO upcoming_owners (project_id, unit, name, phone, type, line, status, tenancy_end, next_followup, note) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+          [projectId, o.unit, o.name, o.phone, o.type, '', o.status, o.tenancyEnd, o.nextFollowup, o.note]);
+        byUnit.set(o.unit, { id: r.insertId, ...o, lastFollowup: null });
+        out.added++; continue;
+      }
+      if (!update) { out.skipped++; continue; }
+      const note = o.note && !old.note.toLowerCase().includes(o.note.toLowerCase()) ? [old.note, o.note].filter(Boolean).join('\n') : old.note;
+      if (note.length > 4000) { out.skipped++; if (out.errors.length < 20) out.errors.push(`${o.unit}：备注太长了`); continue; }
+      const merged = {
+        name: o.name || old.name, phone: o.phone || old.phone, type: o.type || old.type,
+        status: o.status !== 'none' ? o.status : old.status, tenancyEnd: o.tenancyEnd || old.tenancyEnd, nextFollowup: o.nextFollowup || old.nextFollowup, note,
+      };
+      await conn.query('UPDATE upcoming_owners SET name=?, phone=?, type=?, status=?, tenancy_end=?, next_followup=?, note=? WHERE id = ?',
+        [merged.name, merged.phone, merged.type, merged.status, merged.tenancyEnd, merged.nextFollowup, merged.note, old.id]);
+      byUnit.set(o.unit, { ...old, ...merged });
+      out.updated++;
+    }
+    await conn.commit();
+    return out;
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+module.exports = { importRows, ensureUpcoming, owner, project, listAll, create, update, markFollowed, remove, createProject, updateProject, removeProject, importAll, dateOrNull, STATUSES };

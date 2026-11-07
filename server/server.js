@@ -33,7 +33,8 @@ const app = express();
 app.set('trust proxy', 1); // behind nginx on the VPS
 // CSP is off because the pages load Tailwind / FontAwesome / fonts from CDNs and use inline handlers.
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(express.json({ limit: '200kb' }));
+const jsonSmall = express.json({ limit: '200kb' }), jsonBig = express.json({ limit: '3mb' });
+app.use((req, res, next) => (req.path === '/api/admin/upcoming-import' ? jsonBig : jsonSmall)(req, res, next));   // a file with thousands of owners is bigger than a normal form
 app.use(cookieParser());
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -293,6 +294,10 @@ admin.put('/upcoming-projects/:id', wrap(async (req, res) => {
   p ? res.json({ project: p }) : notFound(res);
 }));
 admin.delete('/upcoming-projects/:id', wrap(async (req, res) => { (await upcoming.removeProject(idParam(req))) ? res.json({ ok: true }) : notFound(res); }));
+admin.post('/upcoming-import', wrap(async (req, res) => {
+  const b = req.body && typeof req.body === 'object' ? req.body : {};
+  res.json(await upcoming.importRows(Number(b.projectId), b.rows, b.mode === 'update' ? 'update' : 'skip'));
+}));
 admin.post('/upcoming/:id/followed', wrap(async (req, res) => {
   const b = req.body && typeof req.body === 'object' ? req.body : {};
   const note = typeof b.note === 'string' ? b.note.trim().slice(0, 500) : '';
