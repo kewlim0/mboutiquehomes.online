@@ -48,6 +48,10 @@
                 <input class="passcode-box" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="第 5 位数字">
                 <input class="passcode-box" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="第 6 位数字">
         </div>
+        <label class="flex items-center justify-center gap-2 text-xs text-gray-600 font-semibold cursor-pointer select-none">
+            <input type="checkbox" id="remember" checked class="w-4 h-4 accent-green-600">
+            记住这台设备 30 天，不用每次输密码
+        </label>
         <p id="loginError" class="text-xs text-red-600 text-center min-h-[1rem]" role="alert"></p>
         <button type="submit" id="loginBtn" class="btn-primary w-full">登录</button>
     </form>

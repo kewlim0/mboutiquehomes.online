@@ -41,7 +41,7 @@ async function submitPasscode() {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ passcode })
+            body: JSON.stringify({ passcode, remember: $('remember').checked })
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok) {

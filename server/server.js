@@ -18,7 +18,8 @@ const v = require('./validate');
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = Number(process.env.PORT) || 3000;
 const COOKIE = 'luxe_admin';
-const SESSION_HOURS = 12;
+const SESSION_HOURS = 12;                 // signed in on a device that is not remembered
+const REMEMBER_DAYS = 30;                 // "remember this device" on the sign-in page
 
 // REMOTE_DB=1 means this copy of the app is connected to the LIVE database (through an SSH tunnel).
 // Uploaded images are stored on this machine's disk, not on the live server, so uploads are disabled
@@ -125,12 +126,13 @@ app.post('/api/admin/login', sameOrigin, ipLoginLimiter, globalLoginLimiter, wra
   }
 
   await repo.touchAdminLogin(who.id);
-  const token = jwt.sign({ sub: String(who.id) }, process.env.JWT_SECRET, { expiresIn: `${SESSION_HOURS}h` });
+  const hours = req.body && req.body.remember === true ? REMEMBER_DAYS * 24 : SESSION_HOURS;
+  const token = jwt.sign({ sub: String(who.id) }, process.env.JWT_SECRET, { expiresIn: `${hours}h` });
   res.cookie(COOKIE, token, {
     httpOnly: true,
     sameSite: 'strict',
     secure: isProd,
-    maxAge: SESSION_HOURS * 3600 * 1000,
+    maxAge: hours * 3600 * 1000,
   });
   res.json({ ok: true });
 }));
