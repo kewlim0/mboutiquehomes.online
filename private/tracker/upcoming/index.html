@@ -168,8 +168,10 @@
         #tFull { display: none; }
         @media (max-width: 899px) { #tFull { display: inline-flex; } }
         #tFullExit { display: none; position: absolute; right: 0.6rem; bottom: calc(0.6rem + env(safe-area-inset-bottom)); z-index: 10; width: 2.7rem; height: 2.7rem; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.94); color: var(--ink); box-shadow: 0 6px 18px -6px rgba(15,23,42,.45); align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
-        .tinner > .sheet-top, .tinner > .tbar, .tinner > .thint { transition: height 0.38s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s ease, padding 0.38s cubic-bezier(0.32, 0.72, 0, 1), border-width 0.38s; }
-        .tinner.tfull > .sheet-top, .tinner.tfull > .tbar, .tinner.tfull > .thint { overflow: hidden !important; height: 0 !important; opacity: 0; padding-top: 0; padding-bottom: 0; border-width: 0; pointer-events: none; }
+        .tbars { position: relative; z-index: 5; flex: 0 0 auto; background: #fff; }
+        .tinner.tfull > .tbars { position: absolute; left: 0; right: 0; top: 0; pointer-events: none; }
+        .tinner.tfull:not(.tanim) > .tbars { display: none; }
+        .tinner.tfull .twrap, .tinner.tanim .twrap { will-change: transform; }
         #tFullExit { animation: none; }
         .tinner.tfull #tFullExit { animation: fx-in 0.3s 0.2s ease-out both; }
         @keyframes fx-in { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
@@ -329,6 +331,7 @@
 <!-- table: all columns, all rows -->
 <div id="tsheet" class="sheet tsheet hidden">
   <div class="tinner">
+    <div class="tbars">
     <div class="sheet-top">
         <button class="back glass" id="tClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
         <div class="ttl" id="tTitle">表格</div>
@@ -347,6 +350,7 @@
         <span class="tcount" id="tCount"></span>
     </div>
     <div class="thint"><i class="fa-regular fa-lightbulb"></i> 在 Google 表格里选好、复制，回到这里按 Ctrl+V（苹果电脑 ⌘+V）就能把整个表格粘贴进来 · 单击格子选中，双击可以直接修改 · 最左边的小图标打开这位业主 <span style="opacity:.55">· v8</span></div>
+    </div>
     <div class="twrap"><table class="t" id="tbl"></table></div>
     <button type="button" id="tFullExit" aria-label="退出全屏"><i class="fa-solid fa-compress"></i></button>
   </div>
@@ -857,7 +861,7 @@ function openTable() {
 }
 function closeTable() {
     const el = $('tsheet'), inner = el.querySelector('.tinner'); if (el.classList.contains('hidden') || el.classList.contains('sheet-out')) return;
-    const finish = () => { inner.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.classList.remove('tbl-open', 'tbl-closing'); document.body.style.overflow = ''; inner.classList.remove('tfull'); for (const e of inner.children) { e.style.height = ''; e.style.overflow = ''; } };
+    const finish = () => { inner.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.classList.remove('tbl-open', 'tbl-closing'); document.body.style.overflow = ''; inner.classList.remove('tfull'); inner.classList.remove('tanim'); };
     const onEnd = (e) => { if (e.target === inner && e.animationName === 'sheet-out-right') finish(); };   // hide when the slide-out has really finished
     const safety = setTimeout(finish, 1100);
     refreshFromServer();   // the page behind shows its skeleton while the table slides away
@@ -866,17 +870,23 @@ function closeTable() {
     document.body.classList.remove('tbl-open'); document.body.classList.add('tbl-closing');
     el.classList.add('sheet-out');
 }
-const fullBars = (inner) => [...inner.children].filter(e => e.matches('.sheet-top, .tbar, .thint'));
-const setFull = (on) => {   // the bars slide up (and fade) when going full screen, and back down when leaving it
-    const inner = $('tsheet').querySelector('.tinner'), bars = fullBars(inner);
+const setFull = (on) => {   // only transforms are animated (cheap): the table is laid out once, then slid into place
+    const inner = $('tsheet').querySelector('.tinner'), bars = inner.querySelector('.tbars'), wrap = inner.querySelector('.twrap');
     if (inner.classList.contains('tfull') === on) return;
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const ease = { duration: 380, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' };
     if (on) {
-        for (const b of bars) { b.style.height = b.offsetHeight + 'px'; b.style.overflow = 'hidden'; }
-        void inner.offsetHeight; inner.classList.add('tfull');
+        const H = bars.offsetHeight;
+        inner.classList.add('tfull'); if (still) return;
+        inner.classList.add('tanim');
+        const done = () => inner.classList.remove('tanim');
+        bars.animate([{ transform: 'translateY(0)' }, { transform: `translateY(${-H}px)` }], ease).onfinish = done;
+        wrap.animate([{ transform: `translateY(${H}px)` }, { transform: 'translateY(0)' }], ease);
     } else {
-        for (const b of bars) { b.style.height = b.scrollHeight + 'px'; }
-        inner.classList.remove('tfull');
-        setTimeout(() => { for (const b of bars) { b.style.height = ''; b.style.overflow = ''; } }, 420);
+        inner.classList.remove('tfull', 'tanim'); if (still) return;
+        const H = bars.offsetHeight;
+        bars.animate([{ transform: `translateY(${-H}px)` }, { transform: 'translateY(0)' }], ease);
+        wrap.animate([{ transform: `translateY(${-H}px)` }, { transform: 'translateY(0)' }], ease);
     }
 };
 $('tFull').addEventListener('click', () => setFull(true)); $('tFullExit').addEventListener('click', () => setFull(false));
