@@ -168,7 +168,11 @@
         #tFull { display: none; }
         @media (max-width: 899px) { #tFull { display: inline-flex; } }
         #tFullExit { display: none; position: absolute; right: 0.6rem; bottom: calc(0.6rem + env(safe-area-inset-bottom)); z-index: 10; width: 2.7rem; height: 2.7rem; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.94); color: var(--ink); box-shadow: 0 6px 18px -6px rgba(15,23,42,.45); align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
-        .tinner.tfull > .sheet-top, .tinner.tfull > .tbar, .tinner.tfull > .thint { display: none; }
+        .tinner > .sheet-top, .tinner > .tbar, .tinner > .thint { transition: height 0.38s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s ease, padding 0.38s cubic-bezier(0.32, 0.72, 0, 1), border-width 0.38s; }
+        .tinner.tfull > .sheet-top, .tinner.tfull > .tbar, .tinner.tfull > .thint { overflow: hidden; height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; border-width: 0; pointer-events: none; }
+        #tFullExit { animation: none; }
+        .tinner.tfull #tFullExit { animation: fx-in 0.3s 0.2s ease-out both; }
+        @keyframes fx-in { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
         .tinner.tfull #tFullExit { display: flex; }
         .tinner.tfull .twrap { padding-top: env(safe-area-inset-top); }
         .twrap { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; background: #fff; }
@@ -853,7 +857,7 @@ function openTable() {
 }
 function closeTable() {
     const el = $('tsheet'), inner = el.querySelector('.tinner'); if (el.classList.contains('hidden') || el.classList.contains('sheet-out')) return;
-    const finish = () => { inner.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.classList.remove('tbl-open', 'tbl-closing'); document.body.style.overflow = ''; inner.classList.remove('tfull'); };
+    const finish = () => { inner.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.classList.remove('tbl-open', 'tbl-closing'); document.body.style.overflow = ''; inner.classList.remove('tfull'); for (const e of inner.children) { e.style.height = ''; e.style.overflow = ''; } };
     const onEnd = (e) => { if (e.target === inner && e.animationName === 'sheet-out-right') finish(); };   // hide when the slide-out has really finished
     const safety = setTimeout(finish, 1100);
     refreshFromServer();   // the page behind shows its skeleton while the table slides away
@@ -862,7 +866,19 @@ function closeTable() {
     document.body.classList.remove('tbl-open'); document.body.classList.add('tbl-closing');
     el.classList.add('sheet-out');
 }
-const setFull = (on) => { $('tsheet').querySelector('.tinner').classList.toggle('tfull', on); };
+const fullBars = (inner) => [...inner.children].filter(e => e.matches('.sheet-top, .tbar, .thint'));
+const setFull = (on) => {   // the bars slide up (and fade) when going full screen, and back down when leaving it
+    const inner = $('tsheet').querySelector('.tinner'), bars = fullBars(inner);
+    if (inner.classList.contains('tfull') === on) return;
+    if (on) {
+        for (const b of bars) { b.style.height = b.offsetHeight + 'px'; b.style.overflow = 'hidden'; }
+        void inner.offsetHeight; inner.classList.add('tfull');
+    } else {
+        for (const b of bars) { b.style.height = b.scrollHeight + 'px'; }
+        inner.classList.remove('tfull');
+        setTimeout(() => { for (const b of bars) { b.style.height = ''; b.style.overflow = ''; } }, 420);
+    }
+};
 $('tFull').addEventListener('click', () => setFull(true)); $('tFullExit').addEventListener('click', () => setFull(false));
 $('tblBtn').addEventListener('click', openTable); $('tClose').addEventListener('click', closeTable);
 $('t-proj').addEventListener('change', () => { T.proj = $('t-proj').value; T.type = 'all'; T.block = 'all'; fillTableFilters(); renderTable(); });
