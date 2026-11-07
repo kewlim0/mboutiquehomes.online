@@ -79,6 +79,10 @@
         .axis { cursor: pointer; } .axis text { text-anchor: middle; } .axis .hit { fill: transparent; }
         .axis .nm { font-size: 10.5px; font-weight: 700; fill: #64748b; } .axis .ct { font-size: 13px; font-weight: 800; fill: #0f172a; }
         .axis.on .nm, .axis.on .ct { fill: #15803d; }
+        .hexbox.loading svg { visibility: hidden; }
+        .hexbox.loading::after { content: ''; position: absolute; inset: 7%; clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); background: linear-gradient(90deg, #e2e8f0 0%, #f4f7fb 50%, #e2e8f0 100%); background-size: 220% 100%; animation: hex-shimmer 1.3s linear infinite; }
+        @keyframes hex-shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+        @media (prefers-reduced-motion: reduce) { .hexbox.loading::after { animation: none; } }
         .hint { text-align: center; font-size: 0.66rem; color: #94a3b8; font-weight: 600; margin-top: 0.4rem; }
 
         .tl { display: grid; grid-template-columns: repeat(12, 1fr); gap: 0.28rem; align-items: end; height: 6rem; margin-top: 1.3rem; }
@@ -628,7 +632,8 @@ $('list').addEventListener('click', (e) => {
 function syncOwners() { const pr = curProject(); owners = pr ? allOwners.filter((o) => o.projectId === pr.id) : []; }
 function renderAll() {
     syncOwners(); renderProjects(); renderChips();
-    if (!$('tsheet').classList.contains('hidden')) { fillTableFilters(); renderTable(); }
+    const ts = $('tsheet'); if (!ts.classList.contains('hidden') && !ts.classList.contains('sheet-out')) { fillTableFilters(); renderTable(); }
+    document.querySelector('.hexbox').classList.remove('loading');
     $('sTotal').textContent = owners.length.toLocaleString();
     $('sTrack').textContent = owners.filter((o) => o.tenancyEnd).length.toLocaleString();
     $('sLate').textContent = owners.filter(isLate).length.toLocaleString();
@@ -833,6 +838,7 @@ function closeTable() {
     const finish = () => { inner.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.classList.remove('tbl-open', 'tbl-closing'); document.body.style.overflow = ''; };
     const onEnd = (e) => { if (e.target === inner && e.animationName === 'sheet-out-right') finish(); };   // hide when the slide-out has really finished
     const safety = setTimeout(finish, 1100);
+    refreshFromServer();   // the page behind shows its skeleton while the table slides away
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return finish();
     inner.addEventListener('animationend', onEnd);
     document.body.classList.remove('tbl-open'); document.body.classList.add('tbl-closing');
@@ -1277,9 +1283,26 @@ $('pAddType').addEventListener('click', () => { $('pTypes').insertAdjacentHTML('
 $('pTypes').addEventListener('click', (e) => { const d = e.target.closest('.tdel'); if (d) d.closest('.trow').remove(); });
 $('pClose').addEventListener('click', requestCloseProject); $('pSave').addEventListener('click', saveProject); $('pDel').addEventListener('click', removeProject);
 
-// ----- start: skeleton while the list loads -----
-$('list').innerHTML = Array.from({ length: 3 }, () => '<div class="li glass"><div class="sk" style="height:1.2rem;width:45%"></div><div class="sk" style="height:.8rem;width:70%;margin-top:.6rem"></div><div class="sk" style="height:2.2rem;margin-top:.9rem;border-radius:.9rem"></div><div class="sk" style="height:2.4rem;margin-top:.8rem;border-radius:.9rem"></div></div>').join('');
-$('tl').innerHTML = Array.from({ length: 12 }, (_, i) => `<div class="m"><div class="sk" style="width:100%;height:${20 + (i * 37) % 55}%"></div></div>`).join('');
+// ----- skeleton (grey shimmering blocks) while the data loads: at the start, and again when you come back from the table -----
+function showSkeleton() {
+    ['sTotal', 'sTrack', 'sLate'].forEach((id) => { $(id).innerHTML = '<span class="sk" style="display:inline-block;width:2.2rem;height:1.4rem;vertical-align:middle"></span>'; });
+    document.querySelector('.hexbox').classList.add('loading'); $('axes').innerHTML = '';
+    $('tl').innerHTML = Array.from({ length: 12 }, (_, i) => `<div class="m"><div class="sk" style="width:100%;height:${20 + (i * 37) % 55}%"></div></div>`).join('');
+    $('list').innerHTML = Array.from({ length: 3 }, () => '<div class="li glass"><div class="sk" style="height:1.2rem;width:45%"></div><div class="sk" style="height:.8rem;width:70%;margin-top:.6rem"></div><div class="sk" style="height:2.2rem;margin-top:.9rem;border-radius:.9rem"></div><div class="sk" style="height:2.4rem;margin-top:.8rem;border-radius:.9rem"></div></div>').join('');
+}
+// coming back from the table: the page behind it shows the skeleton while the latest data is fetched (so what you changed elsewhere is there too)
+let refreshing = false;
+async function refreshFromServer() {
+    if (refreshing) return; refreshing = true; showSkeleton();
+    const t0 = performance.now();
+    try {
+        const d = await api('GET', 'upcoming');
+        const wait = 450 - (performance.now() - t0); if (wait > 0) await new Promise((r) => setTimeout(r, wait));   // long enough to be seen
+        projects = d.projects; allOwners = d.owners;
+    } catch (e) { /* keep what is on the page */ }
+    refreshing = false; renderAll();
+}
+showSkeleton();
 api('GET', 'upcoming').then((d) => { projects = d.projects; allOwners = d.owners; renderAll(); })
     .catch((e) => { $('list').innerHTML = `<p class="empty" style="color:#e11d48">${esc(e.message)}</p>`; });
 </script>
