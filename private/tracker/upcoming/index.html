@@ -169,10 +169,9 @@
         @media (max-width: 899px) { #tFull { display: inline-flex; } }
         #tFullExit { display: none; position: absolute; right: 0.6rem; bottom: calc(0.6rem + env(safe-area-inset-bottom)); z-index: 10; width: 2.7rem; height: 2.7rem; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.94); color: var(--ink); box-shadow: 0 6px 18px -6px rgba(15,23,42,.45); align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
         /* the bars sit on top of the table, which is always laid out the same way: full screen is then just a slide of both with transforms (no re-layout of 1,000+ rows, so it stays smooth) */
-        .tbars { position: absolute; left: 0; right: 0; top: 0; z-index: 5; background: #fff; transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1); }
-        .tinner.tfull > .tbars { transform: translateY(-100%); pointer-events: none; }
-        .tinner > .twrap { transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1); will-change: transform; }
-        .tinner.tfull > .twrap { transform: translateY(calc(var(--bh, 0px) * -1)); }
+        .tbars { position: absolute; left: 0; right: 0; top: 0; z-index: 5; background: #fff; will-change: transform; }
+        .tinner.tfull > .tbars { pointer-events: none; }
+        .tinner > .twrap { will-change: transform; }
         #tFullExit { animation: none; }
         .tinner.tfull #tFullExit { animation: fx-in 0.3s 0.2s ease-out both; }
         @keyframes fx-in { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
@@ -862,7 +861,7 @@ function openTable() {
 }
 function closeTable() {
     const el = $('tsheet'), inner = el.querySelector('.tinner'); if (el.classList.contains('hidden') || el.classList.contains('sheet-out')) return;
-    const finish = () => { inner.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.classList.remove('tbl-open', 'tbl-closing'); document.body.style.overflow = ''; inner.classList.remove('tfull'); };
+    const finish = () => { inner.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.classList.remove('tbl-open', 'tbl-closing'); document.body.style.overflow = ''; inner.classList.remove('tfull'); cancelAnimationFrame(fullRaf); fullP = 0; for (const e of inner.querySelectorAll('.tbars, .twrap')) e.style.transform = ''; };
     const onEnd = (e) => { if (e.target === inner && e.animationName === 'sheet-out-right') finish(); };   // hide when the slide-out has really finished
     const safety = setTimeout(finish, 1100);
     refreshFromServer();   // the page behind shows its skeleton while the table slides away
@@ -871,7 +870,17 @@ function closeTable() {
     document.body.classList.remove('tbl-open'); document.body.classList.add('tbl-closing');
     el.classList.add('sheet-out');
 }
-const setFull = (on) => { $('tsheet').querySelector('.tinner').classList.toggle('tfull', on); };
+// the slide is driven from script, one transform per frame (the same on Android and iOS, whatever the CSS-transition support or Reduce Motion setting)
+let fullP = 0, fullRaf = 0;
+const setFull = (on) => {
+    const inner = $('tsheet').querySelector('.tinner'), bars = inner.querySelector('.tbars'), wrap = inner.querySelector('.twrap');
+    const H = bars.offsetHeight, from = fullP, to = on ? 1 : 0, t0 = performance.now(), dur = 380;
+    inner.classList.toggle('tfull', on); cancelAnimationFrame(fullRaf);
+    const put = (p) => { fullP = p; const t = p ? `translate3d(0, ${-H * p}px, 0)` : ''; bars.style.transform = t; wrap.style.transform = t; };
+    const ease = (x) => 1 - Math.pow(1 - x, 4);
+    const step = (now) => { const x = Math.min(1, (now - t0) / dur); put(from + (to - from) * ease(x)); if (x < 1) fullRaf = requestAnimationFrame(step); };
+    fullRaf = requestAnimationFrame(step);
+};
 {   // the bars' height (it changes with the phone's width) tells the table how far to start below them
     const inner = $('tsheet').querySelector('.tinner'), bars = inner.querySelector('.tbars');
     const measure = () => { const h = bars.offsetHeight; if (h) inner.style.setProperty('--bh', h + 'px'); };
