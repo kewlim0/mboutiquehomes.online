@@ -119,13 +119,25 @@
 
         /* the table: every column and every row at once, like the spreadsheet */
         .tbtn { background: #fff; border: 1.5px solid var(--line); color: var(--g3); }
-        .tsheet { z-index: 35; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
-        /* the table is a whole page: it slides in from the right, and slides back out to the right */
+        .tsheet { z-index: 35; overflow: hidden; background: transparent; }
+        .tsheet .tinner { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+        /* the table is a whole page, like in an app: it slides in from the right over the page (which dims), and slides back out to the right */
         @keyframes sheet-in-right { from { transform: translate3d(100%, 0, 0); } to { transform: translate3d(0, 0, 0); } }
         @keyframes sheet-out-right { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(100%, 0, 0); } }
-        .tsheet:not(.hidden) { animation: sheet-in-right 0.36s cubic-bezier(0.22, 1, 0.36, 1) both; will-change: transform; box-shadow: -18px 0 40px -20px rgba(15, 23, 42, 0.35); }
-        .tsheet.sheet-out { animation: sheet-out-right 0.24s ease-in both; }   /* (no pointer-events here: it is inherited and would restyle every cell of the table before the slide even starts) */
-        @media (prefers-reduced-motion: reduce) { .tsheet:not(.hidden), .tsheet.sheet-out { animation: none; } }
+        @keyframes dim-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes dim-out { from { opacity: 1; } to { opacity: 0; } }
+        .tsheet::before { content: ''; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.38); pointer-events: none; }
+        /* the curve apps use: moves at once, then settles (an ease-in curve sits still at first and then flies off, which looks like a flash) */
+        .tsheet:not(.hidden) > .tinner { animation: sheet-in-right 0.42s cubic-bezier(0.32, 0.72, 0, 1) both; will-change: transform; box-shadow: -18px 0 40px -20px rgba(15, 23, 42, 0.45); }
+        .tsheet:not(.hidden)::before { animation: dim-in 0.42s ease-out both; }
+        .tsheet.sheet-out > .tinner { animation: sheet-out-right 0.36s cubic-bezier(0.32, 0.72, 0, 1) both; }
+        .tsheet.sheet-out::before { animation: dim-out 0.36s ease-out both; }
+        /* the page underneath moves a little to the left while the table comes in, and back when it leaves (like an app's navigation) */
+        @keyframes under-in { from { transform: none; } to { transform: translate3d(-22%, 0, 0); } }
+        @keyframes under-out { from { transform: translate3d(-22%, 0, 0); } to { transform: none; } }
+        body.tbl-open > .wrap { animation: under-in 0.42s cubic-bezier(0.32, 0.72, 0, 1) both; }
+        body.tbl-closing > .wrap { animation: under-out 0.36s cubic-bezier(0.32, 0.72, 0, 1) both; }
+        @media (prefers-reduced-motion: reduce) { .tsheet:not(.hidden) > .tinner, .tsheet.sheet-out > .tinner, .tsheet:not(.hidden)::before, .tsheet.sheet-out::before, body.tbl-open > .wrap, body.tbl-closing > .wrap { animation: none; } }
         .tsheet.hidden { display: none; }
         .tsheet .sheet-top { position: static; gap: 0.5rem; }
         .tsheet .sheet-top .ttl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -287,6 +299,7 @@
 
 <!-- table: all columns, all rows -->
 <div id="tsheet" class="sheet tsheet hidden">
+  <div class="tinner">
     <div class="sheet-top">
         <button class="back glass" id="tClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
         <div class="ttl" id="tTitle">表格</div>
@@ -303,8 +316,9 @@
         <select class="field" id="t-block" aria-label="栋"></select>
         <span class="tcount" id="tCount"></span>
     </div>
-    <div class="thint"><i class="fa-regular fa-lightbulb"></i> 在 Google 表格里选好、复制，回到这里按 Ctrl+V（苹果电脑 ⌘+V）就能把整个表格粘贴进来 · 单击格子选中，双击可以直接修改 · 最左边的小图标打开这位业主</div>
+    <div class="thint"><i class="fa-regular fa-lightbulb"></i> 在 Google 表格里选好、复制，回到这里按 Ctrl+V（苹果电脑 ⌘+V）就能把整个表格粘贴进来 · 单击格子选中，双击可以直接修改 · 最左边的小图标打开这位业主 <span style="opacity:.55">· v8</span></div>
     <div class="twrap"><table class="t" id="tbl"></table></div>
+  </div>
 </div>
 
 <!-- upload: pick which of your columns goes where -->
@@ -710,7 +724,8 @@ $('fdOk').addEventListener('click', async () => {
 
 // ----- table: every column, every row ---------------------------------------------------------------
 const T = { proj: 'cur', q: '', status: 'all', type: 'all', block: 'all', key: 'unit', dir: 1 };
-const natural = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true });
+const collator = new Intl.Collator(undefined, { numeric: true });   // one shared collator: localeCompare with options builds a new one on every call, which is very slow for a thousand rows
+const natural = (a, b) => collator.compare(String(a), String(b));
 const COLS = [
     { k: 'n', label: '#', cls: 'num', nosort: true },
     { k: 'unit', label: '单位', cls: 'u' },
@@ -791,20 +806,31 @@ function fillTableFilters() {
 }
 function openTable() {
     T.proj = 'cur'; T.status = 'all'; T.type = 'all'; T.block = 'all'; T.q = ''; $('t-q').value = '';
-    // a few rows first: laying out a thousand rows takes longer than the slide-in itself and made it look like the page just appeared
-    fillTableFilters(); renderTable(25);
-    $('tsheet').classList.remove('sheet-out', 'hidden'); document.body.style.overflow = 'hidden';
-    $('tsheet').querySelector('.twrap').scrollTop = 0;
-    setTimeout(() => { const el = $('tsheet'); if (!el.classList.contains('hidden') && !el.classList.contains('sheet-out')) renderTable(); }, 450);   // the rest, once it has arrived
+    // The page slides in with grey placeholder rows. The real rows are drawn when it has arrived: drawing them while it was still
+    // sliding blocked the frames (laying out the rows took longer than the slide), so the slide-in was barely seen.
+    document.body.classList.remove('tbl-closing'); document.body.classList.add('tbl-open');
+    $('tbl').innerHTML = '<tbody>' + Array.from({ length: 9 }, (_, i) => `<tr class="tsk"><td colspan="12"><span class="sk" style="display:block;height:1.15rem;width:${i % 3 === 0 ? 60 : i % 3 === 1 ? 82 : 44}%"></span></td></tr>`).join('') + '</tbody>'; $('tCount').textContent = '';
+    const el = $('tsheet'), inner = el.querySelector('.tinner');
+    el.classList.remove('sheet-out', 'hidden'); document.body.style.overflow = 'hidden';
+    let done = false;
+    const draw = () => {
+        if (done) return; done = true; inner.removeEventListener('animationend', onEnd); clearTimeout(fallback);
+        if (el.classList.contains('hidden') || el.classList.contains('sheet-out')) return;
+        fillTableFilters(); renderTable(); el.querySelector('.twrap').scrollTop = 0;
+    };
+    const onEnd = (e) => { if (e.target === inner && e.animationName === 'sheet-in-right') setTimeout(draw, 30); };
+    const fallback = setTimeout(draw, 900);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setTimeout(draw, 0); return; }
+    inner.addEventListener('animationend', onEnd);
 }
 function closeTable() {
-    const el = $('tsheet'); if (el.classList.contains('hidden') || el.classList.contains('sheet-out')) return;
-    const finish = () => { el.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.style.overflow = ''; };
-    // hide when the slide-out has really finished (not after a fixed time: on a phone the animation can start late, and a timer would hide the page in the middle of it)
-    const onEnd = (e) => { if (e.target === el && e.animationName === 'sheet-out-right') finish(); };
-    const safety = setTimeout(finish, 1500);
+    const el = $('tsheet'), inner = el.querySelector('.tinner'); if (el.classList.contains('hidden') || el.classList.contains('sheet-out')) return;
+    const finish = () => { inner.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.classList.remove('tbl-open', 'tbl-closing'); document.body.style.overflow = ''; };
+    const onEnd = (e) => { if (e.target === inner && e.animationName === 'sheet-out-right') finish(); };   // hide when the slide-out has really finished
+    const safety = setTimeout(finish, 1100);
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return finish();
-    el.addEventListener('animationend', onEnd);
+    inner.addEventListener('animationend', onEnd);
+    document.body.classList.remove('tbl-open'); document.body.classList.add('tbl-closing');
     el.classList.add('sheet-out');
 }
 $('tblBtn').addEventListener('click', openTable); $('tClose').addEventListener('click', closeTable);
