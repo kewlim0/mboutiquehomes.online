@@ -4,7 +4,7 @@
   "short_name": "Tracker",
   "description": "SIM, Bill, Tenants and Upcoming Listing of m.boutiquehomes.",
   "start_url": "/tracker/?source=app",
-  "scope": "/",
+  "scope": "/tracker/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0f172a",

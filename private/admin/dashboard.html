@@ -46,6 +46,13 @@
     </script>
 
     <script src="/admin/slide.js"></script>
+    <link rel="manifest" href="/admin.webmanifest">
+    <meta name="theme-color" content="#171A1F">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Admin">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <script src="/admin/pwa.js"></script>
     <link rel="stylesheet" href="/admin/admin.css">
     <link rel="stylesheet" href="/gallery.css">
 </head>
@@ -63,6 +70,7 @@
             </div>
             <div class="flex items-center space-x-2 text-xs flex-shrink-0">
                 <span id="adminName" class="hidden md:inline text-[11px] text-gold-300 mr-1"></span>
+                <button id="installBtn" type="button" aria-label="安装成 App" class="hidden px-3 py-1.5 rounded-full bg-gold-500 text-white font-bold hover:bg-gold-600 transition"><i class="fa-solid fa-download sm:mr-1"></i><span class="hidden sm:inline">安装 App</span></button>
                 <a href="/" target="_blank" aria-label="首页" class="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"><i class="fa-solid fa-house sm:mr-1"></i><span class="hidden sm:inline">首页</span></a>
                 <a href="/listings/" target="_blank" aria-label="房源页" class="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"><i class="fa-solid fa-building sm:mr-1"></i><span class="hidden sm:inline">房源页</span></a>
                 <a href="/db" id="dbLink" aria-label="数据库状态" class="hidden px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition"><i class="fa-solid fa-database sm:mr-1"></i><span class="hidden sm:inline">数据库</span></a>

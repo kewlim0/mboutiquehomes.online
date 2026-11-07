@@ -1559,6 +1559,16 @@ async function init() {
 $('apiDownRetry').addEventListener('click', init);
 init();
 
+// "install as an app": the button shows up in the header only when Chrome offers it (Android / desktop Chrome)
+(function () {
+    const btn = $('installBtn'); if (!btn) return;
+    const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    const update = () => { const t = window.adminInstall || {}; btn.classList.toggle('hidden', standalone || t.installed || !t.prompt); };
+    btn.addEventListener('click', async () => { const t = window.adminInstall; if (!t || !t.prompt) return; t.prompt.prompt(); try { await t.prompt.userChoice; } catch (e) { /* closed */ } t.prompt = null; update(); });
+    if (window.adminInstall) window.adminInstall.onChange = update;
+    update();
+})();
+
 // If the browser restores this page from its back/forward cache, hide it and re-check the sign-in first
 window.addEventListener('pageshow', (e) => {
     if (e.persisted) {
