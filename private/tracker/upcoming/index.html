@@ -767,12 +767,12 @@ function cell(o, c, i) {
         case 'note': return o.note ? esc(o.note.replace(/\s*\n\s*/g, ' · ')) : dash;
     }
 }
-function renderTable() {
-    const showProj = T.proj === 'all', cols = COLS.filter((c) => !c.all || showProj), rows = tableRows();
+function renderTable(limit) {
+    const showProj = T.proj === 'all', cols = COLS.filter((c) => !c.all || showProj), all = tableRows(), rows = limit ? all.slice(0, limit) : all;
     const head = cols.map((c, ci) => `<th class="${c.nosort ? 'nosort ' : ''}${ci === 0 ? 'c0' : ci === 1 ? 'c1' : ''}" data-k="${c.k}">${c.label}<span class="ar">${T.key === c.k ? (T.dir > 0 ? '▲' : '▼') : ''}</span></th>`).join('');
     const body = rows.map((o, i) => `<tr data-id="${o.id}">${cols.map((c, ci) => `<td data-k="${c.k}" class="${c.cls || ''} ${ci === 0 ? 'c0' : ci === 1 ? 'c1' : ''}" ${c.k === 'note' && o.note ? `title="${esc(o.note)}"` : ''}>${c.k === 'n' ? `<span class="rn">${i + 1}</span><button class="openb" type="button" aria-label="打开这位业主" title="打开这位业主"><i class="fa-solid fa-up-right-from-square"></i></button>` : cell(o, c, i)}</td>`).join('')}</tr>`).join('');
     $('tbl').innerHTML = `<thead><tr>${head}</tr></thead><tbody>${body || `<tr><td colspan="${cols.length}" class="tempty">没有符合的业主</td></tr>`}</tbody>`;
-    $('tCount').textContent = `${rows.length.toLocaleString()} 行`; if (selCell) paintSel();
+    $('tCount').textContent = `${all.length.toLocaleString()} 行`; if (selCell) paintSel();
     $('tTitle').textContent = '表格';   // (the project is in the first drop-down below)
 }
 function fillTableFilters() {
@@ -791,9 +791,11 @@ function fillTableFilters() {
 }
 function openTable() {
     T.proj = 'cur'; T.status = 'all'; T.type = 'all'; T.block = 'all'; T.q = ''; $('t-q').value = '';
-    fillTableFilters(); renderTable();
+    // a few rows first: laying out a thousand rows takes longer than the slide-in itself and made it look like the page just appeared
+    fillTableFilters(); renderTable(25);
     $('tsheet').classList.remove('sheet-out', 'hidden'); document.body.style.overflow = 'hidden';
     $('tsheet').querySelector('.twrap').scrollTop = 0;
+    setTimeout(() => { const el = $('tsheet'); if (!el.classList.contains('hidden') && !el.classList.contains('sheet-out')) renderTable(); }, 450);   // the rest, once it has arrived
 }
 function closeTable() {
     const el = $('tsheet'); if (el.classList.contains('hidden') || el.classList.contains('sheet-out')) return;
