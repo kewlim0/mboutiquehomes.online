@@ -117,6 +117,39 @@
 
         .fab { position: fixed; right: max(1.1rem, calc(50% - 240px + 1.1rem)); bottom: max(1.4rem, env(safe-area-inset-bottom)); width: 3.6rem; height: 3.6rem; border-radius: 50%; display: grid; place-items: center; font-size: 1.2rem; color: #fff; background: linear-gradient(135deg, var(--g1), var(--g3)); box-shadow: 0 14px 30px -10px rgba(21, 128, 61, 0.85); z-index: 5; }
 
+        /* the table: every column and every row at once, like the spreadsheet */
+        .tbtn { background: #fff; border: 1.5px solid var(--line); color: var(--g3); }
+        .tsheet { z-index: 35; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+        .tsheet.hidden { display: none; }
+        .tsheet .sheet-top { position: static; }
+        .tbar { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; padding: 0.7rem 1rem; border-bottom: 1px solid var(--line); background: #f8fafc; }
+        .tbar .field { width: auto; padding: 0.5rem 0.7rem; font-size: 14px !important; border-radius: 0.8rem; background: #fff; }
+        .tbar select.field { padding-right: 1.9rem; }
+        .tbar .tq { flex: 1 1 11rem; min-width: 9rem; }
+        .tcount { font-size: 0.7rem; font-weight: 800; color: var(--muted); margin-left: auto; white-space: nowrap; }
+        .twrap { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; background: #fff; }
+        table.t { border-collapse: separate; border-spacing: 0; font-size: 12.5px; font-variant-numeric: tabular-nums; min-width: 100%; }
+        table.t th, table.t td { padding: 0.5rem 0.7rem; border-bottom: 1px solid #eef2f7; border-right: 1px solid #f1f5f9; white-space: nowrap; text-align: left; background: #fff; }
+        table.t th { position: sticky; top: 0; z-index: 3; background: #ecfdf5; color: #166534; font-size: 11px; font-weight: 800; letter-spacing: 0.03em; cursor: pointer; user-select: none; border-bottom: 2px solid #bbf7d0; }
+        table.t th.nosort { cursor: default; }
+        table.t th .ar { display: inline-block; width: 0.8rem; color: var(--g2); }
+        table.t tbody tr:nth-child(even) td { background: #fafcfb; }
+        table.t tbody tr { cursor: pointer; }
+        table.t tbody tr:hover td { background: #f0fdf4; }
+        table.t td.c0, table.t th.c0 { position: sticky; left: 0; z-index: 2; }
+        table.t th.c0 { z-index: 4; }
+        table.t td.c0, table.t th.c0 { width: 3.6rem; min-width: 3.6rem; max-width: 3.6rem; }
+        table.t td.c1, table.t th.c1 { position: sticky; left: 3.6rem; z-index: 2; box-shadow: 2px 0 4px -2px rgba(15, 23, 42, 0.12); }
+        table.t th.c1 { z-index: 4; }
+        table.t td.num { color: #94a3b8; text-align: right; }
+        table.t td.u { font-weight: 800; color: var(--ink); }
+        table.t td.note { max-width: 24rem; overflow: hidden; text-overflow: ellipsis; color: #64748b; }
+        table.t .pill { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 0.12rem 0.55rem; border-radius: 999px; background: color-mix(in srgb, var(--s) 13%, #fff); color: var(--s); border: 1px solid color-mix(in srgb, var(--s) 28%, #fff); }
+        table.t .late { color: #e11d48; font-weight: 800; }
+        table.t .soon { color: #ea580c; font-weight: 800; }
+        table.t .dim { color: #cbd5e1; }
+        .tempty { padding: 3rem 1rem; text-align: center; color: #94a3b8; font-size: 0.85rem; }
+
         /* edit sheet + dialogs */
         .sheet { position: fixed; inset: 0; z-index: 40; background: #f1f5f9; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         .sheet.hidden, .dlg.hidden { display: none; }
@@ -159,6 +192,7 @@
     <header class="top rise">
         <a href="/tracker/" class="back glass" aria-label="Back"><i class="fa-solid fa-chevron-left"></i></a>
         <div style="flex: 1; min-width: 0"><h1>Upcoming Listings</h1><p id="sub">Owners to follow up</p></div>
+        <button class="back glass tbtn" id="tblBtn" aria-label="Table view"><i class="fa-solid fa-table-cells"></i></button>
         <button class="addtop" id="addTop" aria-label="Add owner"><i class="fa-solid fa-plus"></i></button>
     </header>
 
@@ -196,6 +230,24 @@
     <div id="list"></div>
 </main>
 <button class="fab" id="fab" aria-label="Add owner"><i class="fa-solid fa-plus"></i></button>
+
+<!-- table: all columns, all rows -->
+<div id="tsheet" class="sheet tsheet hidden">
+    <div class="sheet-top">
+        <button class="back glass" id="tClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+        <div class="ttl" id="tTitle">表格</div>
+        <button class="btn btn-soft" id="tCsv" style="padding:.6rem .9rem"><i class="fa-solid fa-file-arrow-down"></i>CSV</button>
+    </div>
+    <div class="tbar">
+        <select class="field" id="t-proj" aria-label="项目"></select>
+        <input class="field tq" id="t-q" type="search" placeholder="搜单位、姓名、电话、备注" autocomplete="off">
+        <select class="field" id="t-status" aria-label="状态"></select>
+        <select class="field" id="t-type" aria-label="户型"></select>
+        <select class="field" id="t-block" aria-label="栋"></select>
+        <span class="tcount" id="tCount"></span>
+    </div>
+    <div class="twrap"><table class="t" id="tbl"></table></div>
+</div>
 
 <!-- add / edit -->
 <div id="sheet" class="sheet hidden">
@@ -451,6 +503,7 @@ $('list').addEventListener('click', (e) => {
 function syncOwners() { const pr = curProject(); owners = pr ? allOwners.filter((o) => o.projectId === pr.id) : []; }
 function renderAll() {
     syncOwners(); renderProjects(); renderChips();
+    if (!$('tsheet').classList.contains('hidden')) { fillTableFilters(); renderTable(); }
     $('sTotal').textContent = owners.length.toLocaleString();
     $('sTrack').textContent = owners.filter((o) => o.tenancyEnd).length.toLocaleString();
     $('sLate').textContent = owners.filter(isLate).length.toLocaleString();
@@ -547,6 +600,115 @@ $('fdOk').addEventListener('click', async () => {
         });
         $('fdlg').classList.add('hidden'); renderAll(); toast('已记下');
     } catch (e) { toast(e.message); }
+});
+
+// ----- table: every column, every row ---------------------------------------------------------------
+const T = { proj: 'cur', q: '', status: 'all', type: 'all', block: 'all', key: 'unit', dir: 1 };
+const natural = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true });
+const COLS = [
+    { k: 'n', label: '#', cls: 'num', nosort: true },
+    { k: 'unit', label: '单位', cls: 'u' },
+    { k: 'project', label: '项目', all: true },
+    { k: 'block', label: '栋' },
+    { k: 'type', label: '户型' },
+    { k: 'name', label: '业主' },
+    { k: 'phone', label: '电话' },
+    { k: 'status', label: '状态' },
+    { k: 'tenancyEnd', label: '租约到期' },
+    { k: 'left', label: '到期倒数' },
+    { k: 'nextFollowup', label: '下次跟进' },
+    { k: 'lastFollowup', label: '上次跟进' },
+    { k: 'note', label: '备注', cls: 'note' },
+];
+const projName = (o) => (projects.find((p) => p.id === o.projectId) || {}).name || '';
+const sortVal = (o, k) => k === 'block' ? blockOf(o) : k === 'project' ? projName(o) : k === 'status' ? STATUS_KEYS.indexOf(o.status)
+    : k === 'left' ? (o.tenancyEnd ? daysTo(o.tenancyEnd) : null) : o[k];
+function tableRows() {
+    const q = T.q.toLowerCase(), qd = digits(T.q), cur = curProject();
+    const rows = allOwners.filter((o) => {
+        if (T.proj === 'cur' ? !(cur && o.projectId === cur.id) : T.proj !== 'all' && o.projectId !== Number(T.proj)) return false;
+        if (T.status !== 'all' && o.status !== T.status) return false;
+        if (T.type !== 'all' && o.type !== T.type) return false;
+        if (T.block !== 'all' && blockOf(o) !== T.block) return false;
+        if (q) {
+            const hay = [o.unit, o.name, o.phone, o.note, projName(o)].join(' ').toLowerCase();
+            if (!q.split(/\s+/).every((w) => hay.includes(w)) && !(qd.length >= 3 && digits(o.phone).includes(qd))) return false;
+        }
+        return true;
+    });
+    return rows.sort((a, b) => {
+        const x = sortVal(a, T.key), y = sortVal(b, T.key);
+        if (x == null || x === '') return y == null || y === '' ? natural(a.unit, b.unit) : 1;     // empty cells always last
+        if (y == null || y === '') return -1;
+        return (typeof x === 'number' ? x - y : natural(x, y)) * T.dir || natural(a.unit, b.unit);
+    });
+}
+function cell(o, c, i) {
+    const dash = '<span class="dim">—</span>';
+    switch (c.k) {
+        case 'n': return i + 1;
+        case 'unit': return esc(o.unit);
+        case 'project': return esc(projName(o));
+        case 'block': return esc(blockOf(o)) || dash;
+        case 'type': return esc(o.type) || dash;
+        case 'name': return esc(o.name) || dash;
+        case 'phone': return o.phone ? esc(showPhone(o.phone)) : dash;
+        case 'status': { const s = STATUS[o.status] || STATUS.none; return `<span class="pill" style="--s:${s[1]}">${s[0]}</span>`; }
+        case 'tenancyEnd': return o.tenancyEnd ? o.tenancyEnd : dash;
+        case 'left': { if (!o.tenancyEnd) return dash; const d = daysTo(o.tenancyEnd); return `<span class="${d < 0 ? 'late' : d <= 90 ? 'late' : d <= 180 ? 'soon' : ''}">${d < 0 ? '已过 ' + -d + ' 天' : left(d)}</span>`; }
+        case 'nextFollowup': { if (!o.nextFollowup) return dash; const d = daysTo(o.nextFollowup); return `<span class="${d <= 0 && o.status !== 'own' && o.status !== 'listed' ? 'late' : ''}">${o.nextFollowup}</span>`; }
+        case 'lastFollowup': return o.lastFollowup || dash;
+        case 'note': return o.note ? esc(o.note.replace(/\s*\n\s*/g, ' · ')) : dash;
+    }
+}
+function renderTable() {
+    const showProj = T.proj === 'all', cols = COLS.filter((c) => !c.all || showProj), rows = tableRows();
+    const head = cols.map((c, ci) => `<th class="${c.nosort ? 'nosort ' : ''}${ci === 0 ? 'c0' : ci === 1 ? 'c1' : ''}" data-k="${c.k}">${c.label}<span class="ar">${T.key === c.k ? (T.dir > 0 ? '▲' : '▼') : ''}</span></th>`).join('');
+    const body = rows.map((o, i) => `<tr data-id="${o.id}">${cols.map((c, ci) => `<td class="${c.cls || ''} ${ci === 0 ? 'c0' : ci === 1 ? 'c1' : ''}" ${c.k === 'note' && o.note ? `title="${esc(o.note)}"` : ''}>${cell(o, c, i)}</td>`).join('')}</tr>`).join('');
+    $('tbl').innerHTML = `<thead><tr>${head}</tr></thead><tbody>${body || `<tr><td colspan="${cols.length}" class="tempty">没有符合的业主</td></tr>`}</tbody>`;
+    $('tCount').textContent = `${rows.length.toLocaleString()} 行`;
+    $('tTitle').textContent = '表格 · ' + (T.proj === 'all' ? '全部项目' : (projects.find((p) => p.id === (T.proj === 'cur' ? (curProject() || {}).id : Number(T.proj))) || {}).name || '');
+}
+function fillTableFilters() {
+    const cur = curProject();
+    $('t-proj').innerHTML = projects.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('') + '<option value="all">全部项目</option>';
+    if (T.proj === 'cur') T.proj = String(cur ? cur.id : 'all');
+    $('t-proj').value = String(T.proj);
+    const scope = allOwners.filter((o) => T.proj === 'all' || o.projectId === Number(T.proj));
+    const proj = projects.find((p) => p.id === Number(T.proj));
+    const types = T.proj === 'all' ? [...new Set(scope.map((o) => o.type).filter(Boolean))].sort(natural) : ((proj && proj.types) || []).map((t) => t.code);
+    const blocks = [...new Set(scope.map(blockOf).filter(Boolean))].sort(natural);
+    $('t-status').innerHTML = '<option value="all">全部状态</option>' + STATUS_KEYS.map((k) => `<option value="${k}">${STATUS[k][0]}</option>`).join('');
+    $('t-type').innerHTML = '<option value="all">全部户型</option>' + types.map((t) => `<option value="${esc(t)}">Type ${esc(t)}</option>`).join('');
+    $('t-block').innerHTML = '<option value="all">全部栋</option>' + blocks.map((b) => `<option value="${esc(b)}">${esc(b)} 栋</option>`).join('');
+    $('t-status').value = T.status; $('t-type').value = types.includes(T.type) ? T.type : (T.type = 'all'); $('t-block').value = blocks.includes(T.block) ? T.block : (T.block = 'all');
+}
+function openTable() {
+    T.proj = 'cur'; T.status = 'all'; T.type = 'all'; T.block = 'all'; T.q = ''; $('t-q').value = '';
+    fillTableFilters(); renderTable();
+    $('tsheet').classList.remove('hidden'); document.body.style.overflow = 'hidden';
+    $('tsheet').querySelector('.twrap').scrollTop = 0;
+}
+function closeTable() { $('tsheet').classList.add('hidden'); document.body.style.overflow = ''; }
+$('tblBtn').addEventListener('click', openTable); $('tClose').addEventListener('click', closeTable);
+$('t-proj').addEventListener('change', () => { T.proj = $('t-proj').value; T.type = 'all'; T.block = 'all'; fillTableFilters(); renderTable(); });
+for (const [id, key] of [['t-status', 'status'], ['t-type', 'type'], ['t-block', 'block']]) $(id).addEventListener('change', () => { T[key] = $(id).value; renderTable(); });
+let tqTimer; $('t-q').addEventListener('input', () => { clearTimeout(tqTimer); tqTimer = setTimeout(() => { T.q = $('t-q').value.trim(); renderTable(); }, 150); });
+$('tbl').addEventListener('click', (e) => {
+    const th = e.target.closest('th');
+    if (th) { if (th.classList.contains('nosort')) return; const k = th.dataset.k; T.dir = T.key === k ? -T.dir : 1; T.key = k; renderTable(); return; }
+    const tr = e.target.closest('tbody tr'); if (!tr) return;
+    const o = allOwners.find((x) => x.id === Number(tr.dataset.id)); if (o) openForm(o);
+});
+// the whole table (with the current filters) as a file that opens in Excel / Numbers / Google Sheets
+$('tCsv').addEventListener('click', () => {
+    const rows = tableRows(), q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const head = ['项目', '单位', '栋', '户型', '业主', '电话', '状态', '租约到期', '下次跟进', '上次跟进', '备注'];
+    const lines = [head.map(q).join(',')].concat(rows.map((o) => [projName(o), o.unit, blockOf(o), o.type, o.name, o.phone, (STATUS[o.status] || STATUS.none)[0], o.tenancyEnd, o.nextFollowup, o.lastFollowup, o.note].map(q).join(',')));
+    const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `upcoming-listing-${iso(TODAY)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    toast(`已下载 ${rows.length.toLocaleString()} 行`);
 });
 
 // ----- projects: switch, add, edit the unit types -----
