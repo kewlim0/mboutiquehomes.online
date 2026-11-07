@@ -85,22 +85,17 @@
         var look = function () { if (document.querySelector('.sk')) done(); };
         var mo = window.MutationObserver ? new MutationObserver(look) : null;
         window.trkSaving.show('加载中…', true);
+        if (!reduce) {                                           // the page itself still slides in behind the box
+            var played = false;
+            var play = function () { if (played) return; played = true; root.classList.remove('trk-hold'); root.classList.add('trk-anim', 'trk-in-' + dir); setTimeout(clear, 650); };
+            root.classList.add('trk-anim', 'trk-hold');
+            document.addEventListener('DOMContentLoaded', play);
+            setTimeout(play, 1200);
+        }
         if (mo) mo.observe(root, { childList: true, subtree: true });
         document.addEventListener('DOMContentLoaded', look);
         window.addEventListener('load', function () { setTimeout(done, 300); });   // no skeleton on this page: hide once loaded
         setTimeout(done, 8000);                                                  // safety: never leave it stuck
-    } else if (!reduce && dir) {
-        var played = false;
-        var play = function () {
-            if (played) return;
-            played = true;
-            root.classList.remove('trk-hold');
-            root.classList.add('trk-anim', 'trk-in-' + dir);
-            setTimeout(clear, 650);
-        };
-        root.classList.add('trk-anim', 'trk-hold');
-        document.addEventListener('DOMContentLoaded', play);
-        setTimeout(play, 1200);                                // safety: never leave the page hidden
     }
 
     // ---- leaving: the tapped button spins, the page plays the "out" half, then we go ----
@@ -127,7 +122,8 @@
         var direction = to > from ? 'fwd' : 'back';
         try { sessionStorage.setItem(KEY, JSON.stringify({ dir: direction, t: Date.now() })); } catch (err) { /* ignore */ }
         window.trkSaving.show('加载中…');
-        setTimeout(function () { location.href = url.href; }, 120);
+        if (!reduce) root.classList.add('trk-anim', 'trk-out-' + direction);   // the page slides away behind the box
+        setTimeout(function () { location.href = url.href; }, reduce ? 120 : OUT_MS);
     });
 })();
 
