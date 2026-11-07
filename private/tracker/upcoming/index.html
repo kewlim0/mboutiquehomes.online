@@ -155,6 +155,16 @@
         .tbar select.field { padding-right: 1.9rem; }
         .tbar .tq { flex: 1 1 11rem; min-width: 9rem; }
         .tcount { font-size: 0.7rem; font-weight: 800; color: var(--muted); margin-left: auto; white-space: nowrap; }
+        @media (max-width: 640px) {
+            .tsheet .sheet-top { padding-left: 0.6rem; padding-right: 0.6rem; gap: 0.35rem; }
+            .tsheet .sheet-top .btn { font-size: 12px !important; padding: 0.45rem 0.6rem !important; white-space: nowrap; gap: 0.3rem; flex: 0 0 auto; }
+            .tsheet .sheet-top .back { width: 2.3rem; height: 2.3rem; flex: 0 0 auto; }
+            .tsheet .tbar .field { font-size: 12.5px !important; padding: 0.4rem 0.6rem; }
+            .tsheet .thint { font-size: 10.5px; }
+            table.t { font-size: 11px; }
+            table.t th { font-size: 10px; }
+            table.t th, table.t td { padding: 0.4rem 0.5rem; }
+        }
         #tFull { display: none; }
         @media (max-width: 899px) { #tFull { display: inline-flex; } }
         #tFullExit { display: none; position: absolute; right: 0.6rem; bottom: calc(0.6rem + env(safe-area-inset-bottom)); z-index: 10; width: 2.7rem; height: 2.7rem; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.94); color: var(--ink); box-shadow: 0 6px 18px -6px rgba(15,23,42,.45); align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
