@@ -29,37 +29,6 @@
 
     function clear() { root.classList.remove('trk-anim', 'trk-hold', 'trk-in-fwd', 'trk-in-back', 'trk-out-fwd', 'trk-out-back'); }
 
-    // ---- arriving: play the "in" half ----
-    var dir = null;
-    try {
-        var raw = sessionStorage.getItem(KEY); sessionStorage.removeItem(KEY);
-        var f = raw && JSON.parse(raw);
-        if (f && Date.now() - f.t < 4000 && (f.dir === 'fwd' || f.dir === 'back')) dir = f.dir;
-    } catch (e) { /* storage blocked: no animation */ }
-    if (!reduce && dir) {
-        var played = false;
-        var play = function () {
-            if (played) return;
-            played = true;
-            root.classList.remove('trk-hold');
-            root.classList.add('trk-anim', 'trk-in-' + dir);
-            setTimeout(clear, 650);
-        };
-        root.classList.add('trk-anim', 'trk-hold');
-        document.addEventListener('DOMContentLoaded', play);
-        setTimeout(play, 1200);                                // safety: never leave the page hidden
-    }
-
-    // ---- leaving: the tapped button spins, the page plays the "out" half, then we go ----
-    var spun = null, busy = false;       // spun = { icon, cls } of the button that shows a spinner
-    function unspin() { if (spun) { spun.icon.className = spun.cls; spun = null; } busy = false; }
-
-    // coming back through the browser's back button (page cache): never show a half-slid page or a stuck spinner
-    window.addEventListener('pageshow', function (e) { if (e.persisted) { clear(); unspin(); } });
-
-    // depth: /tracker/ = 0, /tracker/sim/ (and bill, tenants) = 1
-    function depth(path) { var p = path.replace(/\/+$/, '').split('/').filter(Boolean); return p[0] === 'tracker' ? p.length - 1 : -1; }
-
     // ---- "保存中…" overlay (shared by the Save buttons of the tracker pages) ----
     //   trkSaving.run(async () => { ...save... })  shows the box with a turning spinner while the work runs, and always hides it again.
     //   The box stays at least 450 ms, so a very fast save does not just flash.
@@ -82,10 +51,12 @@
         hud = document.createElement('div');
         hud.className = 'trk-hud'; hud.setAttribute('role', 'alertdialog'); hud.setAttribute('aria-live', 'assertive'); hud.setAttribute('aria-label', '保存中');
         hud.innerHTML = '<div class="trk-hud-box"><svg class="trk-hud-spin" viewBox="0 0 48 48" aria-hidden="true">' + bars + '</svg><div class="trk-hud-text">保存中…</div></div>';
-        document.body.appendChild(hud);
+        root.appendChild(hud);
         return hud;
     }
     window.trkSaving = {
+        show: function (text) { var el = hudEl(); el.querySelector('.trk-hud-text').textContent = text || '保存中…'; el.classList.add('on'); },
+        hide: function () { if (hud) hud.classList.remove('on'); },
         run: function (work, text) {
             var el = hudEl(); el.querySelector('.trk-hud-text').textContent = text || '保存中…';
             el.classList.add('on');
@@ -98,8 +69,50 @@
         }
     };
 
+    // ---- arriving: play the "in" half ----
+    var dir = null;
+    try {
+        var raw = sessionStorage.getItem(KEY); sessionStorage.removeItem(KEY);
+        var f = raw && JSON.parse(raw);
+        if (f && Date.now() - f.t < 4000 && (f.dir === 'fwd' || f.dir === 'back')) dir = f.dir;
+    } catch (e) { /* storage blocked: no animation */ }
+    if (dir === 'fwd') {
+        // going deeper: the "加载中…" box (already shown by the page we came from) stays until the first skeleton shimmer is on screen
+        var shown = false;
+        var done = function () { if (shown) return; shown = true; if (mo) mo.disconnect(); window.trkSaving.hide(); };
+        var look = function () { if (document.querySelector('.sk')) done(); };
+        var mo = window.MutationObserver ? new MutationObserver(look) : null;
+        window.trkSaving.show('加载中…');
+        if (mo) mo.observe(root, { childList: true, subtree: true });
+        document.addEventListener('DOMContentLoaded', look);
+        window.addEventListener('load', function () { setTimeout(done, 300); });   // no skeleton on this page: hide once loaded
+        setTimeout(done, 8000);                                                  // safety: never leave it stuck
+    } else if (!reduce && dir) {
+        var played = false;
+        var play = function () {
+            if (played) return;
+            played = true;
+            root.classList.remove('trk-hold');
+            root.classList.add('trk-anim', 'trk-in-' + dir);
+            setTimeout(clear, 650);
+        };
+        root.classList.add('trk-anim', 'trk-hold');
+        document.addEventListener('DOMContentLoaded', play);
+        setTimeout(play, 1200);                                // safety: never leave the page hidden
+    }
+
+    // ---- leaving: the tapped button spins, the page plays the "out" half, then we go ----
+    var spun = null, busy = false;       // spun = { icon, cls } of the button that shows a spinner
+    function unspin() { if (spun) { spun.icon.className = spun.cls; spun = null; } busy = false; }
+
+    // coming back through the browser's back button (page cache): never show a half-slid page or a stuck spinner
+    window.addEventListener('pageshow', function (e) { if (e.persisted) { clear(); unspin(); window.trkSaving.hide(); } });
+
+    // depth: /tracker/ = 0, /tracker/sim/ (and bill, tenants) = 1
+    function depth(path) { var p = path.replace(/\/+$/, '').split('/').filter(Boolean); return p[0] === 'tracker' ? p.length - 1 : -1; }
+
     document.addEventListener('click', function (e) {
-        if (reduce || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         var a = e.target.closest && e.target.closest('a[href]');
         if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
         var url; try { url = new URL(a.href, location.href); } catch (err) { return; }
@@ -110,6 +123,13 @@
         if (busy) return;                                         // a second tap while leaving does nothing
         busy = true;
         var direction = to > from ? 'fwd' : 'back';
+        if (direction === 'fwd') {
+            try { sessionStorage.setItem(KEY, JSON.stringify({ dir: 'fwd', t: Date.now() })); } catch (err) { /* ignore */ }
+            window.trkSaving.show('加载中…');
+            setTimeout(function () { location.href = url.href; }, 60);
+            return;
+        }
+        if (reduce) { location.href = url.href; return; }
         var icon = a.querySelector('.go i, i.fa-chevron-left');
         if (icon) { spun = { icon: icon, cls: icon.className }; icon.className = 'fa-solid fa-circle-notch fa-spin'; }
         try { sessionStorage.setItem(KEY, JSON.stringify({ dir: direction, t: Date.now() })); } catch (err) { /* ignore */ }
