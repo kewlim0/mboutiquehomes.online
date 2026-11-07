@@ -296,7 +296,7 @@ admin.put('/upcoming-projects/:id', wrap(async (req, res) => {
 admin.delete('/upcoming-projects/:id', wrap(async (req, res) => { (await upcoming.removeProject(idParam(req))) ? res.json({ ok: true }) : notFound(res); }));
 admin.post('/upcoming-import', wrap(async (req, res) => {
   const b = req.body && typeof req.body === 'object' ? req.body : {};
-  res.json(await upcoming.importRows(Number(b.projectId), b.rows, b.mode === 'update' ? 'update' : 'skip'));
+  res.json(await upcoming.importRows(Number(b.projectId), b.rows, ['update', 'replace'].includes(b.mode) ? b.mode : 'skip'));
 }));
 admin.post('/upcoming/:id/followed', wrap(async (req, res) => {
   const b = req.body && typeof req.body === 'object' ? req.body : {};

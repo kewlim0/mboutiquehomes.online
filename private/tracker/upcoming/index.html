@@ -121,7 +121,8 @@
         .tbtn { background: #fff; border: 1.5px solid var(--line); color: var(--g3); }
         .tsheet { z-index: 35; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
         .tsheet.hidden { display: none; }
-        .tsheet .sheet-top { position: static; }
+        .tsheet .sheet-top { position: static; gap: 0.5rem; }
+        .tsheet .sheet-top .ttl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .tbar { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; padding: 0.7rem 1rem; border-bottom: 1px solid var(--line); background: #f8fafc; }
         .tbar .field { width: auto; padding: 0.5rem 0.7rem; font-size: 14px !important; border-radius: 0.8rem; background: #fff; }
         .tbar select.field { padding-right: 1.9rem; }
@@ -138,8 +139,8 @@
         table.t tbody tr:hover td { background: #f0fdf4; }
         table.t td.c0, table.t th.c0 { position: sticky; left: 0; z-index: 2; }
         table.t th.c0 { z-index: 4; }
-        table.t td.c0, table.t th.c0 { width: 3.6rem; min-width: 3.6rem; max-width: 3.6rem; }
-        table.t td.c1, table.t th.c1 { position: sticky; left: 3.6rem; z-index: 2; box-shadow: 2px 0 4px -2px rgba(15, 23, 42, 0.12); }
+        table.t td.c0, table.t th.c0 { width: 5rem; min-width: 5rem; max-width: 5rem; }
+        table.t td.c1, table.t th.c1 { position: sticky; left: 5rem; z-index: 2; box-shadow: 2px 0 4px -2px rgba(15, 23, 42, 0.12); }
         table.t th.c1 { z-index: 4; }
         table.t td.num { color: #94a3b8; text-align: right; }
         table.t td.u { font-weight: 800; color: var(--ink); }
@@ -148,6 +149,15 @@
         table.t .late { color: #e11d48; font-weight: 800; }
         table.t .soon { color: #ea580c; font-weight: 800; }
         table.t .dim { color: #cbd5e1; }
+        .thint { padding: 0.45rem 1rem; font-size: 0.68rem; font-weight: 700; color: #15803d; background: #f0fdf4; border-bottom: 1px solid #dcfce7; }
+        table.t td { cursor: cell; }
+        table.t td.sel { outline: 2px solid #16a34a; outline-offset: -2px; background: #f0fdf4 !important; }
+        table.t td.c0 { padding-right: 0.3rem; white-space: nowrap; }
+        table.t td.c0 .rn { display: inline-block; min-width: 1.6rem; text-align: right; }
+        table.t .openb { margin-left: 0.35rem; width: 1.5rem; height: 1.5rem; border-radius: 0.5rem; background: #ecfdf5; color: #15803d; font-size: 0.6rem; border: 1px solid #bbf7d0; }
+        table.t .stsel { appearance: none; -webkit-appearance: none; border: 1px solid color-mix(in srgb, var(--s) 30%, #fff); border-radius: 999px; font-size: 11.5px !important; font-weight: 800; padding: 0.22rem 1.4rem 0.22rem 0.65rem; color: var(--s); background-color: color-mix(in srgb, var(--s) 12%, #fff); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.5rem center; cursor: pointer; outline: none; }
+        table.t .cedit { font: inherit; font-size: 12.5px; padding: 0.3rem 0.45rem; border: 2px solid #16a34a; border-radius: 0.5rem; outline: none; background: #fff; min-width: 7rem; width: 100%; box-shadow: 0 6px 16px -8px rgba(21, 128, 61, 0.6); }
+        table.t textarea.cedit { min-width: 16rem; white-space: pre-wrap; }
         .tempty { padding: 3rem 1rem; text-align: center; color: #94a3b8; font-size: 0.85rem; }
 
         /* upload: match the columns of a file to ours, drag and drop */
@@ -274,7 +284,8 @@
     <div class="sheet-top">
         <button class="back glass" id="tClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
         <div class="ttl" id="tTitle">表格</div>
-        <button class="btn btn-amber" id="tUpload" style="padding:.6rem .9rem"><i class="fa-solid fa-file-arrow-up"></i>上传</button>
+        <button class="btn btn-amber" id="tPaste" style="padding:.6rem .9rem"><i class="fa-solid fa-paste"></i>粘贴</button>
+        <button class="btn btn-soft" id="tUpload" style="padding:.6rem .9rem"><i class="fa-solid fa-file-arrow-up"></i>上传</button>
         <button class="btn btn-soft" id="tCsv" style="padding:.6rem .9rem"><i class="fa-solid fa-file-arrow-down"></i>CSV</button>
         <input type="file" id="tFile" accept=".csv,.xlsx,.xls,.xlsm,text/csv" hidden>
     </div>
@@ -286,6 +297,7 @@
         <select class="field" id="t-block" aria-label="栋"></select>
         <span class="tcount" id="tCount"></span>
     </div>
+    <div class="thint"><i class="fa-regular fa-lightbulb"></i> 在 Google 表格里选好、复制，回到这里按 Ctrl+V（苹果电脑 ⌘+V）就能把整个表格粘贴进来 · 单击格子选中，双击可以直接修改 · 最左边的小图标打开这位业主</div>
     <div class="twrap"><table class="t" id="tbl"></table></div>
 </div>
 
@@ -315,9 +327,10 @@
             <div class="pv"><table id="pv"></table></div>
 
             <div class="imp-h"><b>4</b>遇到已经有的单位</div>
-            <div class="radio2">
+            <div class="radio2" style="grid-template-columns:1fr">
                 <label><input type="radio" name="impMode" value="skip" checked>跳过<small>已有的单位保持不变，只加新的</small></label>
-                <label><input type="radio" name="impMode" value="update">用文件更新<small>文件里有的资料会盖掉旧的，新的备注加在后面</small></label>
+                <label><input type="radio" name="impMode" value="update">覆盖已有的资料<small>表格里有的资料会盖掉数据库里的旧资料，新的备注加在后面；数据库里其他的单位不动</small></label>
+                <label><input type="radio" name="impMode" value="replace"><span style="color:#b91c1c">完全替换这个项目</span><small>数据库里不在这个表格里的单位会被删掉，只留表格里有的</small></label>
             </div>
             <div class="imp-sum" id="impSum"></div>
         </div>
@@ -386,6 +399,16 @@
     </div>
 </div>
 
+<!-- save? (a pasted / uploaded table that overwrites the database) -->
+<div id="cdlg" class="dlg hidden" role="dialog" aria-modal="true">
+    <div class="dlg-card" style="text-align:center">
+        <h3 id="cdTitle"></h3>
+        <p class="sub" id="cdText" style="text-align:left"></p>
+        <button id="cdOk" type="button" class="btn btn-green"><i class="fa-solid fa-check"></i><span id="cdOkText">保存</span></button>
+        <button id="cdNo" type="button" class="btn btn-soft">取消，先不保存</button>
+    </div>
+</div>
+
 <!-- unsaved changes -->
 <div id="dlg" class="dlg hidden" role="dialog" aria-modal="true">
     <div class="dlg-card" style="text-align:center">
@@ -412,8 +435,10 @@ async function api(method, path, body) {
 }
 
 // ----- constants -----
-const STATUS = { tenant: ['租约中', '#0d9488'], sale: ['想卖', '#2563eb'], own: ['自住', '#16a34a'], noanswer: ['联系不上', '#e11d48'], none: ['未联系', '#64748b'], listed: ['已上架', '#7c3aed'] };
-const STATUS_KEYS = ['tenant', 'sale', 'own', 'noanswer', 'none', 'listed'];
+// three choices: not contacted yet, contacted, could not reach. The older values (tenant, sale, own, listed) already saved count as "contacted".
+const STATUS = { none: ['未联系', '#64748b'], contacted: ['已联系', '#16a34a'], noanswer: ['联系不上', '#e11d48'] };
+const STATUS_KEYS = ['none', 'contacted', 'noanswer'];
+const grp = (st) => (st === 'none' || st === 'noanswer' ? st : 'contacted');
 const PAGE = 30;
 
 // ----- dates (the phone's own calendar day) -----
@@ -461,7 +486,7 @@ const pts = (arr) => arr.map((q) => q.map((x) => x.toFixed(1)).join(',')).join('
 let shownPoly = [], raf;
 function axisDefs() {
     return F.mode === 'status'
-        ? STATUS_KEYS.map((k) => ({ key: k, name: STATUS[k][0], n: owners.filter((o) => o.status === k).length }))
+        ? STATUS_KEYS.map((k) => ({ key: k, name: STATUS[k][0], n: owners.filter((o) => grp(o.status) === k).length }))
         : projTypes().map((t) => ({ key: t.code, name: 'Type ' + t.code, n: owners.filter((o) => o.type === t.code).length }));
 }
 function drawPoly(v) {
@@ -500,7 +525,7 @@ function renderTl() {
     owners.forEach((o) => { if (o.tenancyEnd) { const m = months[monthIdx(o.tenancyEnd)]; if (m) { m.n++; if (daysTo(o.tenancyEnd) <= 90) m.soon = true; } } });
     const max = Math.max(1, ...months.map((m) => m.n));
     $('tl').innerHTML = months.map((m) => `<div class="m ${m.i === 0 ? 'now' : ''} ${F.month === m.i ? 'on' : ''}" data-i="${m.i}"><div class="bar ${m.n ? (m.soon ? 'soon' : 'has') : ''}" style="height:${m.n ? 22 + m.n / max * 62 : 6}%">${m.n ? `<b>${m.n}</b>` : ''}</div><span class="lbl">${m.m + 1}月${m.m === 0 || m.i === 0 ? '<br>' + m.y : ''}</span></div>`).join('');
-    const past = owners.filter((o) => o.tenancyEnd && daysTo(o.tenancyEnd) < 0 && o.status === 'tenant').length;
+    const past = owners.filter((o) => o.tenancyEnd && daysTo(o.tenancyEnd) < 0).length;
     $('tlNote').textContent = '点柱子只看那个月 · 红色 = 90 天内到期' + (past ? ` · 已过期还没处理：${past} 户` : '');
 }
 $('tl').addEventListener('click', (e) => { const m = e.target.closest('.m'); if (!m) return; const i = Number(m.dataset.i); F.month = F.month === i ? null : i; F.shown = PAGE; renderTl(); renderList(); });
@@ -529,7 +554,7 @@ $('clear').addEventListener('click', () => {
 // ----- list -----
 const rank = (o) => (isLate(o) ? 0 : o.nextFollowup ? 1 : o.tenancyEnd ? 2 : 3);
 function matches(o) {
-    if (F.axis && (F.mode === 'status' ? o.status !== F.axis : o.type !== F.axis)) return false;
+    if (F.axis && (F.mode === 'status' ? grp(o.status) !== F.axis : o.type !== F.axis)) return false;
     if (F.month !== null && !(o.tenancyEnd && monthIdx(o.tenancyEnd) === F.month)) return false;
     if (F.block !== 'all' && blockOf(o) !== F.block) return false;
     if (F.type !== 'all' && o.type !== F.type) return false;
@@ -542,7 +567,7 @@ function matches(o) {
     return true;
 }
 function card(o) {
-    const s = STATUS[o.status] || STATUS.none, c = o.tenancyEnd ? colorOf(daysTo(o.tenancyEnd)) : s[1], nd = o.nextFollowup ? daysTo(o.nextFollowup) : null;
+    const s = STATUS[grp(o.status)], c = o.tenancyEnd ? colorOf(daysTo(o.tenancyEnd)) : s[1], nd = o.nextFollowup ? daysTo(o.nextFollowup) : null;
     const wa = digits(o.phone) ? `<a class="act wa" href="https://wa.me/${waNumber(o.phone)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i>WhatsApp</a><a class="act ic" href="tel:+${waNumber(o.phone)}" aria-label="Call"><i class="fa-solid fa-phone"></i></a>` : '';
     return `<article class="li glass" style="--c:${c};--s:${s[1]}" data-id="${o.id}">
         <div class="li-top"><div style="min-width:0;flex:1">
@@ -618,7 +643,7 @@ function openForm(o) {
     $('f-project').value = String(v.projectId || (curProject() && curProject().id) || '');
     fillTypeSelect($('f-project').value, v.type || '');
     $('f-unit').value = v.unit || ''; $('f-name').value = v.name || ''; $('f-phone').value = v.phone || '';
-    $('f-status').value = v.status || 'none'; $('f-end').value = v.tenancyEnd || ''; $('f-next').value = v.nextFollowup || ''; $('f-note').value = v.note || '';
+    $('f-status').value = grp(v.status || 'none'); $('f-end').value = v.tenancyEnd || ''; $('f-next').value = v.nextFollowup || ''; $('f-note').value = v.note || '';
     $('delBtn').classList.toggle('hidden', !o);
     $('sheet').classList.remove('hidden'); $('sheet').scrollTop = 0; document.body.style.overflow = 'hidden';
     formSnap = formState();
@@ -696,13 +721,13 @@ const COLS = [
     { k: 'note', label: '备注', cls: 'note' },
 ];
 const projName = (o) => (projects.find((p) => p.id === o.projectId) || {}).name || '';
-const sortVal = (o, k) => k === 'block' ? blockOf(o) : k === 'project' ? projName(o) : k === 'status' ? STATUS_KEYS.indexOf(o.status)
+const sortVal = (o, k) => k === 'block' ? blockOf(o) : k === 'project' ? projName(o) : k === 'status' ? STATUS_KEYS.indexOf(grp(o.status))
     : k === 'left' ? (o.tenancyEnd ? daysTo(o.tenancyEnd) : null) : o[k];
 function tableRows() {
     const q = T.q.toLowerCase(), qd = digits(T.q), cur = curProject();
     const rows = allOwners.filter((o) => {
         if (T.proj === 'cur' ? !(cur && o.projectId === cur.id) : T.proj !== 'all' && o.projectId !== Number(T.proj)) return false;
-        if (T.status !== 'all' && o.status !== T.status) return false;
+        if (T.status !== 'all' && grp(o.status) !== T.status) return false;
         if (T.type !== 'all' && o.type !== T.type) return false;
         if (T.block !== 'all' && blockOf(o) !== T.block) return false;
         if (q) {
@@ -728,7 +753,7 @@ function cell(o, c, i) {
         case 'type': return esc(o.type) || dash;
         case 'name': return esc(o.name) || dash;
         case 'phone': return o.phone ? esc(showPhone(o.phone)) : dash;
-        case 'status': { const s = STATUS[o.status] || STATUS.none; return `<span class="pill" style="--s:${s[1]}">${s[0]}</span>`; }
+        case 'status': { const g = grp(o.status); return `<select class="stsel" data-id="${o.id}" style="--s:${STATUS[g][1]}" aria-label="状态">${STATUS_KEYS.map((k) => `<option value="${k}" ${k === g ? 'selected' : ''}>${STATUS[k][0]}</option>`).join('')}</select>`; }
         case 'tenancyEnd': return o.tenancyEnd ? o.tenancyEnd : dash;
         case 'left': { if (!o.tenancyEnd) return dash; const d = daysTo(o.tenancyEnd); return `<span class="${d < 0 ? 'late' : d <= 90 ? 'late' : d <= 180 ? 'soon' : ''}">${d < 0 ? '已过 ' + -d + ' 天' : left(d)}</span>`; }
         case 'nextFollowup': { if (!o.nextFollowup) return dash; const d = daysTo(o.nextFollowup); return `<span class="${d <= 0 && o.status !== 'own' && o.status !== 'listed' ? 'late' : ''}">${o.nextFollowup}</span>`; }
@@ -739,10 +764,10 @@ function cell(o, c, i) {
 function renderTable() {
     const showProj = T.proj === 'all', cols = COLS.filter((c) => !c.all || showProj), rows = tableRows();
     const head = cols.map((c, ci) => `<th class="${c.nosort ? 'nosort ' : ''}${ci === 0 ? 'c0' : ci === 1 ? 'c1' : ''}" data-k="${c.k}">${c.label}<span class="ar">${T.key === c.k ? (T.dir > 0 ? '▲' : '▼') : ''}</span></th>`).join('');
-    const body = rows.map((o, i) => `<tr data-id="${o.id}">${cols.map((c, ci) => `<td class="${c.cls || ''} ${ci === 0 ? 'c0' : ci === 1 ? 'c1' : ''}" ${c.k === 'note' && o.note ? `title="${esc(o.note)}"` : ''}>${cell(o, c, i)}</td>`).join('')}</tr>`).join('');
+    const body = rows.map((o, i) => `<tr data-id="${o.id}">${cols.map((c, ci) => `<td data-k="${c.k}" class="${c.cls || ''} ${ci === 0 ? 'c0' : ci === 1 ? 'c1' : ''}" ${c.k === 'note' && o.note ? `title="${esc(o.note)}"` : ''}>${c.k === 'n' ? `<span class="rn">${i + 1}</span><button class="openb" type="button" aria-label="打开这位业主" title="打开这位业主"><i class="fa-solid fa-up-right-from-square"></i></button>` : cell(o, c, i)}</td>`).join('')}</tr>`).join('');
     $('tbl').innerHTML = `<thead><tr>${head}</tr></thead><tbody>${body || `<tr><td colspan="${cols.length}" class="tempty">没有符合的业主</td></tr>`}</tbody>`;
-    $('tCount').textContent = `${rows.length.toLocaleString()} 行`;
-    $('tTitle').textContent = '表格 · ' + (T.proj === 'all' ? '全部项目' : (projects.find((p) => p.id === (T.proj === 'cur' ? (curProject() || {}).id : Number(T.proj))) || {}).name || '');
+    $('tCount').textContent = `${rows.length.toLocaleString()} 行`; if (selCell) paintSel();
+    $('tTitle').textContent = '表格';   // (the project is in the first drop-down below)
 }
 function fillTableFilters() {
     const cur = curProject();
@@ -769,17 +794,105 @@ $('tblBtn').addEventListener('click', openTable); $('tClose').addEventListener('
 $('t-proj').addEventListener('change', () => { T.proj = $('t-proj').value; T.type = 'all'; T.block = 'all'; fillTableFilters(); renderTable(); });
 for (const [id, key] of [['t-status', 'status'], ['t-type', 'type'], ['t-block', 'block']]) $(id).addEventListener('change', () => { T[key] = $(id).value; renderTable(); });
 let tqTimer; $('t-q').addEventListener('input', () => { clearTimeout(tqTimer); tqTimer = setTimeout(() => { T.q = $('t-q').value.trim(); renderTable(); }, 150); });
+// ----- click = select a cell, double click = edit it in place, the small icon on the left = open the owner -----
+let selCell = null;   // { id, k }
+const EDITABLE = ['unit', 'type', 'name', 'phone', 'tenancyEnd', 'nextFollowup', 'note'];
+const ownerById = (id) => allOwners.find((x) => x.id === Number(id));
+function paintSel() {
+    document.querySelectorAll('#tbl td.sel').forEach((x) => x.classList.remove('sel'));
+    if (!selCell) return;
+    const td = document.querySelector(`#tbl tbody tr[data-id="${selCell.id}"] td[data-k="${selCell.k}"]`); if (td) { td.classList.add('sel'); td.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+}
+// one cell changed: save it at once (like a spreadsheet), then redraw
+async function saveCell(o, change) {
+    const body = { projectId: o.projectId, unit: o.unit, type: o.type, name: o.name, phone: o.phone, status: grp(o.status), tenancyEnd: o.tenancyEnd, nextFollowup: o.nextFollowup, note: o.note, ...change };
+    try {
+        const out = await api('PUT', 'upcoming/' + o.id, body);
+        const i = allOwners.findIndex((x) => x.id === out.owner.id); if (i >= 0) allOwners[i] = out.owner;
+        renderAll(); paintSel(); toast('已保存');
+    } catch (e) { toast(e.message); renderTable(); paintSel(); }
+}
+function editCell(td) {
+    const tr = td.closest('tr'), k = td.dataset.k, o = ownerById(tr.dataset.id); if (!o || !EDITABLE.includes(k)) return;
+    let inp;
+    if (k === 'type') {
+        const pr = projects.find((p) => p.id === o.projectId); inp = document.createElement('select');
+        inp.innerHTML = '<option value="">—</option>' + ((pr && pr.types) || []).map((t) => `<option value="${esc(t.code)}">Type ${esc(t.code)}</option>`).join('') + (o.type && !((pr && pr.types) || []).some((t) => t.code === o.type) ? `<option value="${esc(o.type)}">Type ${esc(o.type)}</option>` : '');
+    } else if (k === 'note') { inp = document.createElement('textarea'); inp.rows = 3; }
+    else { inp = document.createElement('input'); inp.type = k === 'tenancyEnd' || k === 'nextFollowup' ? 'date' : k === 'phone' ? 'tel' : 'text'; }
+    inp.className = 'cedit'; inp.value = o[k] || '';
+    td.innerHTML = ''; td.appendChild(inp); inp.focus(); if (inp.select && k !== 'note') inp.select();
+    let done = false;
+    const finish = (commit) => {
+        if (done) return; done = true;
+        const v = inp.value.trim(), old = (o[k] || '');
+        if (!commit || v === old) return renderTable() || paintSel();
+        if (k === 'unit' && !v) { toast('单位不能是空的'); return renderTable() || paintSel(); }
+        saveCell(o, { [k]: k === 'unit' ? v.toUpperCase() : (k === 'tenancyEnd' || k === 'nextFollowup') ? (v || null) : v });
+    };
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !(k === 'note' && e.shiftKey)) { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.stopPropagation(); finish(false); } });
+    inp.addEventListener('blur', () => finish(true));
+}
 $('tbl').addEventListener('click', (e) => {
     const th = e.target.closest('th');
-    if (th) { if (th.classList.contains('nosort')) return; const k = th.dataset.k; T.dir = T.key === k ? -T.dir : 1; T.key = k; renderTable(); return; }
-    const tr = e.target.closest('tbody tr'); if (!tr) return;
-    const o = allOwners.find((x) => x.id === Number(tr.dataset.id)); if (o) openForm(o);
+    if (th) { if (th.classList.contains('nosort')) return; const k = th.dataset.k; T.dir = T.key === k ? -T.dir : 1; T.key = k; renderTable(); paintSel(); return; }
+    const open = e.target.closest('.openb'); if (open) { const o = ownerById(open.closest('tr').dataset.id); if (o) openForm(o); return; }
+    if (e.target.closest('select.stsel, .cedit')) return;
+    const td = e.target.closest('td'); if (!td) return;
+    selCell = { id: Number(td.closest('tr').dataset.id), k: td.dataset.k }; paintSel();
+});
+$('tbl').addEventListener('dblclick', (e) => { const td = e.target.closest('td'); if (td && !e.target.closest('select, .cedit, .openb')) editCell(td); });
+$('tbl').addEventListener('change', (e) => {
+    const sel = e.target.closest('select.stsel'); if (!sel) return;
+    const o = ownerById(sel.dataset.id); if (o) saveCell(o, { status: sel.value });
+});
+// arrow keys move the selection, Enter edits, like a spreadsheet
+document.addEventListener('keydown', (e) => {
+    if ($('tsheet').classList.contains('hidden') || !$('imp').classList.contains('hidden') || !selCell || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    const td = document.querySelector(`#tbl tbody tr[data-id="${selCell.id}"] td[data-k="${selCell.k}"]`); if (!td) return;
+    if (e.key === 'Enter') { e.preventDefault(); editCell(td); return; }
+    const dir = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowUp: [0, -1] }[e.key]; if (!dir) return;
+    e.preventDefault();
+    const tr = td.parentElement, idx = [...tr.children].indexOf(td), target = dir[1] ? (dir[1] > 0 ? tr.nextElementSibling : tr.previousElementSibling) : tr, next = target && target.children[idx + dir[0]];
+    if (next && next.dataset.k) { selCell = { id: Number(next.parentElement.dataset.id), k: next.dataset.k }; paintSel(); }
+});
+// ----- paste a table copied from Google Sheets / Excel -----
+function parseTSV(text) {
+    const rows = []; let row = [], cur = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+        else if (c === '"' && cur === '') q = true;
+        else if (c === '\t') { row.push(cur); cur = ''; }
+        else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cur); rows.push(row); row = []; cur = ''; }
+        else cur += c;
+    }
+    if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+    return rows.filter((r) => r.some((x) => String(x).trim()));
+}
+function handlePasted(text) {
+    if (!text || !text.trim()) return toast('剪贴板是空的');
+    const rows = parseTSV(text);
+    if (rows.length === 1 && rows[0].length === 1) {      // one value: into the selected cell
+        const td = selCell && document.querySelector(`#tbl tbody tr[data-id="${selCell.id}"] td[data-k="${selCell.k}"]`);
+        if (td && EDITABLE.includes(selCell.k)) { const o = ownerById(selCell.id), v = rows[0][0].trim(); return saveCell(o, { [selCell.k]: selCell.k === 'unit' ? v.toUpperCase() : (selCell.k === 'tenancyEnd' || selCell.k === 'nextFollowup') ? (parseDate(v) || null) : v }); }
+        return toast('先单击一个格子，再粘贴一个值；或者复制整个表格（至少两格）再粘贴');
+    }
+    IMP.book = [{ name: '粘贴的表格', rows }]; IMP.fileName = '从剪贴板粘贴的表格'; IMP.source = 'paste'; openImport();
+}
+document.addEventListener('paste', (e) => {
+    if ($('tsheet').classList.contains('hidden') || !$('imp').classList.contains('hidden') || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain'); if (!text) return;
+    e.preventDefault(); handlePasted(text);
+});
+$('tPaste').addEventListener('click', async () => {
+    try { handlePasted(await navigator.clipboard.readText()); } catch (e) { toast('这个浏览器不让网页直接读剪贴板，请在表格上按 Ctrl+V（苹果电脑 ⌘+V）'); }
 });
 // the whole table (with the current filters) as a file that opens in Excel / Numbers / Google Sheets
 $('tCsv').addEventListener('click', () => {
     const rows = tableRows(), q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const head = ['项目', '单位', '栋', '户型', '业主', '电话', '状态', '租约到期', '下次跟进', '上次跟进', '备注'];
-    const lines = [head.map(q).join(',')].concat(rows.map((o) => [projName(o), o.unit, blockOf(o), o.type, o.name, o.phone, (STATUS[o.status] || STATUS.none)[0], o.tenancyEnd, o.nextFollowup, o.lastFollowup, o.note].map(q).join(',')));
+    const lines = [head.map(q).join(',')].concat(rows.map((o) => [projName(o), o.unit, blockOf(o), o.type, o.name, o.phone, STATUS[grp(o.status)][0], o.tenancyEnd, o.nextFollowup, o.lastFollowup, o.note].map(q).join(',')));
     const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `upcoming-listing-${iso(TODAY)}.csv`;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
@@ -814,6 +927,15 @@ function parseDate(v) {
     m = t.match(new RegExp('(\\d{4})\\s*,?\\s*' + MON + '[a-z]*')); if (m) return `${m[1]}-${pad2(MONTHS[m[2]])}-${lastDay(+m[1], MONTHS[m[2]])}`;
     return null;
 }
+// our own words first (a table copied from this page), then the keywords of the old notes
+function statusFrom(text) {
+    const t = String(text || '');
+    if (/联系不上/.test(t)) return 'noanswer';
+    if (/未联系|还没有联系|没联系/.test(t)) return 'none';
+    if (/已联系|已经联系/.test(t)) return 'contacted';
+    const c = classify(t);
+    return c === 'none' || c === 'noanswer' ? c : 'contacted';
+}
 function classify(text) {
     const t = String(text || '').toLowerCase();
     if (/own\s?-?stay|owner\s?-?stay|self\s?-?stay|自住/.test(t)) return 'own';
@@ -838,7 +960,7 @@ function fixPhone(v) {
 const UNIT_TOKEN = /\b([A-Z0-9]{1,4}(?:-[A-Z0-9]{1,5}){1,3})\b/i;
 const cellText = (v) => (v instanceof Date ? parseDate(v) : v == null ? '' : String(v).trim());
 
-const IMP = { book: null, rows: [], hasHeader: true, headRow: 0, map: {}, sel: null, fileName: '' };
+const IMP = { book: null, rows: [], hasHeader: true, headRow: 0, map: {}, sel: null, fileName: '', source: 'file' };
 const colName = (i) => { let n = '', x = i; do { n = String.fromCharCode(65 + (x % 26)) + n; x = Math.floor(x / 26) - 1; } while (x >= 0); return n; };
 function loadSheetLib() {
     if (window.XLSX) return Promise.resolve();
@@ -860,7 +982,7 @@ $('tFile').addEventListener('change', async () => {
         const book = isCsv ? XLSX.read(decode(), { type: 'string', cellDates: true }) : XLSX.read(buf, { type: 'array', cellDates: true });
         const sheets = book.SheetNames.map((name) => ({ name, rows: XLSX.utils.sheet_to_json(book.Sheets[name], { header: 1, raw: true, defval: '', blankrows: false }) })).filter((x) => x.rows.length);
         if (!sheets.length) return toast('这个文件里没有资料');
-        IMP.book = sheets; IMP.fileName = f.name; openImport();
+        IMP.book = sheets; IMP.fileName = f.name; IMP.source = 'file'; openImport();
     } catch (e) { toast(e.message || '读不了这个文件'); }
 });
 const HEAD_GUESS = [
@@ -919,11 +1041,11 @@ function buildRows() {
         if (ph.bad) { out.badPhone++; notes.push(`原表格的电话：${cellText(g(r, m.phone))}`); }
         if (ph.guess) { out.guessPhone++; notes.push(`电话是自动补全的，请核对（原表格：${cellText(g(r, m.phone))}）`); }
         const statusText = cellText(g(r, m.status)), all = [statusText, ...notes].filter(Boolean).join('\n');
-        let status = classify(all); const end = parseDate(g(r, m.tenancyEnd)) || (status === 'tenant' ? parseDate(all) : null);
-        if (end && status === 'none') status = 'tenant';
-        const noteJoined = [statusText && !notes.some((n) => n.toLowerCase().includes(statusText.toLowerCase())) ? statusText : '', ...notes].filter(Boolean).join('\n');
+        let status = statusFrom(all); const end = parseDate(g(r, m.tenancyEnd)) || (status === 'contacted' ? parseDate(all) : null);
+        if (end && status === 'none') status = 'contacted';
+        const noteJoined = [statusText && !/^(未联系|已联系|联系不上)$/.test(statusText) && !notes.some((n) => n.toLowerCase().includes(statusText.toLowerCase())) ? statusText : '', ...notes].filter(Boolean).join('\n');
         const name = cellText(g(r, m.name)).replace(new RegExp(unit.replace(/-/g, '[-\\s]*'), 'ig'), '').replace(/\s+/g, ' ').trim();
-        rows.push({ unit, name, phone: ph.phone || '', type: cellText(g(r, m.type)).slice(0, 8), status, tenancyEnd: end, nextFollowup: parseDate(g(r, m.nextFollowup)) || (status === 'tenant' && end ? iso(addDays(day(end), -60)) : null), note: noteJoined.slice(0, 4000) });
+        rows.push({ unit, name, phone: ph.phone || '', type: cellText(g(r, m.type)).slice(0, 8), status, tenancyEnd: end, nextFollowup: parseDate(g(r, m.nextFollowup)) || (status === 'contacted' && end ? iso(addDays(day(end), -60)) : null), note: noteJoined.slice(0, 4000) });
     }
     return out;
 }
@@ -932,10 +1054,12 @@ function renderPreview() {
     $('pv').innerHTML = `<thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${b.rows.slice(0, 5).map((o) => `<tr><td><b>${esc(o.unit)}</b></td><td>${esc(o.name) || '—'}</td><td>${esc(showPhone(o.phone)) || '—'}</td><td>${esc(o.type) || '·'}</td><td>${STATUS[o.status][0]}</td><td>${o.tenancyEnd || '—'}</td><td>${o.nextFollowup || '—'}</td><td>${esc((o.note || '').replace(/\n/g, ' · ').slice(0, 40)) || '—'}</td></tr>`).join('') || `<tr><td colspan="8" style="padding:1rem;color:#94a3b8">先把「单位」那一列放进格子里</td></tr>`}</tbody>`;
     const projId = $('imp-proj').value, have = new Set(allOwners.filter((o) => String(o.projectId) === projId).map((o) => o.unit)), seen = new Set();
     let fresh = 0, dup = 0; for (const o of b.rows) { if (have.has(o.unit) || seen.has(o.unit)) dup++; else fresh++; seen.add(o.unit); }
-    const update = document.querySelector('input[name="impMode"]:checked').value === 'update';
+    const mode = document.querySelector('input[name="impMode"]:checked').value, update = mode !== 'skip';
+    const inFile = new Set(b.rows.map((o) => o.unit)), gone = update && mode === 'replace' ? [...have].filter((u) => !inFile.has(u)).length : 0;
     $('impSum').classList.toggle('warn', !ready);
     $('impSum').innerHTML = !ready ? (IMP.map.unit == null ? '还没有「单位」这一列，这一栏是必填的。' : '没有读到任何一行资料。')
-        : `共读到 <b>${b.rows.length.toLocaleString()}</b> 行：<b>${fresh.toLocaleString()}</b> 个新单位会加进去，<b>${dup.toLocaleString()}</b> 个单位已经有了（${update ? '会用文件更新资料' : '会跳过'}）`
+        : `共读到 <b>${b.rows.length.toLocaleString()}</b> 行：<b>${fresh.toLocaleString()}</b> 个新单位会加进去，<b>${dup.toLocaleString()}</b> 个单位已经有了（${update ? '会用表格里的资料覆盖' : '会跳过'}）`
+        + (gone ? `<br><b style="color:#b91c1c">数据库里有 ${gone.toLocaleString()} 个单位不在这个表格里，会被删掉</b>` : '')
         + (b.noUnit ? `<br>${b.noUnit} 行没有单位，会忽略` : '') + (b.badPhone ? `<br>${b.badPhone} 个电话号码格式不对，会写进备注里` : '') + (b.guessPhone ? `<br>${b.guessPhone} 个电话是自动补的区号，备注里会提醒你核对` : '');
     $('impGo').disabled = !ready; $('impGo').style.opacity = ready ? 1 : 0.5;
 }
@@ -946,8 +1070,10 @@ function openImport() {
     const big = IMP.book.reduce((bi, s, i, a) => (s.rows.length > a[bi].rows.length ? i : bi), 0); $('imp-sheet').value = String(big);
     const cur = curProject(); $('imp-proj').innerHTML = projects.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('') + '<option value="new">＋ 新项目…</option>';
     $('imp-proj').value = String(cur ? cur.id : 'new'); $('impNewWrap').classList.toggle('hidden', $('imp-proj').value !== 'new'); $('imp-newname').value = '';
-    document.querySelector('input[name="impMode"][value="skip"]').checked = true;
-    chooseSheet(big); $('impMeta').textContent = `${IMP.book.length} 页 · 最大的一页有 ${IMP.book[big].rows.length.toLocaleString()} 行`;
+    const pasted = IMP.source === 'paste';        // a pasted table is meant to overwrite what we have
+    document.querySelector(`input[name="impMode"][value="${pasted ? 'update' : 'skip'}"]`).checked = true;
+    document.querySelector('#imp .sheet-top .ttl').textContent = pasted ? '粘贴表格' : '导入表格';
+    chooseSheet(big); $('impMeta').textContent = pasted ? `${IMP.book[big].rows.length.toLocaleString()} 行 · ${Math.max(...IMP.book[big].rows.map((r) => r.length))} 列` : `${IMP.book.length} 页 · 最大的一页有 ${IMP.book[big].rows.length.toLocaleString()} 行`;
     renderImport(); $('imp').classList.remove('hidden'); $('imp').scrollTop = 0; document.body.style.overflow = 'hidden';
 }
 function closeImport() { $('imp').classList.add('hidden'); document.body.style.overflow = $('tsheet').classList.contains('hidden') ? '' : 'hidden'; IMP.book = null; IMP.rows = []; }
@@ -995,8 +1121,32 @@ $('imp').addEventListener('click', (e) => {
     else if (e.target.closest('.tray') && !e.target.closest('.chipc') && IMP.sel != null) place(IMP.sel, null);
 });
 
+function askConfirm({ title, text, ok, danger }) {
+    return new Promise((resolve) => {
+        const box = $('cdlg'); $('cdTitle').textContent = title; $('cdText').innerHTML = text; $('cdOkText').textContent = ok;
+        $('cdOk').className = 'btn ' + (danger ? 'btn-red' : 'btn-green'); box.classList.remove('hidden');
+        const done = (v) => { box.classList.add('hidden'); box.onclick = null; document.removeEventListener('keydown', onKey); resolve(v); };
+        const onKey = (e) => { if (e.key === 'Escape') done(false); };
+        $('cdOk').onclick = () => done(true); $('cdNo').onclick = () => done(false); box.onclick = (e) => { if (e.target === box) done(false); };
+        document.addEventListener('keydown', onKey);
+    });
+}
 $('impGo').addEventListener('click', async () => {
     const b = buildRows(); if (IMP.map.unit == null || !b.rows.length) return;
+    // a table that overwrites what is saved: say so, and only go on when the answer is yes
+    const mode = document.querySelector('input[name="impMode"]:checked').value, isNew = $('imp-proj').value === 'new';
+    if (!isNew && (mode !== 'skip' || IMP.source === 'paste')) {
+        const projId = $('imp-proj').value, projName = (projects.find((p) => String(p.id) === projId) || {}).name || '', have = new Set(allOwners.filter((o) => String(o.projectId) === projId).map((o) => o.unit)), inFile = new Set(b.rows.map((o) => o.unit));
+        let fresh = 0, dup = 0; for (const u of inFile) have.has(u) ? dup++ : fresh++;
+        const gone = mode === 'replace' ? [...have].filter((u) => !inFile.has(u)).length : 0;
+        const ok = await askConfirm({
+            title: mode === 'skip' ? '要保存吗？' : '这会覆盖数据库，要保存吗？',
+            text: `项目「${esc(projName)}」现在有 <b>${have.size.toLocaleString()}</b> 位业主。<br>保存后：新增 <b>${fresh.toLocaleString()}</b> 位` + (mode === 'skip' ? `，${dup.toLocaleString()} 位已有的保持不变。` : `，<b>${dup.toLocaleString()}</b> 位已有的资料会被表格里的覆盖。`)
+                + (gone ? `<br><b style="color:#b91c1c">另外 ${gone.toLocaleString()} 位不在这个表格里的业主会被删除。</b>` : '') + (mode === 'skip' ? '' : '<br>保存后不能撤销。'),
+            ok: mode === 'replace' ? '保存并替换' : '保存', danger: mode === 'replace',
+        });
+        if (!ok) return;
+    }
     try {
         let projectId = Number($('imp-proj').value), res;
         await trkSaving.run(async () => {
@@ -1009,7 +1159,7 @@ $('impGo').addEventListener('click', async () => {
         }, '导入中…');
         F.project = projectId; try { localStorage.setItem('upc-project', F.project); } catch (x) { /* private mode */ }
         closeImport(); F.type = 'all'; F.axis = null; shownPoly = []; renderAll();
-        toast(`新增 ${res.added}，补充 ${res.updated}，跳过 ${res.skipped}`);
+        toast(`新增 ${res.added}，覆盖 ${res.updated}，跳过 ${res.skipped}` + (res.removed ? `，删除 ${res.removed}` : ''));
         if (res.errors.length) alert('有些行没有导入：\n' + res.errors.join('\n'));
     } catch (e) { toast(e.message); }
 });

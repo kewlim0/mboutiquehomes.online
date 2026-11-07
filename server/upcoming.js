@@ -71,7 +71,9 @@ function ensureUpcoming() {
 }
 
 // ---------- validation ----------
-const STATUSES = ['tenant', 'sale', 'own', 'noanswer', 'none', 'listed'];
+// The page offers three: not contacted yet (none), contacted (contacted), could not reach (noanswer). The four older values are still accepted
+// (rows saved before are left as they are; the page shows them as "contacted").
+const STATUSES = ['none', 'contacted', 'noanswer', 'tenant', 'sale', 'own', 'listed'];
 
 const text = (value, label, max, { required = false } = {}) => {
   const s = typeof value === 'string' ? value.trim() : (value == null ? '' : String(value).trim());
@@ -264,9 +266,10 @@ async function importRows(projectId, rows, mode) {
   if (!proj) throw new HttpError(400, '找不到这个项目');
   if (!Array.isArray(rows) || !rows.length) throw new HttpError(400, '没有要导入的行');
   if (rows.length > MAX_IMPORT_ROWS) throw new HttpError(400, `一次最多导入 ${MAX_IMPORT_ROWS} 行`);
-  const update = mode === 'update';
+  const replace = mode === 'replace', update = mode === 'update' || replace;
   const conn = await pool.getConnection();
-  const out = { added: 0, updated: 0, skipped: 0, errors: [] };
+  const out = { added: 0, updated: 0, skipped: 0, removed: 0, errors: [] };
+  const inFile = new Set();
   try {
     await conn.beginTransaction();
     const [existing] = await conn.query(`SELECT ${COLS} FROM upcoming_owners WHERE project_id = ?`, [projectId]);
@@ -278,6 +281,7 @@ async function importRows(projectId, rows, mode) {
         out.skipped++; if (out.errors.length < 20) out.errors.push(`第 ${i + 1} 行（${String((raw && raw.unit) || '').slice(0, 30)}）：${err.message}`); continue;
       }
       o.type = o.type || typeOf(o.unit, proj.types);
+      inFile.add(o.unit);
       const old = byUnit.get(o.unit);
       if (!old) {
         const [r] = await conn.query(
@@ -287,7 +291,10 @@ async function importRows(projectId, rows, mode) {
         out.added++; continue;
       }
       if (!update) { out.skipped++; continue; }
-      const note = o.note && !old.note.toLowerCase().includes(o.note.toLowerCase()) ? [old.note, o.note].filter(Boolean).join('\n') : old.note;
+      // notes: only the lines the owner does not have yet are added (so pasting the same table twice does not repeat anything)
+      const had = new Set(old.note.split('\n').map((x) => x.trim().toLowerCase()));
+      const add = o.note.split('\n').map((x) => x.trim()).filter((x) => x && !had.has(x.toLowerCase()));
+      const note = add.length ? [old.note, ...add].filter(Boolean).join('\n') : old.note;
       if (note.length > 4000) { out.skipped++; if (out.errors.length < 20) out.errors.push(`${o.unit}：备注太长了`); continue; }
       const merged = {
         name: o.name || old.name, phone: o.phone || old.phone, type: o.type || old.type,
@@ -297,6 +304,14 @@ async function importRows(projectId, rows, mode) {
         [merged.name, merged.phone, merged.type, merged.status, merged.tenancyEnd, merged.nextFollowup, merged.note, old.id]);
       byUnit.set(o.unit, { ...old, ...merged });
       out.updated++;
+    }
+    // "replace": the project becomes exactly what the file holds; a unit that is not in it any more is removed
+    if (replace && inFile.size) {
+      for (const [unit, r] of byUnit) {
+        if (inFile.has(unit)) continue;
+        await conn.query('DELETE FROM upcoming_owners WHERE id = ?', [r.id]);
+        out.removed++;
+      }
     }
     await conn.commit();
     return out;
