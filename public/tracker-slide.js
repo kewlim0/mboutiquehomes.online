@@ -36,7 +36,7 @@
     function hudEl() {
         if (hud) return hud;
         var bars = '';
-        for (var i = 0; i < 12; i++) bars += '<rect x="22" y="3" width="4" height="11" rx="2" fill="#1e293b" opacity="' + (1 - i * 0.075).toFixed(3) + '" transform="rotate(' + (-i * 30) + ' 24 24)"/>';
+        for (var i = 0; i < 12; i++) bars += '<rect x="22" y="3" width="4" height="11" rx="2" fill="#1e293b" style="animation-delay:' + (i * 0.08 - 0.96).toFixed(2) + 's" transform="rotate(' + (i * 30) + ' 24 24)"/>';
         var st = document.createElement('style');
         st.textContent =
             '.trk-hud { position: fixed; inset: 0; z-index: 120; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.38); -webkit-tap-highlight-color: transparent; }' +
@@ -45,10 +45,11 @@
             '@keyframes trk-hud-fade { from { opacity: 0; } to { opacity: 1; } }' +
             '.trk-hud-box { min-width: 150px; padding: 22px 26px 18px; border-radius: 22px; background: #fff; text-align: center; box-shadow: 0 30px 60px -18px rgba(15, 23, 42, 0.55); animation: trk-hud-pop 0.2s cubic-bezier(0.22, 1, 0.36, 1) both; }' +
             '@keyframes trk-hud-pop { from { transform: scale(0.9); opacity: 0; } to { transform: none; opacity: 1; } }' +
-            '.trk-hud-spin { width: 48px; height: 48px; display: block; margin: 0 auto; animation: trk-hud-turn 0.9s linear infinite; will-change: transform; }' +
-            '@keyframes trk-hud-turn { to { transform: rotate(360deg); } }' +
+            '.trk-hud-spin { width: 48px; height: 48px; display: block; margin: 0 auto;  }' +
+            '.trk-hud-spin rect { opacity: 0.15; animation: trk-hud-tick 0.96s linear infinite; }' +
+            '@keyframes trk-hud-tick { 0% { opacity: 1; } 100% { opacity: 0.15; } }' +
             '.trk-hud-text { margin-top: 12px; font: 700 14px/1.2 Inter, "PingFang SC", "Noto Sans SC", system-ui, sans-serif; color: #334155; letter-spacing: 0.02em; }' +
-            '@media (prefers-reduced-motion: reduce) { .trk-hud-spin { animation-duration: 2.4s; } }';
+            '@media (prefers-reduced-motion: reduce) { .trk-hud-spin rect { animation-duration: 2.4s; } }';
         document.head.appendChild(st);
         hud = document.createElement('div');
         hud.className = 'trk-hud'; hud.setAttribute('role', 'alertdialog'); hud.setAttribute('aria-live', 'assertive'); hud.setAttribute('aria-label', '保存中');
