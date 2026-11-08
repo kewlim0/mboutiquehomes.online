@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
     <script src="/tracker-slide.js?v=11"></script>
+    <script src="/tracker-pdfview.js?v=1"></script>
     <link rel="manifest" href="/tracker.webmanifest">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -524,13 +525,17 @@ function slideView(dir, change) {
 }
 // ---------- tenancy agreement (a PDF or a photo of the contract, one per unit) ----------
 const fmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+function openAgreement(id) {
+    const u = data.units.find((x) => x.id === id); if (!u || !u.agreement) return;
+    trkPdf.open({ url: '/api/admin/rental-units/' + id + '/agreement', title: u.agreement.name || 'Tenancy agreement', type: u.agreement.type });
+}
 function agreementBox(u) {
     const a = u.agreement;
     if (!a) {
         return `<div class="agr-box"><button type="button" class="agr-card agr-empty" onclick="pickAgreement(${u.id})"><span class="agr-ico"><i class="fa-solid fa-file-contract"></i></span><span class="agr-main"><b>Tenancy agreement</b><small>还没有上传 · 点这里上传 PDF 或照片</small></span><i class="fa-solid fa-cloud-arrow-up agr-go"></i></button></div>`;
     }
     const pdf = a.type === 'application/pdf';
-    return `<div class="agr-box"><a class="agr-card" href="/api/admin/rental-units/${u.id}/agreement" target="_blank" rel="noopener"><span class="agr-ico on"><i class="fa-solid ${pdf ? 'fa-file-pdf' : 'fa-file-image'}"></i></span><span class="agr-main"><b>Tenancy agreement</b><small>${esc(a.name)} · ${fmtSize(a.size || 0)}</small></span><i class="fa-solid fa-arrow-up-right-from-square agr-go"></i></a></div>`;
+    return `<div class="agr-box"><button type="button" class="agr-card" onclick="openAgreement(${u.id})"><span class="agr-ico on"><i class="fa-solid ${pdf ? 'fa-file-pdf' : 'fa-file-image'}"></i></span><span class="agr-main"><b>Tenancy agreement</b><small>${esc(a.name)} · ${fmtSize(a.size || 0)}</small></span><i class="fa-solid fa-arrow-up-right-from-square agr-go"></i></button></div>`;
 }
 // the same file in the Edit unit page: here (and only here) it can be replaced or deleted
 function renderAgreementEditor(u) {
@@ -572,6 +577,7 @@ async function deleteAgreement(id) {
 function openUnitView(id) { slideView('fwd', () => { resetSel(); unitId = id; history.pushState({ unit: id }, ''); render(); window.scrollTo(0, 0); }); }
 function openUnitList() { slideView('back', () => { unitId = null; render(); window.scrollTo(0, 0); }); }
 window.addEventListener('popstate', () => {
+    if (window.trkPdf && trkPdf.consumePop()) return;   // that back swipe only closed the preview
     if (!$('billSheet').classList.contains('hidden')) closeBill(true);
     const target = history.state && history.state.unit || null;
     slideView(target ? 'fwd' : 'back', () => { unitId = target; render(); });
