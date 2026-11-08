@@ -802,15 +802,17 @@ const ZMIN = 1, ZMAX = 5;
 const PV = { doc: null, token: 0, zoom: 1, pages: [], io: null };   // token: changes whenever a preview is closed or another one opens
 function pdfFree(p) {
     if (p.task) { try { p.task.cancel(); } catch (e) { /* already done */ } p.task = null; }
-    p.drawn = false; const c = p.div.firstChild; if (c) { c.width = 0; c.height = 0; c.remove(); }
+    p.drawn = false; p.stale = false; const c = p.div.firstChild; if (c) { c.width = 0; c.height = 0; c.remove(); }
 }
 async function pdfDraw(p, token) {
-    if (p.drawn || p.task) return;
-    const cssW = p.div.clientWidth || parseFloat(p.div.style.width), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if ((p.drawn && !p.stale) || p.task) return;
+    const cssW = p.div.clientWidth || parseFloat(p.div.style.width);
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const area = (cssW * dpr) * (cssW * dpr * p.vp.height / p.vp.width); if (area > 12e6) dpr *= Math.sqrt(12e6 / area);   // phones refuse very big canvases
     const vp = p.page.getViewport({ scale: (cssW / p.vp.width) * dpr });
     const c = document.createElement('canvas'); c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
     const task = p.page.render({ canvasContext: c.getContext('2d'), viewport: vp }); p.task = task;
-    try { await task.promise; if (token !== PV.token || p.task !== task) return; p.div.appendChild(c); p.drawn = true; }
+    try { await task.promise; if (token !== PV.token || p.task !== task) return; [...p.div.children].forEach((o) => { o.width = 0; o.height = 0; o.remove(); }); p.div.appendChild(c); p.drawn = true; p.stale = false; }
     catch (e) { /* cancelled: the page went off screen or the preview was closed */ }
     finally { if (p.task === task) p.task = null; }
 }
@@ -818,7 +820,7 @@ function pdfLayout(keep) {   // keep: {fx, fy, cx, cy} = the spot of the page th
     const body = $('pdfvBody'), w = Math.round((body.clientWidth - 16) * PV.zoom), ratio = body.scrollHeight ? body.scrollTop / body.scrollHeight : 0;
     if (PV.io) PV.io.disconnect();
     PV.io = new IntersectionObserver((entries) => entries.forEach((en) => { const p = PV.pages[Number(en.target.dataset.i)]; if (p) en.isIntersecting ? pdfDraw(p, PV.token) : pdfFree(p); }), { root: body, rootMargin: '900px 0px' });
-    PV.pages.forEach((p, i) => { p.div.dataset.i = i; p.div.style.width = w + 'px'; p.div.style.height = Math.round(w * p.vp.height / p.vp.width) + 'px'; pdfFree(p); PV.io.observe(p.div); });
+    PV.pages.forEach((p, i) => { p.div.dataset.i = i; p.div.style.width = w + 'px'; p.div.style.height = Math.round(w * p.vp.height / p.vp.width) + 'px'; if (p.task) { try { p.task.cancel(); } catch (e) { /* done */ } p.task = null; } p.stale = true; PV.io.observe(p.div); });   // the old picture stays (stretched) until the sharp one is ready: no blank flash
     if (keep) { body.scrollLeft = keep.fx * body.scrollWidth - keep.cx; body.scrollTop = keep.fy * body.scrollHeight - keep.cy; }
     else { body.scrollTop = ratio * body.scrollHeight; body.scrollLeft = (body.scrollWidth - body.clientWidth) / 2; }
 }
