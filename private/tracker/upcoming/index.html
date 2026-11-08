@@ -635,7 +635,7 @@ function renderList() {
     const rows = owners.filter(matches).sort((a, b) => rank(a) - rank(b) || (a.nextFollowup || a.tenancyEnd || '9').localeCompare(b.nextFollowup || b.tenancyEnd || '9') || a.unit.localeCompare(b.unit));
     $('clear').hidden = !filtered;
     $('listTitle').textContent = filtered ? `筛选结果 · ${rows.length.toLocaleString()} 户` : 'Follow-up 清单 · 先看该跟进的';
-    $('sub').textContent = `${curProject() ? curProject().name + ' · ' : ''}${owners.length.toLocaleString()} 位业主`;
+    $('sub').innerHTML = `${curProject() ? esc(curProject().name) + '<br>' : ''}${owners.length.toLocaleString()} 位业主`;   // project name on one line, the owner count on the next
     const part = rows.slice(0, F.shown);
     $('list').innerHTML = part.map(card).join('')
         + (rows.length > part.length ? `<button class="more" id="more">再显示 ${Math.min(PAGE, rows.length - part.length)} 户（还有 ${(rows.length - part.length).toLocaleString()} 户）</button>` : '')
