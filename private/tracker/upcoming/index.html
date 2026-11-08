@@ -86,18 +86,35 @@
         .hint { text-align: center; font-size: 0.66rem; color: #94a3b8; font-weight: 600; margin-top: 0.4rem; }
         /* floor-plan PDFs of the project (under the hexagon) */
         #fpCard[hidden] { display: none; }
+        .fp { margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
+        .fp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem; }
+        .fp-head h3 { font-size: 1.05rem; font-weight: 800; margin-top: 0.2rem; letter-spacing: -0.01em; color: var(--ink); }
         .fp-add { padding: 0.5rem 0.85rem; flex-shrink: 0; }
         .fp-list { margin-top: 0.5rem; }
         .fp-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0; border-top: 1px solid #eef2f7; }
         .fp-row:first-child { border-top: 0; }
         .fp-ico { width: 2.3rem; height: 2.3rem; border-radius: 0.75rem; display: grid; place-items: center; flex-shrink: 0; background: #fef2f2; color: #dc2626; font-size: 1rem; }
-        .fp-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.7rem; color: var(--ink); text-decoration: none; }
+        .fp-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.7rem; color: var(--ink); text-decoration: none; background: none; border: 0; padding: 0; text-align: left; font: inherit; cursor: pointer; }
         .fp-txt { min-width: 0; }
         .fp-txt b { display: block; font-size: 0.82rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .fp-txt small { display: block; margin-top: 0.1rem; font-size: 0.68rem; font-weight: 600; color: var(--muted); }
         .fp-del { width: 2.2rem; height: 2.2rem; border-radius: 0.7rem; flex-shrink: 0; display: grid; place-items: center; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; font-size: 0.8rem; }
         .fp-del:active { transform: scale(0.95); }
         .fp-empty { text-align: center; padding: 1.1rem 0.5rem 0.5rem; font-size: 0.78rem; font-weight: 600; color: #94a3b8; }
+        /* PDF preview: full screen inside the app, X at the top left like the table page */
+        .pdfv { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; background: #0f172a; }
+        .pdfv.hidden { display: none; }
+        .pdfv-bar { display: flex; align-items: center; gap: 0.5rem; padding: max(0.6rem, env(safe-area-inset-top)) 0.7rem 0.6rem; background: #0f172a; color: #fff; }
+        .pdfv-bar button { width: 2.4rem; height: 2.4rem; border-radius: 0.85rem; display: grid; place-items: center; flex-shrink: 0; background: rgba(255, 255, 255, 0.12); color: #fff; font-size: 0.95rem; font-weight: 800; }
+        .pdfv-bar button:active { background: rgba(255, 255, 255, 0.24); }
+        .pdfv-bar #pdfvZoom { width: auto; min-width: 3.2rem; padding: 0 0.5rem; font-size: 0.72rem; }
+        .pdfv-title { flex: 1; min-width: 0; font-size: 0.85rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pdfv-body { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; background: #334155; padding: 0.5rem 0.5rem max(0.8rem, env(safe-area-inset-bottom)); }
+        .pdfv-pages { display: flex; flex-direction: column; align-items: center; width: max-content; min-width: 100%; gap: 0.5rem; }
+        .pdfv-page { position: relative; flex-shrink: 0; background: #fff; box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.6); }
+        .pdfv-page canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+        .pdfv-msg { padding: 3rem 1rem; text-align: center; font-size: 0.85rem; font-weight: 600; line-height: 1.9; color: #e2e8f0; }
+        .pdfv-msg a { color: #86efac; font-weight: 800; }
 
         .tl { display: grid; grid-template-columns: repeat(12, 1fr); gap: 0.28rem; align-items: end; height: 6rem; margin-top: 1.3rem; }
         .tl .m { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 0.3rem; cursor: pointer; }
@@ -328,16 +345,16 @@
             <defs><radialGradient id="hexfill" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#22c55e" stop-opacity=".5"/><stop offset="1" stop-color="#15803d" stop-opacity=".16"/></radialGradient></defs>
             <g id="rings"></g><g id="spokes"></g><g id="hexShape"><polygon class="poly" id="poly"/><g id="dots"></g></g><g id="axes"></g></svg></div>
         <p class="hint" id="hint">点图形的任何一个角，下面的清单就只看那一类</p>
-    </section>
 
-    <!-- floor-plan PDFs of the project that is open: upload, view, delete -->
-    <section class="card glass rise d2" id="fpCard" hidden>
-        <div class="card-head">
-            <div><p class="eyebrow">Floor plans</p><h2 id="fpTitle">户型图 PDF</h2></div>
-            <button type="button" class="btn btn-soft fp-add" id="fpAdd"><i class="fa-solid fa-cloud-arrow-up"></i>上传 PDF</button>
+        <!-- floor-plan PDFs of the project that is open: upload, view, delete. Only while the hexagon shows 按户型 -->
+        <div class="fp" id="fpCard" hidden>
+            <div class="fp-head">
+                <div><p class="eyebrow">Floor plans</p><h3 id="fpTitle">户型图 PDF</h3></div>
+                <button type="button" class="btn btn-soft fp-add" id="fpAdd"><i class="fa-solid fa-cloud-arrow-up"></i>上传 PDF</button>
+            </div>
+            <div class="fp-list" id="fpList"></div>
+            <input type="file" id="fpInput" accept="application/pdf,.pdf" multiple hidden>
         </div>
-        <div class="fp-list" id="fpList"></div>
-        <input type="file" id="fpInput" accept="application/pdf,.pdf" multiple hidden>
     </section>
 
     <section class="card glass rise d3">
@@ -353,6 +370,18 @@
     <div id="list"></div>
 </main>
 <button class="fab" id="fab" aria-label="Add owner"><i class="fa-solid fa-plus"></i></button>
+
+<!-- PDF preview: a full-screen page inside the app, with an X in the corner -->
+<div id="pdfv" class="pdfv hidden" role="dialog" aria-modal="true" aria-label="PDF 预览">
+    <div class="pdfv-bar">
+        <button type="button" id="pdfvClose" aria-label="关闭预览"><i class="fa-solid fa-xmark"></i></button>
+        <div class="pdfv-title" id="pdfvTitle"></div>
+        <button type="button" id="pdfvOut" aria-label="缩小"><i class="fa-solid fa-minus"></i></button>
+        <button type="button" id="pdfvZoom" aria-label="恢复 100%">100%</button>
+        <button type="button" id="pdfvIn" aria-label="放大"><i class="fa-solid fa-plus"></i></button>
+    </div>
+    <div class="pdfv-body" id="pdfvBody"></div>
+</div>
 
 <!-- table: all columns, all rows -->
 <div id="tsheet" class="sheet tsheet hidden">
@@ -597,7 +626,7 @@ function updateHex() {
     raf = requestAnimationFrame(step);
 }
 $('axes').addEventListener('click', (e) => { const g = e.target.closest('.axis'); if (!g) return; F.axis = F.axis === g.dataset.k ? null : g.dataset.k; F.shown = PAGE; renderAxes(axisDefs()); renderList(); });
-$('mode').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.mode = b.dataset.m; F.axis = null; F.shown = PAGE; shownPoly = []; document.querySelectorAll('#mode button').forEach((x) => x.classList.toggle('on', x === b)); updateHex(); renderList(); });
+$('mode').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.mode = b.dataset.m; F.axis = null; F.shown = PAGE; shownPoly = []; document.querySelectorAll('#mode button').forEach((x) => x.classList.toggle('on', x === b)); updateHex(); renderList(); renderFiles(); });
 
 // ----- timeline -----
 const monthIdx = (s) => (day(s).getFullYear() - TODAY.getFullYear()) * 12 + day(s).getMonth() - TODAY.getMonth();
@@ -695,11 +724,11 @@ function renderAll() {
 // ----- floor-plan PDFs of the open project (the card under the hexagon) -----
 const fmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
 function renderFiles() {
-    const pr = curProject(); $('fpCard').hidden = !pr; if (!pr) return;
+    const pr = curProject(); $('fpCard').hidden = !pr || F.mode !== 'type'; if ($('fpCard').hidden) return;   // only while the hexagon shows 按户型
     const list = allFiles.filter((f) => f.projectId === pr.id);
     $('fpTitle').textContent = list.length ? `户型图 PDF · ${list.length}` : '户型图 PDF';
     $('fpList').innerHTML = list.length ? list.map((f) => `<div class="fp-row">
-        <a class="fp-main" href="/api/admin/upcoming-files/${f.id}" target="_blank" rel="noopener"><span class="fp-ico"><i class="fa-solid fa-file-pdf"></i></span><span class="fp-txt"><b>${esc(f.name)}</b><small>${fmtSize(f.size || 0)} · ${new Date(f.at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' })} · 点一下查看</small></span></a>
+        <button type="button" class="fp-main" data-open="${f.id}"><span class="fp-ico"><i class="fa-solid fa-file-pdf"></i></span><span class="fp-txt"><b>${esc(f.name)}</b><small>${fmtSize(f.size || 0)} · ${new Date(f.at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' })} · 点一下预览</small></span></button>
         <button type="button" class="fp-del" data-id="${f.id}" aria-label="删除这个 PDF"><i class="fa-regular fa-trash-can"></i></button></div>`).join('')
         : '<p class="fp-empty"><i class="fa-regular fa-file-pdf" style="font-size:1.5rem;display:block;margin-bottom:.4rem"></i>这个项目还没有户型图 · 点右上角上传 PDF</p>';
 }
@@ -726,12 +755,95 @@ $('fpInput').addEventListener('change', async () => {
     toast(err ? (ok ? `已上传 ${ok} 个，后面的没成功：${err}` : err) : `已上传 ${ok} 个 PDF`);
 });
 $('fpList').addEventListener('click', async (e) => {
+    const open = e.target.closest('.fp-main'); if (open) { openPdf(Number(open.dataset.open)); return; }
     const b = e.target.closest('.fp-del'); if (!b) return;
     const f = allFiles.find((x) => x.id === Number(b.dataset.id));
     if (!f || !confirm(`删除「${f.name}」吗？文件会从服务器上永久删除。`)) return;
     try { await trkSaving.run(() => api('DELETE', 'upcoming-files/' + f.id), '删除中…'); allFiles = allFiles.filter((x) => x.id !== f.id); renderFiles(); toast('已删除'); }
     catch (err) { toast(err.message); }
 });
+
+// ----- PDF preview: a full-screen page inside the app with an X (the browser's own PDF page has no way back in an installed app) -----
+// pdf.js draws the pages itself, so it looks the same on iPhone and Android. It is only downloaded when the first PDF is opened.
+// A page is drawn while it is near the screen and freed when it is far away, so a long PDF does not fill the phone's memory.
+const PDFJS_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+let pdfJsLoading = null;
+function loadPdfJs() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if (!pdfJsLoading) pdfJsLoading = new Promise((resolve, reject) => {
+        const sc = document.createElement('script'); sc.src = PDFJS_BASE + 'pdf.min.js';
+        sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_BASE + 'pdf.worker.min.js'; resolve(window.pdfjsLib); };
+        sc.onerror = () => { pdfJsLoading = null; reject(new Error('预览工具下载不了，请检查网络')); };
+        document.head.appendChild(sc);
+    });
+    return pdfJsLoading;
+}
+const ZOOMS = [1, 1.5, 2, 3];
+const PV = { doc: null, token: 0, zoom: 1, pages: [], io: null };   // token: changes whenever a preview is closed or another one opens
+function pdfFree(p) {
+    if (p.task) { try { p.task.cancel(); } catch (e) { /* already done */ } p.task = null; }
+    p.drawn = false; const c = p.div.firstChild; if (c) { c.width = 0; c.height = 0; c.remove(); }
+}
+async function pdfDraw(p, token) {
+    if (p.drawn || p.task) return;
+    const cssW = p.div.clientWidth || parseFloat(p.div.style.width), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const vp = p.page.getViewport({ scale: (cssW / p.vp.width) * dpr });
+    const c = document.createElement('canvas'); c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+    const task = p.page.render({ canvasContext: c.getContext('2d'), viewport: vp }); p.task = task;
+    try { await task.promise; if (token !== PV.token || p.task !== task) return; p.div.appendChild(c); p.drawn = true; }
+    catch (e) { /* cancelled: the page went off screen or the preview was closed */ }
+    finally { if (p.task === task) p.task = null; }
+}
+function pdfLayout() {   // the pages as grey-white boxes of the right size; the picture goes in when a box comes near the screen
+    const body = $('pdfvBody'), w = Math.round((body.clientWidth - 16) * PV.zoom), ratio = body.scrollHeight ? body.scrollTop / body.scrollHeight : 0;
+    if (PV.io) PV.io.disconnect();
+    PV.io = new IntersectionObserver((entries) => entries.forEach((en) => { const p = PV.pages[Number(en.target.dataset.i)]; if (p) en.isIntersecting ? pdfDraw(p, PV.token) : pdfFree(p); }), { root: body, rootMargin: '900px 0px' });
+    PV.pages.forEach((p, i) => { p.div.dataset.i = i; p.div.style.width = w + 'px'; p.div.style.height = Math.round(w * p.vp.height / p.vp.width) + 'px'; pdfFree(p); PV.io.observe(p.div); });
+    body.scrollTop = ratio * body.scrollHeight; body.scrollLeft = (body.scrollWidth - body.clientWidth) / 2;
+}
+function pdfZoom(dir) {   // dir: -1 smaller, +1 bigger, 0 back to 100%
+    const i = ZOOMS.indexOf(PV.zoom), n = dir === 0 ? 0 : Math.max(0, Math.min(ZOOMS.length - 1, i + dir)); if (n === i) return;
+    PV.zoom = ZOOMS[n]; $('pdfvZoom').textContent = Math.round(PV.zoom * 100) + '%'; if (PV.pages.length) pdfLayout();
+}
+async function openPdf(id) {
+    const f = allFiles.find((x) => x.id === id); if (!f) return;
+    const my = ++PV.token; PV.zoom = 1; $('pdfvZoom').textContent = '100%'; $('pdfvTitle').textContent = f.name;
+    const body = $('pdfvBody'); body.innerHTML = '<p class="pdfv-msg">加载中…</p>'; body.scrollTop = 0; body.scrollLeft = 0;
+    $('pdfv').classList.remove('hidden'); document.body.style.overflow = 'hidden';
+    if (!(history.state && history.state.pdfv)) history.pushState({ pdfv: 1 }, '');   // the phone's back swipe / button closes the preview instead of leaving the page
+    try {
+        const lib = await loadPdfJs();
+        const doc = await lib.getDocument({ url: '/api/admin/upcoming-files/' + f.id, withCredentials: true }).promise;
+        if (my !== PV.token) { doc.destroy(); return; }          // closed (or another one opened) while it was loading
+        PV.doc = doc; PV.pages = [];
+        body.innerHTML = '<div class="pdfv-pages" id="pdfvPages"></div>'; const wrap = $('pdfvPages');
+        for (let i = 1; i <= doc.numPages; i++) {
+            const page = await doc.getPage(i); if (my !== PV.token) return;
+            const div = document.createElement('div'); div.className = 'pdfv-page'; wrap.appendChild(div);
+            PV.pages.push({ page, div, vp: page.getViewport({ scale: 1 }), task: null, drawn: false });
+        }
+        pdfLayout();
+    } catch (e) {
+        if (my !== PV.token) return;
+        if (e && e.status === 401) { location.replace('/admin/?next=%2Ftracker%2Fupcoming%2F'); return; }
+        const msg = e && /[一-龥]/.test(e.message) ? e.message : '打不开这个 PDF，文件可能已损坏';
+        body.innerHTML = `<p class="pdfv-msg">${esc(msg)}<br><a href="/api/admin/upcoming-files/${f.id}" target="_blank" rel="noopener">改用浏览器打开</a></p>`;
+    }
+}
+function closePdf(fromPopstate) {
+    if ($('pdfv').classList.contains('hidden')) return;
+    PV.token++; if (PV.io) { PV.io.disconnect(); PV.io = null; }
+    PV.pages.forEach(pdfFree); PV.pages = []; if (PV.doc) { PV.doc.destroy(); PV.doc = null; }
+    $('pdfv').classList.add('hidden'); $('pdfvBody').innerHTML = '';
+    if ($('tsheet').classList.contains('hidden')) document.body.style.overflow = '';   // (the table page locks the scroll itself)
+    if (!fromPopstate && history.state && history.state.pdfv) history.back();
+}
+$('pdfvClose').addEventListener('click', () => closePdf(false));
+$('pdfvIn').addEventListener('click', () => pdfZoom(1));
+$('pdfvOut').addEventListener('click', () => pdfZoom(-1));
+$('pdfvZoom').addEventListener('click', () => pdfZoom(0));
+window.addEventListener('popstate', () => closePdf(true));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('pdfv').classList.contains('hidden')) { e.stopPropagation(); closePdf(false); } }, true);
 
 // ----- dialogs -----
 function askSave(text) {
