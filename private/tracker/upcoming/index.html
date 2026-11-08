@@ -453,7 +453,7 @@
         <div class="sheet-top">
             <button class="back glass" id="closeBtn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
             <div class="ttl" id="fTitle">业主</div>
-            <button class="btn btn-amber" id="saveBtn"><i class="fa-solid fa-check"></i>保存</button>
+            <button class="btn btn-amber" id="saveBtn"><i class="fa-solid fa-check"></i><span id="pSaveT">保存</span></button>
         </div>
         <form class="form" onsubmit="return false" autocomplete="off">
             <div><label class="lbl" for="f-unit">单位 *</label><input class="field" id="f-unit" maxlength="30" placeholder="例如 B-48-03" autocapitalize="characters"></div>
@@ -484,11 +484,12 @@
             <div><label class="lbl" for="p-name">项目名称 *</label><input class="field" id="p-name" maxlength="120" placeholder="例如 Sunway Belfield Residence"></div>
             <div>
                 <label class="lbl">户型：名称、对应的单位尾号、备注</label>
-                <p style="font-size:.7rem;color:#94a3b8;font-weight:600;line-height:1.5;margin:0 0 .6rem .15rem">单位尾号是单位号最后那一段，例如 B-48-03 的尾号是 03、B-48-03A 的尾号是 03A。同一个户型可以有好几个尾号，用逗号隔开。</p>
+                <p style="font-size:.7rem;color:#94a3b8;font-weight:600;line-height:1.5;margin:0 0 .6rem .15rem">填尾号，例如 03、03A；如果不同栋户型不同，在前面加栋别，例如 B-01；整栋同一户型填 C-*</p>
                 <div id="pTypes" style="display:grid;gap:.5rem"></div>
                 <button type="button" class="btn btn-soft" id="pAddType" style="width:100%;margin-top:.6rem"><i class="fa-solid fa-plus"></i>添加户型</button>
             </div>
             <label class="check" id="pApplyRow"><input type="checkbox" id="pApply" checked><span>保存时，按单位尾号重新给这个项目的所有单位分配户型</span></label>
+            <div id="pPreview" class="hidden" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:1rem;padding:.8rem .9rem;font-size:.78rem;font-weight:600;line-height:1.7;color:#334155"></div>
             <button id="pDel" type="button" class="btn btn-red hidden" style="width:100%"><i class="fa-solid fa-trash-can"></i>删除这个项目</button>
         </form>
     </div>
@@ -575,8 +576,27 @@ const curProject = () => projects.find((p) => p.id === F.project) || projects[0]
 const projTypes = () => (curProject() ? curProject().types : []);
 // the owners of the project that is open; everything on the page (numbers, charts, list) is about these
 let owners = [];
-const suffixOf = (unit) => { const u = String(unit || '').trim().toUpperCase(); return u.includes('-') ? u.split('-').pop() : u.slice(-2); };
-const typeOf = (unit, types) => { const sfx = suffixOf(unit); const t = (types || []).find((x) => x.suffixes.includes(sfx)); return t ? t.code : ''; };
+// Unit-type rules: "03" (any block's ending 03) | "B-03" (block B, ending 03) | "C-*" (every unit of block C).
+// Everything is upper-cased and numbers get two digits ("1" -> "01", "3a" -> "03A") before comparing.
+const normPart = (s) => { s = String(s == null ? '' : s).trim().toUpperCase(); const m = /^(\d+)([A-Z]*)$/.exec(s); return m ? m[1].padStart(2, '0') + m[2] : s; };
+const normRule = (r) => { const p = String(r == null ? '' : r).trim().split(/\s*-\s*/).filter((x) => x !== ''); return p.map(normPart).join('-'); };
+const parseUnit = (unit) => {
+  const u = String(unit || '').trim().toUpperCase();
+  if (!u) return { block: '', suffix: '' };
+  if (!u.includes('-')) return { block: '', suffix: normPart(u.slice(-2)) };
+  const p = u.split(/\s*-\s*/).filter((x) => x !== '');
+  return { block: p.length >= 3 ? normPart(p[0]) : '', suffix: normPart(p[p.length - 1]) };
+};
+// most specific rule wins: block+ending > whole block > ending only; nothing matches -> '' (never guess)
+const typeOf = (unit, types) => {
+  const { block, suffix } = parseUnit(unit);
+  const has = (rule) => (types || []).find((t) => (t.suffixes || []).some((x) => normRule(x) === rule));
+  let t = null;
+  if (block && suffix) t = has(block + '-' + suffix);
+  if (!t && block) t = has(block + '-*');
+  if (!t && suffix) t = has(suffix);
+  return t ? t.code : '';
+};
 const blockOf = (o) => (o.unit.includes('-') ? o.unit.split('-')[0] : '');
 const isLate = (o) => !!o.nextFollowup && daysTo(o.nextFollowup) <= 0 && o.status !== 'own' && o.status !== 'listed';
 
@@ -1507,7 +1527,7 @@ const pState = () => JSON.stringify([$('p-name').value, $('pApply').checked, rea
 function readTypeRows() { return [...document.querySelectorAll('#pTypes .trow')].map((r) => ({ code: r.querySelector('[data-f="code"]').value.trim(), suffixes: r.querySelector('[data-f="suffixes"]').value, note: r.querySelector('[data-f="note"]').value.trim() })); }
 function typeRow(t) {
     return `<div class="trow"><input class="field" data-f="code" maxlength="8" placeholder="A1" value="${esc(t.code)}" autocapitalize="characters">
-        <input class="field" data-f="suffixes" placeholder="尾号，例如 03, 03A" value="${esc((t.suffixes || []).join(', '))}" autocapitalize="characters">
+        <input class="field" data-f="suffixes" placeholder="例如 03, B-01, C-*" value="${esc((t.suffixes || []).join(', '))}" autocapitalize="characters">
         <button type="button" class="tdel" aria-label="删除这个户型"><i class="fa-solid fa-xmark"></i></button>
         <input class="field tnote" data-f="note" maxlength="200" placeholder="备注，例如 2 房 · 788 sqft（可以不写）" value="${esc(t.note || '')}"></div>`;
 }
@@ -1519,7 +1539,7 @@ function openProject(pr) {
     $('pApply').checked = true; $('pApplyRow').classList.toggle('hidden', !pr);
     $('pDel').classList.toggle('hidden', !pr);
     $('psheet').classList.remove('hidden'); $('psheet').scrollTop = 0; document.body.style.overflow = 'hidden';
-    pSnap = pState();
+    pSnap = pState(); resetPreview();
 }
 function closeProject() { $('psheet').classList.add('hidden'); document.body.style.overflow = ''; }
 async function requestCloseProject() {
@@ -1528,7 +1548,23 @@ async function requestCloseProject() {
     if (r === 'save') return saveProject();
     if (r === 'discard') return closeProject();
 }
+let pPreviewed = false;
+function resetPreview() { pPreviewed = false; $('pPreview').classList.add('hidden'); $('pSaveT').textContent = '保存'; }
+// shows what "re-assign the types" would do (per type, and the units nothing matched), before anything is saved
+function showPreview() {
+    const types = readTypeRows().filter((t) => t.code).map((t) => ({ code: t.code, suffixes: String(t.suffixes).split(/[,，\s]+/).filter(Boolean) }));
+    const mine = allOwners.filter((o) => o.projectId === editingProject.id);
+    const count = new Map(types.map((t) => [t.code, 0])), none = [];
+    for (const o of mine) { const c = typeOf(o.unit, types); if (c) count.set(c, count.get(c) + 1); else none.push(o.unit || '(无单位号)'); }
+    const uniq = [...new Set(none)];
+    $('pPreview').innerHTML = '<b>预览：重新分配后</b><br>' + [...count].map(([c, n]) => `${esc(c)}：${n} 个单位`).join('<br>') +
+        `<br><span style="color:${none.length ? '#e11d48' : '#16a34a'}">没匹配到：${none.length} 个单位${uniq.length ? '（保持原样）<br>' + uniq.map(esc).join('、') : ''}</span><br><span style="color:#64748b">确认没问题，再按一次保存。</span>`;
+    $('pPreview').classList.remove('hidden'); $('pSaveT').textContent = '确认保存'; pPreviewed = true;
+    $('pPreview').scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+$('psheet').addEventListener('input', resetPreview); $('psheet').addEventListener('change', resetPreview);
 async function saveProject() {
+    if (editingProject && $('pApply').checked && !pPreviewed) return showPreview();
     const body = { name: $('p-name').value, types: readTypeRows(), applyTypes: !!editingProject && $('pApply').checked };
     try {
         await trkSaving.run(async () => {
@@ -1546,8 +1582,8 @@ async function removeProject() {
         projects = projects.filter((p) => p.id !== editingProject.id); allFiles = allFiles.filter((f) => f.projectId !== editingProject.id); F.project = null; closeProject(); renderAll(); toast('Deleted');
     } catch (e) { toast(e.message); }
 }
-$('pAddType').addEventListener('click', () => { $('pTypes').insertAdjacentHTML('beforeend', typeRow({ code: '', suffixes: [], note: '' })); $('pTypes').lastElementChild.querySelector('input').focus(); });
-$('pTypes').addEventListener('click', (e) => { const d = e.target.closest('.tdel'); if (d) d.closest('.trow').remove(); });
+$('pAddType').addEventListener('click', () => { $('pTypes').insertAdjacentHTML('beforeend', typeRow({ code: '', suffixes: [], note: '' })); $('pTypes').lastElementChild.querySelector('input').focus(); resetPreview(); });
+$('pTypes').addEventListener('click', (e) => { const d = e.target.closest('.tdel'); if (d) { d.closest('.trow').remove(); resetPreview(); } });
 $('pClose').addEventListener('click', requestCloseProject); $('pSave').addEventListener('click', saveProject); $('pDel').addEventListener('click', removeProject);
 
 // ----- skeleton (grey shimmering blocks) while the data loads: at the start, and again when you come back from the table -----

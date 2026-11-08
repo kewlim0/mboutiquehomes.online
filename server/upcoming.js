@@ -16,8 +16,27 @@ const BELFIELD_TYPES = [
   { code: 'A1', suffixes: ['03'], note: '' }, { code: 'A2', suffixes: ['03A'], note: '' }, { code: 'B', suffixes: ['08', '09'], note: '' },
   { code: 'C', suffixes: ['01', '06'], note: '' }, { code: 'D', suffixes: ['02', '05'], note: '' }, { code: 'E', suffixes: ['07', '10'], note: '' },
 ];
-const suffixOf = (unit) => { const u = String(unit || '').trim().toUpperCase(); return u.includes('-') ? u.split('-').pop() : u.slice(-2); };
-const typeOf = (unit, types) => { const sfx = suffixOf(unit); const t = (types || []).find((x) => x.suffixes.includes(sfx)); return t ? t.code : ''; };
+// Unit-type rules: "03" (any block's ending 03) | "B-03" (block B, ending 03) | "C-*" (every unit of block C).
+// Everything is upper-cased and numbers get two digits ("1" -> "01", "3a" -> "03A") before comparing.
+const normPart = (s) => { s = String(s == null ? '' : s).trim().toUpperCase(); const m = /^(\d+)([A-Z]*)$/.exec(s); return m ? m[1].padStart(2, '0') + m[2] : s; };
+const normRule = (r) => { const p = String(r == null ? '' : r).trim().split(/\s*-\s*/).filter((x) => x !== ''); return p.map(normPart).join('-'); };
+const parseUnit = (unit) => {
+  const u = String(unit || '').trim().toUpperCase();
+  if (!u) return { block: '', suffix: '' };
+  if (!u.includes('-')) return { block: '', suffix: normPart(u.slice(-2)) };
+  const p = u.split(/\s*-\s*/).filter((x) => x !== '');
+  return { block: p.length >= 3 ? normPart(p[0]) : '', suffix: normPart(p[p.length - 1]) };
+};
+// most specific rule wins: block+ending > whole block > ending only; nothing matches -> '' (never guess)
+const typeOf = (unit, types) => {
+  const { block, suffix } = parseUnit(unit);
+  const has = (rule) => (types || []).find((t) => (t.suffixes || []).some((x) => normRule(x) === rule));
+  let t = null;
+  if (block && suffix) t = has(block + '-' + suffix);
+  if (!t && block) t = has(block + '-*');
+  if (!t && suffix) t = has(suffix);
+  return t ? t.code : '';
+};
 
 let ready = null;
 function ensureUpcoming() {
@@ -130,20 +149,20 @@ function project(body) {
   const b = body && typeof body === 'object' ? body : {};
   const raw = Array.isArray(b.types) ? b.types : [];
   if (raw.length > 30) throw new HttpError(400, '户型最多 30 种');
-  const seenCode = new Set(), seenSuffix = new Set(), types = [];
+  const seenCode = new Set(), seenSuffix = new Map(), types = [];
   for (const t of raw) {
     const code = text(t && t.code, '户型名称', 8);
-    const suffixes = (Array.isArray(t && t.suffixes) ? t.suffixes : String((t && t.suffixes) || '').split(/[,，\s]+/)).map((x) => String(x).trim().toUpperCase()).filter(Boolean);
+    const suffixes = (Array.isArray(t && t.suffixes) ? t.suffixes : String((t && t.suffixes) || '').split(/[,，\s]+/)).map(normRule).filter(Boolean);
     if (!code && !suffixes.length) continue;
     if (!code) throw new HttpError(400, '每一种户型都要有名称');
     if (seenCode.has(code.toLowerCase())) throw new HttpError(400, `户型「${code}」重复了`);
     seenCode.add(code.toLowerCase());
     for (const x of suffixes) {
-      if (x.length > 8) throw new HttpError(400, `单位尾号「${x}」太长`);
-      if (seenSuffix.has(x)) throw new HttpError(400, `单位尾号「${x}」同时出现在两种户型里`);
-      seenSuffix.add(x);
+      if (x.length > 16 || x.split('-').length > 2) throw new HttpError(400, `规则「${x}」格式不对（只能是 03、B-03 或 C-*）`);
+      if (seenSuffix.has(x) && seenSuffix.get(x) !== code) throw new HttpError(400, `规则「${x}」同时出现在「${seenSuffix.get(x)}」和「${code}」两个户型里`);
+      seenSuffix.set(x, code);
     }
-    types.push({ code, suffixes, note: text(t && t.note, '户型备注', 200) });
+    types.push({ code, suffixes: [...new Set(suffixes)], note: text(t && t.note, '户型备注', 200) });
   }
   return { name: text(b.name, '项目名称', 120, { required: true }), types, applyTypes: b.applyTypes === true };
 }
@@ -370,4 +389,4 @@ async function importRows(projectId, rows, mode) {
   }
 }
 
-module.exports = { importRows, ensureUpcoming, owner, project, listAll, create, update, markFollowed, remove, createProject, updateProject, removeProject, importAll, dateOrNull, STATUSES, FLOORPLAN_DIR, addFile, getFile, removeFile };
+module.exports = { typeOf, normRule, importRows, ensureUpcoming, owner, project, listAll, create, update, markFollowed, remove, createProject, updateProject, removeProject, importAll, dateOrNull, STATUSES, FLOORPLAN_DIR, addFile, getFile, removeFile };
