@@ -84,6 +84,20 @@
         @keyframes hex-shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
         @media (prefers-reduced-motion: reduce) { .hexbox.loading::after { animation: none; } }
         .hint { text-align: center; font-size: 0.66rem; color: #94a3b8; font-weight: 600; margin-top: 0.4rem; }
+        /* floor-plan PDFs of the project (under the hexagon) */
+        #fpCard[hidden] { display: none; }
+        .fp-add { padding: 0.5rem 0.85rem; flex-shrink: 0; }
+        .fp-list { margin-top: 0.5rem; }
+        .fp-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0; border-top: 1px solid #eef2f7; }
+        .fp-row:first-child { border-top: 0; }
+        .fp-ico { width: 2.3rem; height: 2.3rem; border-radius: 0.75rem; display: grid; place-items: center; flex-shrink: 0; background: #fef2f2; color: #dc2626; font-size: 1rem; }
+        .fp-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.7rem; color: var(--ink); text-decoration: none; }
+        .fp-txt { min-width: 0; }
+        .fp-txt b { display: block; font-size: 0.82rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .fp-txt small { display: block; margin-top: 0.1rem; font-size: 0.68rem; font-weight: 600; color: var(--muted); }
+        .fp-del { width: 2.2rem; height: 2.2rem; border-radius: 0.7rem; flex-shrink: 0; display: grid; place-items: center; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; font-size: 0.8rem; }
+        .fp-del:active { transform: scale(0.95); }
+        .fp-empty { text-align: center; padding: 1.1rem 0.5rem 0.5rem; font-size: 0.78rem; font-weight: 600; color: #94a3b8; }
 
         .tl { display: grid; grid-template-columns: repeat(12, 1fr); gap: 0.28rem; align-items: end; height: 6rem; margin-top: 1.3rem; }
         .tl .m { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 0.3rem; cursor: pointer; }
@@ -316,6 +330,16 @@
         <p class="hint" id="hint">点图形的任何一个角，下面的清单就只看那一类</p>
     </section>
 
+    <!-- floor-plan PDFs of the project that is open: upload, view, delete -->
+    <section class="card glass rise d2" id="fpCard" hidden>
+        <div class="card-head">
+            <div><p class="eyebrow">Floor plans</p><h2 id="fpTitle">户型图 PDF</h2></div>
+            <button type="button" class="btn btn-soft fp-add" id="fpAdd"><i class="fa-solid fa-cloud-arrow-up"></i>上传 PDF</button>
+        </div>
+        <div class="fp-list" id="fpList"></div>
+        <input type="file" id="fpInput" accept="application/pdf,.pdf" multiple hidden>
+    </section>
+
     <section class="card glass rise d3">
         <div class="card-head"><div><p class="eyebrow">Timeline</p><h2>未来 12 个月，哪些租约到期</h2></div></div>
         <div class="tl" id="tl"></div>
@@ -515,7 +539,7 @@ const waNumber = (p) => { const d = digits(p); return d.startsWith('0') ? '6' + 
 const showPhone = (p) => { const d = digits(p); return /^01\d{8,9}$/.test(d) ? `${d.slice(0, 3)}-${d.slice(3, 6)} ${d.slice(6)}` : (p || ''); };
 
 // ----- state -----
-let allOwners = [], projects = [];
+let allOwners = [], projects = [], allFiles = [];   // allFiles: the floor-plan PDFs of every project
 const savedProject = (() => { try { return Number(localStorage.getItem('upc-project')) || null; } catch (e) { return null; } })();
 const F = { project: savedProject, axis: null, month: null, block: 'all', type: 'all', view: 'all', q: '', mode: 'status', shown: PAGE };
 const curProject = () => projects.find((p) => p.id === F.project) || projects[0] || null;
@@ -665,8 +689,49 @@ function renderAll() {
     $('sTotal').textContent = owners.length.toLocaleString();
     $('sTrack').textContent = owners.filter((o) => o.tenancyEnd).length.toLocaleString();
     $('sLate').textContent = owners.filter(isLate).length.toLocaleString();
-    renderViews(); updateHex(); renderTl(); renderList();
+    renderViews(); updateHex(); renderTl(); renderList(); renderFiles();
 }
+
+// ----- floor-plan PDFs of the open project (the card under the hexagon) -----
+const fmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+function renderFiles() {
+    const pr = curProject(); $('fpCard').hidden = !pr; if (!pr) return;
+    const list = allFiles.filter((f) => f.projectId === pr.id);
+    $('fpTitle').textContent = list.length ? `户型图 PDF · ${list.length}` : '户型图 PDF';
+    $('fpList').innerHTML = list.length ? list.map((f) => `<div class="fp-row">
+        <a class="fp-main" href="/api/admin/upcoming-files/${f.id}" target="_blank" rel="noopener"><span class="fp-ico"><i class="fa-solid fa-file-pdf"></i></span><span class="fp-txt"><b>${esc(f.name)}</b><small>${fmtSize(f.size || 0)} · ${new Date(f.at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' })} · 点一下查看</small></span></a>
+        <button type="button" class="fp-del" data-id="${f.id}" aria-label="删除这个 PDF"><i class="fa-regular fa-trash-can"></i></button></div>`).join('')
+        : '<p class="fp-empty"><i class="fa-regular fa-file-pdf" style="font-size:1.5rem;display:block;margin-bottom:.4rem"></i>这个项目还没有户型图 · 点右上角上传 PDF</p>';
+}
+$('fpAdd').addEventListener('click', () => $('fpInput').click());
+$('fpInput').addEventListener('change', async () => {
+    const files = [...$('fpInput').files], pr = curProject(); $('fpInput').value = ''; if (!files.length || !pr) return;
+    if (files.some((f) => !/\.pdf$/i.test(f.name) && f.type !== 'application/pdf')) return toast('只能上传 PDF 文件');
+    const big = files.find((f) => f.size > 20 * 1024 * 1024); if (big) return toast(`「${big.name}」太大了（最多 20MB）`);
+    let ok = 0, err = '';
+    try {
+        await trkSaving.run(async () => {
+            for (const f of files) {                      // one after the other; a failure stops the rest and is reported
+                const fd = new FormData(); fd.append('file', f);
+                const res = await fetch(`/api/admin/upcoming-projects/${pr.id}/files`, { method: 'POST', credentials: 'same-origin', body: fd });
+                const out = await res.json().catch(() => ({}));
+                if (res.status === 401) { location.replace('/admin/?next=%2Ftracker%2Fupcoming%2F'); throw new Error('Please sign in'); }
+                if (res.status === 413) { err = `「${f.name}」太大，服务器没有收下（${fmtSize(f.size)}）`; break; }
+                if (!res.ok) { err = out.error || '上传失败，请再试一次'; break; }
+                allFiles.push(out.file); ok++;
+            }
+        }, '上传中…');
+    } catch (e) { err = e.message; }
+    renderFiles();
+    toast(err ? (ok ? `已上传 ${ok} 个，后面的没成功：${err}` : err) : `已上传 ${ok} 个 PDF`);
+});
+$('fpList').addEventListener('click', async (e) => {
+    const b = e.target.closest('.fp-del'); if (!b) return;
+    const f = allFiles.find((x) => x.id === Number(b.dataset.id));
+    if (!f || !confirm(`删除「${f.name}」吗？文件会从服务器上永久删除。`)) return;
+    try { await trkSaving.run(() => api('DELETE', 'upcoming-files/' + f.id), '删除中…'); allFiles = allFiles.filter((x) => x.id !== f.id); renderFiles(); toast('已删除'); }
+    catch (err) { toast(err.message); }
+});
 
 // ----- dialogs -----
 function askSave(text) {
@@ -1366,7 +1431,7 @@ async function removeProject() {
     if (!editingProject || !confirm(`Delete project ${editingProject.name}? This cannot be undone.`)) return;
     try {
         await api('DELETE', 'upcoming-projects/' + editingProject.id);
-        projects = projects.filter((p) => p.id !== editingProject.id); F.project = null; closeProject(); renderAll(); toast('Deleted');
+        projects = projects.filter((p) => p.id !== editingProject.id); allFiles = allFiles.filter((f) => f.projectId !== editingProject.id); F.project = null; closeProject(); renderAll(); toast('Deleted');
     } catch (e) { toast(e.message); }
 }
 $('pAddType').addEventListener('click', () => { $('pTypes').insertAdjacentHTML('beforeend', typeRow({ code: '', suffixes: [], note: '' })); $('pTypes').lastElementChild.querySelector('input').focus(); });
@@ -1388,12 +1453,12 @@ async function refreshFromServer() {
     try {
         const d = await api('GET', 'upcoming');
         const wait = 450 - (performance.now() - t0); if (wait > 0) await new Promise((r) => setTimeout(r, wait));   // long enough to be seen
-        projects = d.projects; allOwners = d.owners;
+        projects = d.projects; allOwners = d.owners; allFiles = d.files || [];
     } catch (e) { /* keep what is on the page */ }
     refreshing = false; renderAll();
 }
 showSkeleton();
-api('GET', 'upcoming').then((d) => { projects = d.projects; allOwners = d.owners; renderAll(); })
+api('GET', 'upcoming').then((d) => { projects = d.projects; allOwners = d.owners; allFiles = d.files || []; renderAll(); })
     .catch((e) => { $('list').innerHTML = `<p class="empty" style="color:#e11d48">${esc(e.message)}</p>`; });
 </script>
 </body>

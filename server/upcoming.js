@@ -1,8 +1,15 @@
 // Owners to follow up for upcoming listings (the /tracker/upcoming/ page): one row per unit of a condo, with the owner's
 // contact details, what we know about the unit (tenanted until..., for sale, owner-stay, not reachable) and the next follow-up date.
 // Everything here sits behind the admin sign-in; none of it is part of the public site content.
+const fs = require('fs');
+const path = require('path');
 const pool = require('./db');
 const { HttpError } = require('./validate');
+
+// The floor-plan PDFs of a project (the "户型图 PDF" card under the hexagon). Like the tenancy agreements they are private documents:
+// they live in this folder (not under uploads/ or public/), are never served as a plain link, and an admin-only route hands them out.
+const FLOORPLAN_DIR = path.join(__dirname, '..', 'private-files', 'floorplans');
+const MAX_FILES_PER_PROJECT = 30;
 
 // The unit types of the first project (Sunway Belfield Residence), by the last part of the unit number (B-48-03 -> 03)
 const BELFIELD_TYPES = [
@@ -43,6 +50,16 @@ function ensureUpcoming() {
         KEY idx_upcoming_end (tenancy_end),
         KEY idx_upcoming_next (next_followup),
         KEY idx_upcoming_project (project_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+      await pool.query(`CREATE TABLE IF NOT EXISTS upcoming_project_files (
+        id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        project_id INT UNSIGNED NOT NULL,
+        file       VARCHAR(80)  NOT NULL,
+        name       VARCHAR(200) NOT NULL,
+        size       INT UNSIGNED NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_upfiles_project (project_id),
+        CONSTRAINT fk_upfiles_project FOREIGN KEY (project_id) REFERENCES upcoming_projects(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
       // the first version had no projects: its owners all belong to Sunway Belfield Residence, and their types now follow the unit number
       const [have] = await pool.query("SHOW COLUMNS FROM upcoming_owners LIKE 'project_id'");
@@ -140,12 +157,15 @@ const map = (r) => ({
 });
 
 const mapProject = (r) => ({ id: r.id, name: r.name, types: (() => { try { return JSON.parse(r.types || '[]'); } catch (e) { return []; } })() });
+// only what the page needs: never the file's place on disk
+const mapFile = (r) => ({ id: r.id, projectId: r.project_id, name: r.name, size: r.size, at: r.created_at });
 
 async function listAll() {
   await ensureUpcoming();
   const [projects] = await pool.query('SELECT id, name, types FROM upcoming_projects ORDER BY sort_order, id');
   const [rows] = await pool.query(`SELECT ${COLS} FROM upcoming_owners ORDER BY unit`);
-  return { projects: projects.map(mapProject), owners: rows.map(map) };
+  const [files] = await pool.query('SELECT id, project_id, name, size, created_at FROM upcoming_project_files ORDER BY project_id, id');
+  return { projects: projects.map(mapProject), owners: rows.map(map), files: files.map(mapFile) };
 }
 async function getProject(id) {
   const [rows] = await pool.query('SELECT id, name, types FROM upcoming_projects WHERE id = ?', [id]);
@@ -221,8 +241,35 @@ async function removeProject(id) {
   await ensureUpcoming();
   const [[{ n }]] = await pool.query('SELECT COUNT(*) AS n FROM upcoming_owners WHERE project_id = ?', [id]);
   if (n > 0) throw new HttpError(400, `这个项目里还有 ${n} 位业主，不能直接删除`);
-  const [res] = await pool.query('DELETE FROM upcoming_projects WHERE id = ?', [id]);
+  const [files] = await pool.query('SELECT file FROM upcoming_project_files WHERE project_id = ?', [id]);
+  const [res] = await pool.query('DELETE FROM upcoming_projects WHERE id = ?', [id]);   // the file rows go with it (ON DELETE CASCADE)
+  if (res.affectedRows) for (const f of files) fs.unlink(path.join(FLOORPLAN_DIR, f.file), () => {});   // and the PDFs themselves
   return res.affectedRows > 0;
+}
+
+// ---------- floor-plan PDFs of a project ----------
+// `f` is an uploaded file that is already in FLOORPLAN_DIR under its final (random) name. null = no such project.
+async function addFile(projectId, f) {
+  await ensureUpcoming();
+  if (!(await getProject(projectId))) return null;
+  const [[{ n }]] = await pool.query('SELECT COUNT(*) AS n FROM upcoming_project_files WHERE project_id = ?', [projectId]);
+  if (n >= MAX_FILES_PER_PROJECT) throw new HttpError(400, `每个项目最多放 ${MAX_FILES_PER_PROJECT} 个 PDF，请先删掉不用的`);
+  const [res] = await pool.query('INSERT INTO upcoming_project_files (project_id, file, name, size) VALUES (?,?,?,?)', [projectId, f.file, f.name, f.size]);
+  const [[row]] = await pool.query('SELECT id, project_id, name, size, created_at FROM upcoming_project_files WHERE id = ?', [res.insertId]);
+  return mapFile(row);
+}
+async function getFile(fileId) {
+  await ensureUpcoming();
+  const [[r]] = await pool.query('SELECT file, name FROM upcoming_project_files WHERE id = ?', [fileId]);
+  return r ? { file: path.join(FLOORPLAN_DIR, r.file), name: r.name } : null;
+}
+async function removeFile(fileId) {
+  await ensureUpcoming();
+  const [[r]] = await pool.query('SELECT file FROM upcoming_project_files WHERE id = ?', [fileId]);
+  if (!r) return false;
+  await pool.query('DELETE FROM upcoming_project_files WHERE id = ?', [fileId]);
+  fs.unlink(path.join(FLOORPLAN_DIR, r.file), () => {});
+  return true;
 }
 
 // One-off import (scripts/import-upcoming.js): rows go into one project (created when it does not exist yet); validated like a form submit, in one transaction
@@ -323,4 +370,4 @@ async function importRows(projectId, rows, mode) {
   }
 }
 
-module.exports = { importRows, ensureUpcoming, owner, project, listAll, create, update, markFollowed, remove, createProject, updateProject, removeProject, importAll, dateOrNull, STATUSES };
+module.exports = { importRows, ensureUpcoming, owner, project, listAll, create, update, markFollowed, remove, createProject, updateProject, removeProject, importAll, dateOrNull, STATUSES, FLOORPLAN_DIR, addFile, getFile, removeFile };

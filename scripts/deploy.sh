@@ -89,7 +89,8 @@ check "业主跟进页对未登录访客不可见 (/tracker/upcoming/ 跳转)" "
 check "业主跟进数据接口未登录 401" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/api/admin/upcoming')\" = 401 ]"
 check "租赁数据接口未登录 401" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/api/admin/rentals')\" = 401 ]"
 check "租约文件未登录拿不到 (401)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/api/admin/rental-units/1/agreement')\" = 401 ]"
-check "租约文件不能用普通链接取到" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/private-files/agreements/x.pdf')\" != 200 ]"
+check "项目户型 PDF 未登录拿不到 (401)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/api/admin/upcoming-files/1')\" = 401 ]"
+check "租约文件不能用普通链接取到""[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/private-files/agreements/x.pdf')\" != 200 ]"
 check "配置文件没有暴露 (/.env = 404)"        "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 '$URL/.env')\" = 404 ]"
 
 # videos need ffmpeg on the server (only a reminder: the rest of the site works without it)

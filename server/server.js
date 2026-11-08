@@ -386,6 +386,44 @@ admin.delete('/rental-units/:id/agreement', wrap(async (req, res) => {
   unit ? res.json({ unit }) : notFound(res);
 }));
 
+// Floor-plan PDFs of an Upcoming Listing project: upload (PDF only), view, remove. Admin only; the files are not reachable any other way.
+fs.mkdirSync(upcoming.FLOORPLAN_DIR, { recursive: true });
+const floorplanUpload = multer({
+  storage: multer.diskStorage({
+    destination: upcoming.FLOORPLAN_DIR,
+    filename: (req, file, cb) => cb(null, crypto.randomBytes(18).toString('hex') + '.tmp'),
+  }),
+  limits: { fileSize: 20 * 1024 * 1024, files: 1 },
+});
+admin.post('/upcoming-projects/:id/files', (req, res, next) => {
+  if (REMOTE_DB) return res.status(403).json({ error: '当前连接的是线上数据库，本地不能上传 PDF（文件只会存在你的电脑里）。请到线上后台上传。' });
+  next();
+}, floorplanUpload.single('file'), wrap(async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: '没有收到文件' });
+  const drop = () => fs.unlink(req.file.path, () => {});
+  const kind = detectAgreementType(req.file.path);   // the real type from the first bytes (the one the browser reports can be faked)
+  if (!kind || kind.ext !== 'pdf') { drop(); return res.status(400).json({ error: '只支持 PDF 文件' }); }
+  const finalName = req.file.filename.replace(/\.tmp$/, '.pdf');
+  const dest = path.join(upcoming.FLOORPLAN_DIR, finalName);
+  fs.renameSync(req.file.path, dest);
+  // browsers send the name as latin1 bytes: turn it back so Chinese file names survive
+  let name = Buffer.from(req.file.originalname || '', 'latin1').toString('utf8').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '_').trim().slice(0, 150) || 'floor-plan.pdf';
+  if (!/\.pdf$/i.test(name)) name += '.pdf';
+  let file;
+  try { file = await upcoming.addFile(idParam(req), { file: finalName, name, size: req.file.size }); }
+  catch (err) { fs.unlink(dest, () => {}); throw err; }
+  if (!file) { fs.unlink(dest, () => {}); return notFound(res); }
+  res.status(201).json({ file });
+}));
+admin.get('/upcoming-files/:id', wrap(async (req, res) => {
+  const f = await upcoming.getFile(idParam(req));
+  if (!f || !fs.existsSync(f.file)) return notFound(res);
+  noStore(res);
+  res.set({ 'Content-Type': 'application/pdf', 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex', 'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(f.name)}`, 'Content-Security-Policy': "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'" });
+  res.sendFile(f.file);
+}));
+admin.delete('/upcoming-files/:id', wrap(async (req, res) => { (await upcoming.removeFile(idParam(req))) ? res.json({ ok: true }) : notFound(res); }));
+
 admin.post('/team', wrap(async (req, res) => {
   res.status(201).json({ id: await repo.createTeamMember(v.teamMember(req.body)) });
 }));
@@ -656,7 +694,7 @@ app.use((req, res) => {
 // ---------- errors ----------
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
-    return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? (req.path === '/upload-video' ? '视频不能超过 300MB' : '图片不能超过 6MB') : '上传失败' });
+    return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? (/\/upload-video$/.test(req.path) ? '视频不能超过 300MB' : /\/(agreement|files)$/.test(req.path) ? '文件不能超过 20MB' : '图片不能超过 6MB') : '上传失败' });
   }
   if (err instanceof v.HttpError) return res.status(err.status).json({ error: err.message });
   console.error(err);
