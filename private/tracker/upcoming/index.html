@@ -196,6 +196,13 @@
         .thint { padding: 0.45rem 1rem; font-size: 0.68rem; font-weight: 700; color: #15803d; background: #f0fdf4; border-bottom: 1px solid #dcfce7; }
         table.t td { cursor: cell; }
         table.t td.sel { outline: 2px solid #16a34a; outline-offset: -2px; background: #f0fdf4 !important; }
+        /* select all: tap the "#" corner of the table (like the corner of Google Sheets); the pill at the bottom left copies it out */
+        table.t th[data-k="n"] { cursor: pointer; }
+        table.t.allsel td { background: #dcfce7 !important; }
+        table.t.allsel th { background: #d1fae5; }
+        table.t.allsel th[data-k="n"] { background: #4ade80; color: #14532d; }
+        #tCopy { display: inline-flex; position: absolute; left: 0.8rem; bottom: calc(0.8rem + env(safe-area-inset-bottom)); z-index: 10; height: 2.7rem; padding: 0 1.05rem; gap: 0.45rem; border-radius: 999px; border: 1px solid var(--g2); background: rgba(255,255,255,.96); color: var(--g3); box-shadow: 0 0 0 1px var(--g2), 0 6px 18px -6px rgba(15,23,42,.45); align-items: center; justify-content: center; font-size: 13px; font-weight: 800; white-space: nowrap; cursor: pointer; }
+        #tCopy[hidden] { display: none; }
         table.t td.c0 { padding-right: 0.3rem; white-space: nowrap; }
         table.t td.c0 .rn { display: inline-block; min-width: 1.6rem; text-align: right; }
         table.t .openb { margin-left: 0.35rem; width: 1.5rem; height: 1.5rem; border-radius: 0.5rem; background: #ecfdf5; color: #15803d; font-size: 0.6rem; border: 1px solid #bbf7d0; }
@@ -343,10 +350,11 @@
         <select class="field" id="t-block" aria-label="栋"></select>
         <span class="tcount" id="tCount"></span>
     </div>
-    <div class="thint"><i class="fa-regular fa-lightbulb"></i> 在 Google 表格里选好、复制，回到这里按 Ctrl+V（苹果电脑 ⌘+V）就能把整个表格粘贴进来 · 单击格子选中，双击可以直接修改 · 最左边的小图标打开这位业主 <span style="opacity:.55">· v8</span></div>
+    <div class="thint"><i class="fa-regular fa-lightbulb"></i> 在 Google 表格里选好、复制，回到这里按 Ctrl+V（苹果电脑 ⌘+V）就能把整个表格粘贴进来 · 单击格子选中，双击可以直接修改 · 最左边的小图标打开这位业主 · 点左上角的 # 全选整个表格，Ctrl+C（⌘+C）复制到 Google 表格 <span style="opacity:.55">· v9</span></div>
     </div>
     <div class="twrap"><table class="t" id="tbl"></table></div>
     <button type="button" id="tFullBtn" aria-label="全屏"><i class="fa-solid fa-expand"></i><span>全屏</span></button>
+    <button type="button" id="tCopy" aria-label="复制整个表格" hidden><i class="fa-regular fa-copy"></i><span>复制表格</span></button>
   </div>
 </div>
 
@@ -814,7 +822,7 @@ function cell(o, c, i) {
 }
 function renderTable(limit) {
     const showProj = T.proj === 'all', cols = COLS.filter((c) => !c.all || showProj), all = tableRows(), rows = limit ? all.slice(0, limit) : all;
-    const head = cols.map((c, ci) => `<th class="${c.nosort ? 'nosort ' : ''}${ci === 0 ? 'c0' : ci === 1 ? 'c1' : ''}" data-k="${c.k}">${c.label}<span class="ar">${T.key === c.k ? (T.dir > 0 ? '▲' : '▼') : ''}</span></th>`).join('');
+    const head = cols.map((c, ci) => `<th class="${c.nosort ? 'nosort ' : ''}${ci === 0 ? 'c0' : ci === 1 ? 'c1' : ''}" data-k="${c.k}"${c.k === 'n' ? ' title="全选整个表格"' : ''}>${c.label}<span class="ar">${T.key === c.k ? (T.dir > 0 ? '▲' : '▼') : ''}</span></th>`).join('');
     const body = rows.map((o, i) => `<tr data-id="${o.id}">${cols.map((c, ci) => `<td data-k="${c.k}" class="${c.cls || ''} ${ci === 0 ? 'c0' : ci === 1 ? 'c1' : ''}" ${c.k === 'note' && o.note ? `title="${esc(o.note)}"` : ''}>${c.k === 'n' ? `<span class="rn">${i + 1}</span><button class="openb" type="button" aria-label="打开这位业主" title="打开这位业主"><i class="fa-solid fa-up-right-from-square"></i></button>` : cell(o, c, i)}</td>`).join('')}</tr>`).join('');
     $('tbl').innerHTML = `<thead><tr>${head}</tr></thead><tbody>${body || `<tr><td colspan="${cols.length}" class="tempty">没有符合的业主</td></tr>`}</tbody>`;
     $('tCount').textContent = `${all.length.toLocaleString()} 行`; if (selCell) paintSel();
@@ -855,7 +863,7 @@ function openTable() {
 }
 function closeTable() {
     const el = $('tsheet'), inner = el.querySelector('.tinner'); if (el.classList.contains('hidden') || el.classList.contains('sheet-out')) return;
-    const finish = () => { inner.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.classList.remove('tbl-open', 'tbl-closing'); document.body.style.overflow = ''; inner.classList.remove('tfull'); cancelAnimationFrame(fullRaf); fullP = 0; $('tFullBtn').innerHTML = '<i class="fa-solid fa-expand"></i><span>全屏</span>'; for (const e of inner.querySelectorAll('.tbars, .twrap')) e.style.transform = ''; };
+    const finish = () => { inner.removeEventListener('animationend', onEnd); clearTimeout(safety); el.classList.add('hidden'); el.classList.remove('sheet-out'); document.body.classList.remove('tbl-open', 'tbl-closing'); document.body.style.overflow = ''; inner.classList.remove('tfull'); setAllSel(false); cancelAnimationFrame(fullRaf); fullP = 0; $('tFullBtn').innerHTML = '<i class="fa-solid fa-expand"></i><span>全屏</span>'; for (const e of inner.querySelectorAll('.tbars, .twrap')) e.style.transform = ''; };
     const onEnd = (e) => { if (e.target === inner && e.animationName === 'sheet-out-right') finish(); };   // hide when the slide-out has really finished
     const safety = setTimeout(finish, 1100);
     refreshFromServer();   // the page behind shows its skeleton while the table slides away
@@ -895,6 +903,35 @@ function paintSel() {
     if (!selCell) return;
     const td = document.querySelector(`#tbl tbody tr[data-id="${selCell.id}"] td[data-k="${selCell.k}"]`); if (td) { td.classList.add('sel'); td.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
 }
+// ----- select everything (tap the "#" corner, or Ctrl/⌘+A) and copy it out, e.g. into Google Sheets -----
+let allSel = false;
+function setAllSel(on) {
+    allSel = on; $('tbl').classList.toggle('allsel', on); $('tCopy').hidden = !on;
+    if (on) { selCell = null; paintSel(); }
+}
+// the same columns as the CSV file (so a copied table can be pasted back in); "#" and the countdown are left out
+const EXPORT_HEAD = ['项目', '单位', '栋', '户型', '业主', '电话', '状态', '租约到期', '下次跟进', '上次跟进', '备注'];
+// pretty = for the clipboard: a phone like 012-345 6789 stays text in Google Sheets (plain digits would lose the leading 0)
+const exportRow = (o, pretty) => [projName(o), o.unit, blockOf(o), o.type, o.name, pretty ? showPhone(o.phone) : o.phone, STATUS[grp(o.status)][0], o.tenancyEnd, o.nextFollowup, o.lastFollowup, o.note];
+// tab-separated, a value with a tab / new line / quote is wrapped in quotes: Google Sheets and Excel read this as separate cells
+const tsvCell = (v) => { const s = String(v ?? ''); return /[\t\r\n"]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+const tableTSV = (rows = tableRows()) => [EXPORT_HEAD, ...rows.map((o) => exportRow(o, true))].map((r) => r.map(tsvCell).join('\t')).join('\n');
+function selCellText() {   // the value of the one selected cell
+    const o = selCell && ownerById(selCell.id); if (!o) return null;
+    const k = selCell.k, td = document.querySelector(`#tbl tbody tr[data-id="${selCell.id}"] td[data-k="${k}"]`);
+    const v = k === 'phone' ? showPhone(o.phone) : k === 'status' ? STATUS[grp(o.status)][0] : k === 'project' ? projName(o) : k === 'block' ? blockOf(o)
+        : (EDITABLE.includes(k) || k === 'lastFollowup') ? (o[k] || '') : (td ? td.textContent.replace('—', '').trim() : '');
+    return tsvCell(v);
+}
+async function copyOut(text, msg) {   // from a button (Ctrl+C is handled by the copy event below)
+    try { await navigator.clipboard.writeText(text); }
+    catch (e) {
+        const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0'; document.body.appendChild(ta); ta.select();
+        let ok = false; try { ok = document.execCommand('copy'); } catch (e2) { /* blocked */ } ta.remove();
+        if (!ok) return toast('这个浏览器不让网页复制，请按 Ctrl+C（苹果电脑 ⌘+C）');
+    }
+    toast(msg);
+}
 // one cell changed: save it at once (like a spreadsheet), then redraw
 async function saveCell(o, change) {
     const body = { projectId: o.projectId, unit: o.unit, type: o.type, name: o.name, phone: o.phone, status: grp(o.status), tenancyEnd: o.tenancyEnd, nextFollowup: o.nextFollowup, note: o.note, ...change };
@@ -927,11 +964,13 @@ function editCell(td) {
 }
 $('tbl').addEventListener('click', (e) => {
     const th = e.target.closest('th');
-    if (th) { if (th.classList.contains('nosort')) return; const k = th.dataset.k; T.dir = T.key === k ? -T.dir : 1; T.key = k; renderTable(); paintSel(); return; }
+    if (th) {
+        if (th.dataset.k === 'n') { setAllSel(!allSel); if (allSel) toast('已全选 · 按 Ctrl+C（⌘+C）或点左下角「复制表格」'); return; }   // the "#" corner: select / unselect everything
+        if (th.classList.contains('nosort')) return; const k = th.dataset.k; T.dir = T.key === k ? -T.dir : 1; T.key = k; renderTable(); paintSel(); return; }
     const open = e.target.closest('.openb'); if (open) { const o = ownerById(open.closest('tr').dataset.id); if (o) openForm(o); return; }
     if (e.target.closest('select.stsel, .cedit')) return;
     const td = e.target.closest('td'); if (!td) return;
-    selCell = { id: Number(td.closest('tr').dataset.id), k: td.dataset.k }; paintSel();
+    selCell = { id: Number(td.closest('tr').dataset.id), k: td.dataset.k }; setAllSel(false); paintSel();
 });
 $('tbl').addEventListener('dblclick', (e) => { const td = e.target.closest('td'); if (td && !e.target.closest('select, .cedit, .openb')) editCell(td); });
 $('tbl').addEventListener('change', (e) => {
@@ -970,6 +1009,7 @@ function handlePasted(text) {
         if (td && EDITABLE.includes(selCell.k)) { const o = ownerById(selCell.id), v = rows[0][0].trim(); return saveCell(o, { [selCell.k]: selCell.k === 'unit' ? v.toUpperCase() : (selCell.k === 'tenancyEnd' || selCell.k === 'nextFollowup') ? (parseDate(v) || null) : v }); }
         return toast('先单击一个格子，再粘贴一个值；或者复制整个表格（至少两格）再粘贴');
     }
+    setAllSel(false);
     IMP.book = [{ name: '粘贴的表格', rows }]; IMP.fileName = '从剪贴板粘贴的表格'; IMP.source = 'paste'; openImport();
 }
 document.addEventListener('paste', (e) => {
@@ -980,11 +1020,23 @@ document.addEventListener('paste', (e) => {
 $('tPaste').addEventListener('click', async () => {
     try { handlePasted(await navigator.clipboard.readText()); } catch (e) { toast('这个浏览器不让网页直接读剪贴板，请在表格上按 Ctrl+V（苹果电脑 ⌘+V）'); }
 });
+// copy out: Ctrl+C / ⌘+C copies the whole table when everything is selected (or the one selected cell); the pill button does the same on a phone
+const tableOpen = () => !$('tsheet').classList.contains('hidden') && $('imp').classList.contains('hidden') && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+document.addEventListener('copy', (e) => {
+    if (!tableOpen() || (!allSel && String(window.getSelection()).trim())) return;   // text the person marked by hand keeps the normal copy
+    const rows = allSel ? tableRows() : null, text = allSel ? tableTSV(rows) : selCellText(); if (text == null) return;
+    e.preventDefault(); e.clipboardData.setData('text/plain', text);
+    toast(allSel ? `已复制 ${rows.length.toLocaleString()} 行，去 Google 表格粘贴` : '已复制');
+});
+document.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || String(e.key).toLowerCase() !== 'a' || !tableOpen()) return;
+    e.preventDefault(); setAllSel(true); toast('已全选 · 按 Ctrl+C（⌘+C）或点左下角「复制表格」');
+});
+$('tCopy').addEventListener('click', () => { const rows = tableRows(); copyOut(tableTSV(rows), `已复制 ${rows.length.toLocaleString()} 行，去 Google 表格粘贴`); });
 // the whole table (with the current filters) as a file that opens in Excel / Numbers / Google Sheets
 $('tCsv').addEventListener('click', () => {
     const rows = tableRows(), q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const head = ['项目', '单位', '栋', '户型', '业主', '电话', '状态', '租约到期', '下次跟进', '上次跟进', '备注'];
-    const lines = [head.map(q).join(',')].concat(rows.map((o) => [projName(o), o.unit, blockOf(o), o.type, o.name, o.phone, STATUS[grp(o.status)][0], o.tenancyEnd, o.nextFollowup, o.lastFollowup, o.note].map(q).join(',')));
+    const lines = [EXPORT_HEAD.map(q).join(',')].concat(rows.map((o) => exportRow(o).map(q).join(',')));
     const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `upcoming-listing-${iso(TODAY)}.csv`;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
