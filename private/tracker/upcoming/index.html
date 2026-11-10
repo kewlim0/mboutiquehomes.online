@@ -576,7 +576,8 @@ const typeOf = (unit, types) => {
   if (!t && suffix) t = has(suffix);
   return t ? t.code : '';
 };
-const blockOf = (o) => (o.unit.includes('-') ? o.unit.split('-')[0] : '');
+// a unit is block-floor-ending (B-48-03): only then does it have a block. Two parts (17-01 = floor 17, unit 01) have none.
+const blockOf = (o) => { const p = String(o.unit || '').split('-'); return p.length >= 3 ? p[0] : ''; };
 const isLate = (o) => !!o.nextFollowup && daysTo(o.nextFollowup) <= 0 && o.status !== 'own' && o.status !== 'listed';
 
 // ----- hexagon: the shape follows the number of corners -----
